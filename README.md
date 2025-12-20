@@ -57,5 +57,5 @@ npx ts-node src/qualityPipeline.ts --autofix
 ```
 SUPABASE_URL=your_supabase_url
 SUPABASE_ANON_KEY=your_anon_key
-GEMINI_API_KEY=your_gemini_key
+GOOGLE_GEMINI_KEY=your_gemini_key
 ```

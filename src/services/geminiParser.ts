@@ -8,7 +8,7 @@ import { createClient } from '@supabase/supabase-js';
 
 dotenv.config();
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY!;
+const GEMINI_API_KEY = process.env.GOOGLE_GEMINI_KEY!;
 const supabase = createClient(
     process.env.SUPABASE_URL!,
     process.env.SUPABASE_ANON_KEY!
