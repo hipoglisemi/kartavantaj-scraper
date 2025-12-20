@@ -57,6 +57,13 @@ jobs:
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
 
+      - name: 🚀 Run Halkbank Scraper (Paraf)
+        run: npx ts-node src/scrapers/halkbank.ts --ai
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
+
       # Gelecekte diğer bankaları buraya ekleyebilirsiniz
       # - name: 🚀 Run Maximum Scraper
       #   run: npx ts-node src/scrapers/maximum.ts --ai
