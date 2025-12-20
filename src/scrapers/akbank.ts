@@ -95,11 +95,11 @@ async function fetchCampaignsForCard(card: CardConfig, isAIEnabled: boolean) {
             }
 
             let foundNew = false;
-            links.each((_, el) => {
+            links.each((_: number, el: any) => {
                 const href = $(el).attr('href');
                 if (href) {
                     // Check if we already have this URL in the current batch to avoid infinite loops if pagination is broken
-                    const exists = allCampaigns.some(c => c.href === href);
+                    const exists = allCampaigns.some((c: any) => c.href === href);
                     if (!exists) {
                         allCampaigns.push({ href });
                         foundNew = true;
@@ -162,7 +162,7 @@ async function fetchCampaignsForCard(card: CardConfig, isAIEnabled: boolean) {
             // AI Parsing
             let campaignData;
             if (isAIEnabled) {
-                campaignData = await parseWithGemini(html, title, card.cardName);
+                campaignData = await parseWithGemini(html, fullUrl);
             } else {
                 // Basic parsing if AI is disabled
                 campaignData = {
