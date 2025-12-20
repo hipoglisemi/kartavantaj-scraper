@@ -40,8 +40,15 @@ jobs:
       # - name: 🚀 Run Maximum Scraper
       #   run: npx ts-node src/scrapers/maximum.ts --ai
 
-      - name: 🔧 Run Auto-Fix Pipeline (Maintenance)
-        # Tüm veritabanını tarar ve eksikleri tamamlar
+      - name: 🔧 Run Auto-Fix Pipeline (Pass 1)
+        run: npx ts-node src/qualityPipeline.ts --autofix
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
+
+      - name: 🔧 Run Auto-Fix Pipeline (Pass 2 - Double Check)
+        # İlk geçişte düzelmeyen varsa tekrar dene (Tam kontrol)
         run: npx ts-node src/qualityPipeline.ts --autofix
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
