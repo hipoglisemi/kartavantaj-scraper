@@ -1,0 +1,48 @@
+name: Weekly Scraper & Auto-Fix
+
+on:
+  schedule:
+    # Her Pazartesi Sabah 09:00'da çalışır (UTC saatine göre 06:00)
+    - cron: '0 6 * * 1'
+  # Manuel tetiklemek isterseniz 'Run workflow' butonu için:
+  workflow_dispatch:
+
+jobs:
+  scrape-and-fix:
+    runs-on: ubuntu-latest
+    
+    # Maksimum çalışma süresi (Dakika). 
+    # 5000 kampanya için artırılabilir, şimdilik 360 (6 saat) yeterli.
+    timeout-minutes: 360
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: 🚀 Run WorldCard Scraper (Auto-Clean included)
+        run: npx ts-node src/scrapers/worldcard.ts --ai
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+
+      # Gelecekte diğer bankaları buraya ekleyebilirsiniz
+      # - name: 🚀 Run Maximum Scraper
+      #   run: npx ts-node src/scrapers/maximum.ts --ai
+
+      - name: 🔧 Run Auto-Fix Pipeline (Maintenance)
+        # Tüm veritabanını tarar ve eksikleri tamamlar
+        run: npx ts-node src/qualityPipeline.ts --autofix
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
