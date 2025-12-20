@@ -1,9 +1,10 @@
-name: Weekly Scraper & Auto-Fix
+name: Periodic Scraper & Auto-Fix
 
 on:
   schedule:
-    # Her Pazartesi Sabah 09:00'da çalışır (UTC saatine göre 06:00)
-    - cron: '0 6 * * 1'
+    # Her ayın 1, 8, 15 ve 22'sinde saat 00:01'de çalışır (UTC)
+    # Türkiye saati ile (UTC+3) 03:01'e denk gelir.
+    - cron: '1 0 1,8,15,22 * *'
   # Manuel tetiklemek isterseniz 'Run workflow' butonu için:
   workflow_dispatch:
 
