@@ -29,8 +29,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: 🚀 Run WorldCard Scraper (Auto-Clean included)
-        run: npx ts-node src/scrapers/worldcard.ts --ai
+      - name: 🚀 Run Yapı Kredi Scraper (World, Adios, Play, Crystal)
+        run: npx ts-node src/scrapers/yapikredi.ts --ai
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
