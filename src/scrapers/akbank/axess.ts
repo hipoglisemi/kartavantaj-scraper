@@ -91,8 +91,10 @@ async function runAxessScraper() {
         }
     }
 
+    console.log(`\n🎉 Total ${allCampaigns.length} campaigns found. Processing details...\n`);
 
     // 2. Process Details
+    for (const item of allCampaigns) {
         const urlPart = item.href;
         if (!urlPart) continue;
 
@@ -135,6 +137,17 @@ async function runAxessScraper() {
                 campaignData.reference_url = fullUrl;
                 campaignData.category = campaignData.category || 'Diğer';
                 campaignData.is_active = true;
+
+                // Check for activity if end_date exists
+                if (campaignData.end_date) {
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    const endDate = new Date(campaignData.end_date);
+                    if (endDate < today) {
+                        console.log(`      ⚠️  Expired (${campaignData.end_date}), skipping...`);
+                        continue;
+                    }
+                }
 
                 const { error } = await supabase
                     .from('campaigns')

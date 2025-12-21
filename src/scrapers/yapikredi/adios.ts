@@ -31,49 +31,75 @@ async function runAdiosScraper() {
     let page = 1;
     let allCampaigns = [];
 
-    // 1. Fetch List from API
-    while (true) {
-        try {
-            console.log(`   📄 Fetching page ${page}...`);
-            const response = await axios.get(CARD_CONFIG.listApiUrl, {
-                headers: {
-                    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
-                    'Referer': `${CARD_CONFIG.baseUrl}/kampanyalar`,
-                    'page': page.toString()
-                }
-            });
-
-            const items = response.data.Items;
-            if (!items || items.length === 0) {
-                console.log(`   ✅ Page ${page} is empty. Finished fetching list.`);
-                break;
-            }
-
-            allCampaigns.push(...items);
-            console.log(`   ✅ Found ${items.length} campaigns on page ${page}.`);
-            page++;
-            await sleep(1000);
-        } catch (error: any) {
-            console.error(`   ❌ Error fetching page ${page}: ${error.message}`);
-            break;
-        }
-    }
-
-    console.log(`\n🎉 Total ${allCampaigns.length} campaigns found. Filtering active ones...\n`);
-
-    // Filter only active campaigns (EndDate >= today)
+    // 1. Fetch List from API and filter active campaigns
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const activeCampaigns = allCampaigns.filter(item => {
-        if (!item.EndDate) return true;
-        const endDate = new Date(item.EndDate);
-        return endDate >= today;
-    });
 
-    console.log(`✅ ${activeCampaigns.length} active campaigns (${allCampaigns.length - activeCampaigns.length} expired filtered out)\n`);
+    while (true) {
+        let retries = 0;
+        const maxRetries = 3;
+
+        while (retries < maxRetries) {
+            try {
+                console.log(`   📄 Fetching page ${page}${retries > 0 ? ` (retry ${retries})` : ''}...`);
+                const response = await axios.get(CARD_CONFIG.listApiUrl, {
+                    headers: {
+                        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                        'Referer': `${CARD_CONFIG.baseUrl}/kampanyalar`,
+                        'Accept': 'application/json, text/plain, */*',
+                        'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
+                        'page': page.toString()
+                    },
+                    timeout: 30000
+                });
+
+                const items = response.data.Items;
+                if (!items || items.length === 0) {
+                    console.log(`   ✅ Page ${page} is empty. Finished fetching list.`);
+                    page = -1; // Flag to stop outer loop
+                    break;
+                }
+
+                // Filter active campaigns only
+                const activeItems = items.filter((item: any) => {
+                    if (!item.EndDate) return true;
+                    const endDate = new Date(item.EndDate);
+                    return endDate >= today;
+                });
+
+                if (activeItems.length === 0 && items.length > 0) {
+                    console.log(`   ⚠️  Page ${page} has ${items.length} campaigns but all are expired. Stopping.`);
+                    page = -1;
+                    break;
+                }
+
+                allCampaigns.push(...activeItems);
+                console.log(`   ✅ Found ${items.length} campaigns (${activeItems.length} active) on page ${page}.`);
+                page++;
+                await sleep(1000);
+                break; // Success, exit retry loop
+            } catch (error: any) {
+                retries++;
+                console.error(`   ⚠️  Error fetching page ${page} (attempt ${retries}/${maxRetries}): ${error.message}`);
+
+                if (retries >= maxRetries) {
+                    console.error(`   ❌ Failed after ${maxRetries} attempts. Moving to next step.`);
+                    page = -1;
+                    break;
+                }
+
+                const backoffTime = Math.pow(2, retries) * 1000;
+                console.log(`   ⏳ Waiting ${backoffTime / 1000}s before retry...`);
+                await sleep(backoffTime);
+            }
+        }
+        if (page === -1) break;
+    }
+
+    console.log(`\n🎉 Total ${allCampaigns.length} active campaigns collected.\n`);
 
     // 2. Process Details
-    for (const item of activeCampaigns) {
+    for (const item of allCampaigns) {
         const urlPart = item.Url;
         if (!urlPart) continue;
 
@@ -125,7 +151,7 @@ async function runAdiosScraper() {
                     .upsert(campaignData, { onConflict: 'reference_url' });
 
                 if (error) {
-                    console.error(`      ❌ Supabase Error: ${error.message}`);
+                    console.error(`      ❌ Supabase Error: ${error?.message || 'Unknown error'}`);
                 } else {
                     console.log(`      ✅ Saved: ${campaignData.title}`);
                 }

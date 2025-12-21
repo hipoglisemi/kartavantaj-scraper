@@ -44,10 +44,8 @@ async function runWorldScraper() {
                         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                         'Referer': `${CARD_CONFIG.baseUrl}/kampanyalar`,
                         'Accept': 'application/json, text/plain, */*',
-                        'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7'
-                    },
-                    params: {
-                        page: page.toString()
+                        'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
+                        'page': page.toString()
                     },
                     timeout: 30000 // 30 second timeout
                 });
@@ -55,11 +53,27 @@ async function runWorldScraper() {
                 const items = response.data.Items;
                 if (!items || items.length === 0) {
                     console.log(`   ✅ Page ${page} is empty. Finished fetching list.`);
-                    break; // Exit retry loop
+                    page = -1; // Flag to stop outer loop
+                    break;
                 }
 
-                allCampaigns.push(...items);
-                console.log(`   ✅ Found ${items.length} campaigns on page ${page}.`);
+                // Filter active campaigns only
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const activeItems = items.filter((item: any) => {
+                    if (!item.EndDate) return true;
+                    const endDate = new Date(item.EndDate);
+                    return endDate >= today;
+                });
+
+                if (activeItems.length === 0 && items.length > 0) {
+                    console.log(`   ⚠️  Page ${page} has ${items.length} campaigns but all are expired. Stopping.`);
+                    page = -1; // Stop fetching since Yapı Kredi is sorted
+                    break;
+                }
+
+                allCampaigns.push(...activeItems);
+                console.log(`   ✅ Found ${items.length} campaigns (${activeItems.length} active) on page ${page}.`);
                 page++;
                 await sleep(1000);
                 break; // Success, exit retry loop
@@ -69,7 +83,8 @@ async function runWorldScraper() {
 
                 if (retries >= maxRetries) {
                     console.error(`   ❌ Failed after ${maxRetries} attempts. Moving to next step.`);
-                    break; // Exit retry loop
+                    page = -1; // Flag to stop outer loop
+                    break;
                 }
 
                 // Exponential backoff: 2s, 4s, 8s
@@ -78,6 +93,7 @@ async function runWorldScraper() {
                 await sleep(backoffTime);
             }
         }
+        if (page === -1) break; // Break outer loop
     }
 
     console.log(`\n🎉 Total ${allCampaigns.length} campaigns collected.\n`);

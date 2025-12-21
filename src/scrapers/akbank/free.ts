@@ -76,6 +76,18 @@ async function runFreeScraper() {
                 campaignData.reference_url = fullUrl;
                 campaignData.category = campaignData.category || 'Diğer';
                 campaignData.is_active = true;
+
+                // Filter out expired campaigns if end_date exists
+                if (campaignData.end_date) {
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    const endDate = new Date(campaignData.end_date);
+                    if (endDate < today) {
+                        console.log(`      ⚠️  Expired (${campaignData.end_date}), skipping...`);
+                        continue;
+                    }
+                }
+
                 const { error } = await supabase.from('campaigns').upsert(campaignData, { onConflict: 'reference_url' });
                 if (error) console.error(`      ❌ ${error.message}`);
                 else console.log(`      ✅ Saved`);

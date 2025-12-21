@@ -2,7 +2,7 @@
 import puppeteer from 'puppeteer';
 import { createClient } from '@supabase/supabase-js';
 import * as dotenv from 'dotenv';
-import { parseWithGemini } from '../services/geminiParser';
+import { parseWithGemini } from '../../services/geminiParser';
 
 dotenv.config();
 
@@ -140,6 +140,17 @@ async function runBankkartScraper() {
                         campaignData.image = fallbackData.image;
                     }
                     campaignData.is_active = true;
+
+                    // Filter out expired campaigns if end_date exists
+                    if (campaignData.end_date) {
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        const endDate = new Date(campaignData.end_date);
+                        if (endDate < today) {
+                            console.log(`      ⚠️  Expired (${campaignData.end_date}), skipping...`);
+                            continue;
+                        }
+                    }
 
                     const { error } = await supabase
                         .from('campaigns')

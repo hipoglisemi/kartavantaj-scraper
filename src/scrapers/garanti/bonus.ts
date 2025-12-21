@@ -3,7 +3,7 @@ import axios from 'axios';
 import * as cheerio from 'cheerio';
 import { createClient } from '@supabase/supabase-js';
 import * as dotenv from 'dotenv';
-import { parseWithGemini } from '../services/geminiParser';
+import { parseWithGemini } from '../../services/geminiParser';
 
 dotenv.config();
 
@@ -116,10 +116,17 @@ async function runGarantiScraper() {
                         campaignData.image = imageUrl;
                     }
                     campaignData.is_active = true;
-                    // Garanti campaigns often mention specific cards like "Money Bonus", "Flexi" etc. 
-                    // The AI parser is instructed to pick this up in 'eligible_customers'.
-                    // For the main 'card_name' column, strictly 'Bonus' is good for grouping, 
-                    // or we could map valid cards. For now, sticking to 'Bonus' as the primary brand.
+
+                    // Filter out expired campaigns if end_date exists
+                    if (campaignData.end_date) {
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        const endDate = new Date(campaignData.end_date);
+                        if (endDate < today) {
+                            console.log(`      ⚠️  Expired (${campaignData.end_date}), skipping...`);
+                            continue;
+                        }
+                    }
 
                     // Upsert
                     const { error } = await supabase
