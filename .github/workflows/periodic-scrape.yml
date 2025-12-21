@@ -8,64 +8,64 @@ on:
       # Yapı Kredi Cards
       run_world:
         description: 'World Card'
-        default: 'true'
+        default: 'false'
         type: choice
         options: ['true', 'false']
       run_adios:
         description: 'Adios Card'
-        default: 'true'
+        default: 'false'
         type: choice
         options: ['true', 'false']
       run_play:
         description: 'Play Card'
-        default: 'true'
+        default: 'false'
         type: choice
         options: ['true', 'false']
       run_crystal:
         description: 'Crystal Card'
-        default: 'true'
+        default: 'false'
         type: choice
         options: ['true', 'false']
       # Akbank Cards
       run_axess:
         description: 'Axess Card'
-        default: 'true'
+        default: 'false'
         type: choice
         options: ['true', 'false']
       run_free:
         description: 'Free Card'
-        default: 'true'
+        default: 'false'
         type: choice
         options: ['true', 'false']
       run_wings:
         description: 'Wings Card'
-        default: 'true'
+        default: 'false'
         type: choice
         options: ['true', 'false']
       # Other Cards
       run_bonus:
         description: 'Bonus Card'
-        default: 'true'
+        default: 'false'
         type: choice
         options: ['true', 'false']
       run_maximum:
         description: 'Maximum Card'
-        default: 'true'
+        default: 'false'
         type: choice
         options: ['true', 'false']
       run_vakifbank_world:
         description: 'VakıfBank World'
-        default: 'true'
+        default: 'false'
         type: choice
         options: ['true', 'false']
       run_bankkart:
         description: 'Bankkart'
-        default: 'true'
+        default: 'false'
         type: choice
         options: ['true', 'false']
       run_paraf:
         description: 'Paraf Card'
-        default: 'true'
+        default: 'false'
         type: choice
         options: ['true', 'false']
 
