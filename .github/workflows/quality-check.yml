@@ -1,0 +1,47 @@
+name: Campaign Quality Check
+
+on:
+  # Run after periodic scrape workflow
+  workflow_run:
+    workflows: ["Periodic Scrape"]
+    types:
+      - completed
+  
+  # Manual trigger
+  workflow_dispatch:
+  
+  # Daily scheduled run
+  schedule:
+    - cron: '0 2 * * *'  # 2 AM daily
+
+jobs:
+  quality-audit:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run Quality Audit
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: npx ts-node scripts/audit_campaign_quality.ts
+      
+      - name: Upload audit results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: quality-audit-results
+          path: |
+            audit-*.log
+          retention-days: 7
