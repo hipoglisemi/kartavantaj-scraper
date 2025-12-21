@@ -22,6 +22,7 @@ export function standardizeBenefit(text: string): string {
 
     // 2. Standardize Puan / TL sums and remove fillers
     clean = clean
+        .replace(/['’](?:ye|ya|e|a)(?=\s)/gi, '') // Remove suffixes like TL'ye -> TL
         .replace(/peşin fiyatına|vade farksız|ücretsiz|toplamda|varan|değerinde|hediye|fırsatı|imkanı|kazanma|özel|ayrıcalığı/gi, '')
         .replace(/worldpuan|bonus|chip-?para|maxipuan|bankkart lira|parafpara/gi, 'Puan')
         .replace(/\s+/g, ' ')
