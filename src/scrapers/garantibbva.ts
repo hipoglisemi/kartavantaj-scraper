@@ -39,9 +39,19 @@ async function runGarantiScraper() {
             if (href && href.includes('/kampanyalar/') && href.split('/').length > 2) {
                 // Filter out irrelevant links
                 if (!['sektor', 'kategori', 'marka', '#', 'javascript'].some(x => href.includes(x))) {
-                    const fullUrl = href.startsWith('http') ? href : `${BASE_URL}${href}`;
-                    if (!campaignLinks.includes(fullUrl)) {
-                        campaignLinks.push(fullUrl);
+                    let fullUrl = href.startsWith('http') ? href : `${BASE_URL}${href}`;
+
+                    // Fix malformed URLs (e.g., https://www.bonus.com.tr../kampanyalar/...)
+                    fullUrl = fullUrl.replace('com.tr//', 'com.tr/').replace('com.tr../', 'com.tr/');
+
+                    // Normalize
+                    try {
+                        fullUrl = new URL(fullUrl).href;
+                        if (!campaignLinks.includes(fullUrl)) {
+                            campaignLinks.push(fullUrl);
+                        }
+                    } catch (e) {
+                        // invalid url, skip
                     }
                 }
             }
@@ -65,7 +75,10 @@ async function runGarantiScraper() {
                 const $detail = cheerio.load(html);
 
                 // Extract basic info for fallback
-                const title = $detail('.campaign-detail-title h1').text().trim() || 'Başlıksız Kampanya';
+                const title = $detail('.campaign-detail-title h1').text().trim() ||
+                    $detail('h1').first().text().trim() ||
+                    $detail('title').text().replace('- Bonus', '').trim() ||
+                    'Başlıksız Kampanya';
                 let imageUrl = $detail('.campaign-detail__image img').attr('src');
 
                 if (imageUrl && !imageUrl.startsWith('http')) {

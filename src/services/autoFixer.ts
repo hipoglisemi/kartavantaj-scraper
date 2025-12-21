@@ -102,7 +102,13 @@ async function aiReparse(campaign: any): Promise<FixResult> {
         console.log('   Strategy: AI Re-Parse (Full)');
 
         // Fetch HTML
-        const response = await fetch(campaign.url);
+        // Fetch HTML
+        const targetUrl = campaign.url || campaign.reference_url;
+        if (!targetUrl) {
+            throw new Error('No URL found for campaign');
+        }
+
+        const response = await fetch(targetUrl);
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}`);
         }
@@ -111,7 +117,7 @@ async function aiReparse(campaign: any): Promise<FixResult> {
 
         // Parse with AI
         console.log('   🤖 Parsing with Gemini...');
-        const aiData = await parseWithGemini(html, campaign.url);
+        const aiData = await parseWithGemini(html, targetUrl);
 
         // Assign badge
         const badge = assignBadge(aiData);

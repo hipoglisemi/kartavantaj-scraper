@@ -232,7 +232,7 @@ FIELD DEFINITIONS:
 - earning: Reward amount or description (e.g. "500 TL Puan")
 - category: MUST be EXACTLY one of: ${masterData.categories.join(', ')}
 - bank: MUST be EXACTLY one of: ${masterData.banks.join(', ')}
-- brand: MUST be from: ${masterData.brands.slice(0, 50).join(', ')}... or empty
+- brand: LOOK CAREFULLY. If the campaign mentions a specific brand/store (e.g. "Migros", "Trendyol", "Shell"), verify if it is in the list: ${masterData.brands.slice(0, 50).join(', ')}... If yes, use it. If not in list, leave empty.
 
 TEXT:
 "${text.replace(/"/g, '\\"')}"

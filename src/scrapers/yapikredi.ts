@@ -122,7 +122,8 @@ async function fetchCampaignsForCard(card: CardConfig, isAIEnabled: boolean) {
             // AI Parsing
             let campaignData;
             if (isAIEnabled) {
-                campaignData = await parseWithGemini(html, title, card.cardName);
+                // Pass fullUrl as second argument instead of title/cardName
+                campaignData = await parseWithGemini(html, fullUrl);
             } else {
                 // Fallback basic data if AI is disabled (not recommended for this pipeline)
                 campaignData = {
@@ -137,6 +138,7 @@ async function fetchCampaignsForCard(card: CardConfig, isAIEnabled: boolean) {
 
             if (campaignData) {
                 // Ensure critical fields are set
+                campaignData.title = title; // Explicitly set title from list API
                 campaignData.card_name = card.cardName;
                 campaignData.reference_url = fullUrl;
                 campaignData.image_url = imageUrl; // Use high-res image from API list if available
