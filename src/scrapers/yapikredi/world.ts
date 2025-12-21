@@ -95,7 +95,7 @@ async function runWorldScraper() {
     console.log(`✅ ${activeCampaigns.length} active campaigns (${allCampaigns.length - activeCampaigns.length} expired filtered out)\n`);
 
     // 2. Process Details
-    for (const item of activeCampaigns) {
+    for (const item of allCampaigns) {
         const urlPart = item.Url;
         if (!urlPart) continue;
 
