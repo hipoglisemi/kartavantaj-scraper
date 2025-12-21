@@ -141,8 +141,9 @@ async function runScraperLogic(isAIEnabled: boolean) {
                         title: title,
                         description: title,
                         card_name: 'Maximum',
+                        url: fullUrl,
                         reference_url: fullUrl,
-                        image_url: fullImageUrl,
+                        image: fullImageUrl,
                         is_active: true
                     };
                 }
@@ -150,9 +151,15 @@ async function runScraperLogic(isAIEnabled: boolean) {
                 if (campaignData) {
                     // Force fields
                     campaignData.card_name = 'Maximum';
+
+                    // MAP FIELDS TO DB SCHEMA
+                    campaignData.url = fullUrl;
                     campaignData.reference_url = fullUrl;
-                    if (!campaignData.image_url && fullImageUrl) {
-                        campaignData.image_url = fullImageUrl;
+                    campaignData.image = fullImageUrl;
+                    // campaignData.image_url = fullImageUrl;
+
+                    if (!campaignData.image && fullImageUrl) {
+                        campaignData.image = fullImageUrl;
                     }
                     campaignData.is_active = true;
 

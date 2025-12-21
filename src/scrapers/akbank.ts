@@ -169,8 +169,9 @@ async function fetchCampaignsForCard(card: CardConfig, isAIEnabled: boolean) {
                     title: title,
                     description: title,
                     card_name: card.cardName,
+                    url: fullUrl,
                     reference_url: fullUrl,
-                    image_url: imageUrl || '',
+                    image: imageUrl || '',
                     is_active: true,
                     category: 'Diğer'
                 };
@@ -179,10 +180,15 @@ async function fetchCampaignsForCard(card: CardConfig, isAIEnabled: boolean) {
             if (campaignData) {
                 // Ensure critical fields are set
                 campaignData.card_name = card.cardName; // Enforce card name from config
-                campaignData.reference_url = fullUrl;
 
-                if (!campaignData.image_url && imageUrl) {
-                    campaignData.image_url = imageUrl;
+                // MAP FIELDS TO DB SCHEMA
+                campaignData.url = fullUrl;
+                campaignData.reference_url = fullUrl;
+                campaignData.image = imageUrl;
+                // campaignData.image_url = imageUrl; 
+
+                if (!campaignData.image && imageUrl) {
+                    campaignData.image = imageUrl;
                 }
 
                 campaignData.is_active = true;

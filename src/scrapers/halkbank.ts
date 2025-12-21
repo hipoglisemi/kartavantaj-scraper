@@ -133,8 +133,9 @@ async function runHalkbankScraper() {
                         title: fallbackData.title,
                         description: fallbackData.title,
                         card_name: 'Paraf',
+                        url: fullUrl,
                         reference_url: fullUrl,
-                        image_url: fallbackData.image || '',
+                        image: fallbackData.image || '',
                         is_active: true
                     };
                 }
@@ -142,9 +143,15 @@ async function runHalkbankScraper() {
                 if (campaignData) {
                     // Force fields
                     campaignData.card_name = 'Paraf';
+
+                    // MAP FIELDS TO DB SCHEMA
+                    campaignData.url = fullUrl;
                     campaignData.reference_url = fullUrl;
-                    if (!campaignData.image_url && fallbackData.image) {
-                        campaignData.image_url = fallbackData.image;
+                    campaignData.image = fallbackData.image;
+                    // campaignData.image_url = fallbackData.image;
+
+                    if (!campaignData.image && fallbackData.image) {
+                        campaignData.image = fallbackData.image;
                     }
                     campaignData.is_active = true;
 

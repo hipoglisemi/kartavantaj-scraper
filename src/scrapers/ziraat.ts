@@ -118,8 +118,9 @@ async function runZiraatScraper() {
                         title: fallbackData.title,
                         description: fallbackData.title,
                         card_name: 'Bankkart',
+                        url: fullUrl,
                         reference_url: fullUrl,
-                        image_url: fallbackData.image || '',
+                        image: fallbackData.image || '',
                         is_active: true
                     };
                 }
@@ -127,9 +128,15 @@ async function runZiraatScraper() {
                 if (campaignData) {
                     // Force fields
                     campaignData.card_name = 'Bankkart';
+
+                    // MAP FIELDS TO DB SCHEMA
+                    campaignData.url = fullUrl;
                     campaignData.reference_url = fullUrl;
-                    if (!campaignData.image_url && fallbackData.image) {
-                        campaignData.image_url = fallbackData.image;
+                    campaignData.image = fallbackData.image;
+                    // campaignData.image_url = fallbackData.image;
+
+                    if (!campaignData.image && fallbackData.image) {
+                        campaignData.image = fallbackData.image;
                     }
                     campaignData.is_active = true;
 
