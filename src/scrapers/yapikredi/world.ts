@@ -55,11 +55,20 @@ async function runWorldScraper() {
                 const items = response.data.Items;
                 if (!items || items.length === 0) {
                     console.log(`   ✅ Page ${page} is empty. Finished fetching list.`);
-                    return; // Exit the function completely
+                    break; // Exit retry loop
                 }
 
-                allCampaigns.push(...items);
-                console.log(`   ✅ Found ${items.length} campaigns on page ${page}.`);
+                // Filter active campaigns from this page
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const activeItems = items.filter((item: any) => {
+                    if (!item.EndDate) return true;
+                    const endDate = new Date(item.EndDate);
+                    return endDate >= today;
+                });
+
+                allCampaigns.push(...activeItems);
+                console.log(`   ✅ Found ${items.length} campaigns (${activeItems.length} active) on page ${page}.`);
                 page++;
                 await sleep(1000);
                 break; // Success, exit retry loop
@@ -69,7 +78,7 @@ async function runWorldScraper() {
 
                 if (retries >= maxRetries) {
                     console.error(`   ❌ Failed after ${maxRetries} attempts. Moving to next step.`);
-                    return; // Exit function if all retries failed
+                    break; // Exit retry loop
                 }
 
                 // Exponential backoff: 2s, 4s, 8s
@@ -80,19 +89,7 @@ async function runWorldScraper() {
         }
     }
 
-    console.log(`\n🎉 Total ${allCampaigns.length} campaigns found. Filtering active ones...\n`);
-
-    // Filter only active campaigns (EndDate >= today)
-    const today = new Date();
-    today.setHours(0, 0, 0, 0); // Start of today
-
-    const activeCampaigns = allCampaigns.filter(item => {
-        if (!item.EndDate) return true; // Include if no end date
-        const endDate = new Date(item.EndDate);
-        return endDate >= today;
-    });
-
-    console.log(`✅ ${activeCampaigns.length} active campaigns (${allCampaigns.length - activeCampaigns.length} expired filtered out)\n`);
+    console.log(`\n🎉 Total ${allCampaigns.length} active campaigns collected.\n`);
 
     // 2. Process Details
     for (const item of allCampaigns) {
