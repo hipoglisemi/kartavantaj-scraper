@@ -83,7 +83,7 @@ jobs:
       #   run: npx ts-node src/scrapers/maximum.ts --ai
 
       - name: 🔧 Run Auto-Fix Pipeline (Pass 1)
-        run: npx tsx src/autoFix.ts
+        run: npx tsx src/services/autoFixer.ts
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
@@ -91,7 +91,7 @@ jobs:
 
       - name: 🔧 Run Auto-Fix Pipeline (Pass 2 - Double Check)
         # İlk geçişte düzelmeyen varsa tekrar dene (Tam kontrol)
-        run: npx tsx src/autoFix.ts
+        run: npx tsx src/services/autoFixer.ts
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
