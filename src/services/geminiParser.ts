@@ -65,7 +65,7 @@ async function fetchMasterData(): Promise<MasterData> {
 
 // Rate limiting: Track last request time
 let lastRequestTime = 0;
-const MIN_REQUEST_INTERVAL_MS = 5000; // Minimum 5 seconds between requests (12 RPM limit)
+const MIN_REQUEST_INTERVAL_MS = 1000; // Minimum 1 second between requests (unlimited RPM with thinking model)
 
 // Sleep utility
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -86,7 +86,7 @@ async function callGeminiAPI(prompt: string, retryCount = 0): Promise<any> {
         lastRequestTime = Date.now();
 
         const response = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}`,
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-thinking-exp-1219:generateContent?key=${GEMINI_API_KEY}`,
             {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
