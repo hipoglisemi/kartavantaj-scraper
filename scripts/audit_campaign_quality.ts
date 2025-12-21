@@ -101,7 +101,45 @@ async function auditCampaign(campaign: any, stats: AuditStats): Promise<void> {
         }
     }
 
-    // 3. Validate Fields
+    // 3. Extract missing min_spend and earning using AI
+    if (!campaign.min_spend || !campaign.earning || campaign.min_spend === 0) {
+        const { extractSpendAndEarning } = await import('./utils/aiExtractor');
+        const extracted = await extractSpendAndEarning(campaign);
+
+        if (extracted) {
+            if (extracted.min_spend && (!campaign.min_spend || campaign.min_spend === 0)) {
+                console.log(`   💰 Min spend extracted: ${campaign.title.substring(0, 50)}...`);
+                console.log(`      ${campaign.min_spend || 0} TL → ${extracted.min_spend} TL`);
+
+                updates.min_spend = extracted.min_spend;
+
+                await logAudit(campaign.id, 'ai_extraction', 'min_spend',
+                    campaign.min_spend, extracted.min_spend, true, 0.85);
+
+                stats.fieldsFixed++;
+                needsUpdate = true;
+            }
+
+            if (extracted.earning && !campaign.earning) {
+                console.log(`   🎁 Earning extracted: ${campaign.title.substring(0, 50)}...`);
+                console.log(`      → ${extracted.earning}`);
+
+                updates.earning = extracted.earning;
+
+                await logAudit(campaign.id, 'ai_extraction', 'earning',
+                    campaign.earning, extracted.earning, true, 0.85);
+
+                stats.fieldsFixed++;
+                needsUpdate = true;
+            }
+
+            if (extracted.discount_percentage && !campaign.discount_percentage) {
+                updates.discount_percentage = extracted.discount_percentage;
+            }
+        }
+    }
+
+    // 4. Validate Fields
     const fieldResult = validateFields(campaign);
     if (!fieldResult.isComplete) {
         // Try to extract missing category from title
@@ -122,19 +160,19 @@ async function auditCampaign(campaign: any, stats: AuditStats): Promise<void> {
         }
     }
 
-    // 4. Calculate Quality Score
+    // 5. Calculate Quality Score
     const qualityScore = calculateQualityScore({ ...campaign, ...updates });
     if (campaign.quality_score !== qualityScore) {
         updates.quality_score = qualityScore;
         needsUpdate = true;
     }
 
-    // 5. Mark as auto-corrected if we made changes
+    // 6. Mark as auto-corrected if we made changes
     if (needsUpdate) {
         updates.auto_corrected = true;
     }
 
-    // 6. Apply updates
+    // 7. Apply updates
     if (needsUpdate) {
         const { error } = await supabase
             .from('campaigns')
