@@ -2,91 +2,76 @@ name: Periodic Scraper & Auto-Fix
 
 on:
   schedule:
-    # Her ayın 1, 8, 15 ve 22'sinde saat 00:01'de çalışır (UTC)
-    # Türkiye saati ile (UTC+3) 03:01'e denk gelir.
-    - cron: '1 0 1,8,15,22 * *'
-  # Manuel tetiklemek isterseniz 'Run workflow' butonu için:
+    - cron: '1 0 1,8,15,22 * *'  # Her ayın 1, 8, 15, 22'sinde 03:01 TR
   workflow_dispatch:
     inputs:
-      run_yapikredi:
-        description: 'Yapı Kredi (World, Adios, Play, Crystal)'
-        required: false
+      # Yapı Kredi Cards
+      run_world:
+        description: 'World Card'
         default: 'true'
         type: choice
-        options:
-          - 'true'
-          - 'false'
-      run_akbank:
-        description: 'Akbank (Axess, Wings, Free)'
-        required: false
+        options: ['true', 'false']
+      run_adios:
+        description: 'Adios Card'
         default: 'true'
         type: choice
-        options:
-          - 'true'
-          - 'false'
-      run_isbankasi:
-        description: 'İş Bankası (Maximum)'
-        required: false
+        options: ['true', 'false']
+      run_play:
+        description: 'Play Card'
         default: 'true'
         type: choice
-        options:
-          - 'true'
-          - 'false'
-      run_garantibbva:
-        description: 'Garanti BBVA (Bonus)'
-        required: false
+        options: ['true', 'false']
+      run_crystal:
+        description: 'Crystal Card'
         default: 'true'
         type: choice
-        options:
-          - 'true'
-          - 'false'
-      run_halkbank:
-        description: 'Halkbank (Paraf)'
-        required: false
+        options: ['true', 'false']
+      # Akbank Cards
+      run_axess:
+        description: 'Axess Card'
         default: 'true'
         type: choice
-        options:
-          - 'true'
-          - 'false'
-      run_vakifbank:
-        description: 'VakıfBank (World)'
-        required: false
+        options: ['true', 'false']
+      run_free:
+        description: 'Free Card'
         default: 'true'
         type: choice
-        options:
-          - 'true'
-          - 'false'
-      run_ziraat:
-        description: 'Ziraat Bankası (Bankkart)'
-        required: false
+        options: ['true', 'false']
+      run_wings:
+        description: 'Wings Card'
         default: 'true'
         type: choice
-        options:
-          - 'true'
-          - 'false'
-      run_autofix:
-        description: 'Auto-Fix Pipeline Çalıştır'
-        required: false
+        options: ['true', 'false']
+      # Other Cards
+      run_bonus:
+        description: 'Bonus Card'
         default: 'true'
         type: choice
-        options:
-          - 'true'
-          - 'false'
-      run_garbage_collector:
-        description: 'Garbage Collector Çalıştır'
-        required: false
+        options: ['true', 'false']
+      run_maximum:
+        description: 'Maximum Card'
         default: 'true'
         type: choice
-        options:
-          - 'true'
-          - 'false'
+        options: ['true', 'false']
+      run_vakifbank_world:
+        description: 'VakıfBank World'
+        default: 'true'
+        type: choice
+        options: ['true', 'false']
+      run_bankkart:
+        description: 'Bankkart'
+        default: 'true'
+        type: choice
+        options: ['true', 'false']
+      run_paraf:
+        description: 'Paraf Card'
+        default: 'true'
+        type: choice
+        options: ['true', 'false']
 
 jobs:
   scrape-and-fix:
     runs-on: ubuntu-latest
-    
-    # Maksimum çalışma süresi (Dakika). 
-    # 5000 kampanya için artırılabilir, şimdilik 360 (6 saat) yeterli.
     timeout-minutes: 360
 
     steps:
@@ -102,97 +87,106 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # Scraper'lar SIRAYLA çalışır - her biri bitmeden bir sonraki başlamaz
-      # Her scraper kendi kampanyalarını Supabase'e yazar
-      
-      - name: 🚀 Run Yapı Kredi Scraper (World, Adios, Play, Crystal)
-        if: github.event.inputs.run_yapikredi != 'false'
-        run: npx tsx src/scrapers/yapikredi.ts --ai
+      # YAPI KREDİ CARDS
+      - name: 💳 World Card
+        if: github.event.inputs.run_world != 'false'
+        run: npx tsx src/scrapers/yapikredi/world.ts --ai
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
 
-      - name: ⏸️ Wait for Supabase (Yapı Kredi)
-        if: github.event.inputs.run_yapikredi != 'false'
-        run: sleep 5
-
-      - name: 🚀 Run Akbank Scraper (Axess, Free, Wings)
-        if: github.event.inputs.run_akbank != 'false'
-        run: npx tsx src/scrapers/akbank.ts --ai
+      - name: 💳 Adios Card
+        if: github.event.inputs.run_adios != 'false'
+        run: npx tsx src/scrapers/yapikredi/adios.ts --ai
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
 
-      - name: ⏸️ Wait for Supabase (Akbank)
-        if: github.event.inputs.run_akbank != 'false'
-        run: sleep 5
-
-      - name: 🚀 Run İş Bankası Scraper (Maximum)
-        if: github.event.inputs.run_isbankasi != 'false'
-        run: npx tsx src/scrapers/isbankasi.ts --ai
+      - name: 💳 Play Card
+        if: github.event.inputs.run_play != 'false'
+        run: npx tsx src/scrapers/yapikredi/play.ts --ai
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
 
-      - name: ⏸️ Wait for Supabase (İş Bankası)
-        if: github.event.inputs.run_isbankasi != 'false'
-        run: sleep 5
-
-      - name: 🚀 Run Garanti BBVA Scraper (Bonus)
-        if: github.event.inputs.run_garantibbva != 'false'
-        run: npx tsx src/scrapers/garantibbva.ts --ai
+      - name: 💳 Crystal Card
+        if: github.event.inputs.run_crystal != 'false'
+        run: npx tsx src/scrapers/yapikredi/crystal.ts --ai
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
 
-      - name: ⏸️ Wait for Supabase (Garanti BBVA)
-        if: github.event.inputs.run_garantibbva != 'false'
-        run: sleep 5
-
-      - name: 🚀 Run Halkbank Scraper (Paraf)
-        if: github.event.inputs.run_halkbank != 'false'
-        run: npx tsx src/scrapers/halkbank.ts --ai
+      # AKBANK CARDS
+      - name: 💳 Axess Card
+        if: github.event.inputs.run_axess != 'false'
+        run: npx tsx src/scrapers/akbank/axess.ts --ai
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
 
-      - name: ⏸️ Wait for Supabase (Halkbank)
-        if: github.event.inputs.run_halkbank != 'false'
-        run: sleep 5
-
-      - name: 🚀 Run VakıfBank Scraper (World)
-        if: github.event.inputs.run_vakifbank != 'false'
-        run: npx tsx src/scrapers/vakifbank.ts --ai
+      - name: 💳 Free Card
+        if: github.event.inputs.run_free != 'false'
+        run: npx tsx src/scrapers/akbank/free.ts --ai
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
 
-      - name: ⏸️ Wait for Supabase (VakıfBank)
-        if: github.event.inputs.run_vakifbank != 'false'
-        run: sleep 5
-
-      - name: 🚀 Run Ziraat Bankası Scraper (Bankkart)
-        if: github.event.inputs.run_ziraat != 'false'
-        run: npx tsx src/scrapers/ziraat.ts --ai
+      - name: 💳 Wings Card
+        if: github.event.inputs.run_wings != 'false'
+        run: npx tsx src/scrapers/akbank/wings.ts --ai
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
 
-      - name: ⏸️ Wait for Supabase (Ziraat)
-        if: github.event.inputs.run_ziraat != 'false'
-        run: sleep 5
+      # OTHER CARDS
+      - name: 💳 Bonus Card
+        if: github.event.inputs.run_bonus != 'false'
+        run: npx tsx src/scrapers/garanti/bonus.ts --ai
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
 
-      # Gelecekte diğer bankaları buraya ekleyebilirsiniz
-      # - name: 🚀 Run Maximum Scraper
-      #   run: npx ts-node src/scrapers/maximum.ts --ai
+      - name: 💳 Maximum Card
+        if: github.event.inputs.run_maximum != 'false'
+        run: npx tsx src/scrapers/isbankasi/maximum.ts --ai
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
 
+      - name: 💳 VakıfBank World
+        if: github.event.inputs.run_vakifbank_world != 'false'
+        run: npx tsx src/scrapers/vakifbank/world.ts --ai
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
+
+      - name: 💳 Bankkart
+        if: github.event.inputs.run_bankkart != 'false'
+        run: npx tsx src/scrapers/ziraat/bankkart.ts --ai
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
+
+      - name: 💳 Paraf Card
+        if: github.event.inputs.run_paraf != 'false'
+        run: npx tsx src/scrapers/halkbank/paraf.ts --ai
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
+
+      # POST-PROCESSING
       - name: 🔧 Run Auto-Fix Pipeline (Pass 1)
         run: npx tsx src/services/autoFixer.ts
         env:
@@ -200,8 +194,7 @@ jobs:
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
 
-      - name: 🔧 Run Auto-Fix Pipeline (Pass 2 - Double Check)
-        # İlk geçişte düzelmeyen varsa tekrar dene (Tam kontrol)
+      - name: 🔧 Run Auto-Fix Pipeline (Pass 2)
         run: npx tsx src/services/autoFixer.ts
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -209,7 +202,6 @@ jobs:
           GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
 
       - name: 🗑️ Run Garbage Collector
-        if: github.event.inputs.run_garbage_collector != 'false'
         run: npx tsx src/garbageCollector.ts
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
