@@ -14,7 +14,7 @@ const supabase = createClient(
     process.env.SUPABASE_ANON_KEY!
 );
 
-const CRITICAL_FIELDS = ['valid_until', 'eligible_customers', 'min_spend', 'category', 'bank', 'brand', 'earning'];
+const CRITICAL_FIELDS = ['valid_until', 'eligible_customers', 'min_spend', 'category', 'bank', 'earning'];
 
 interface MasterData {
     categories: string[];
