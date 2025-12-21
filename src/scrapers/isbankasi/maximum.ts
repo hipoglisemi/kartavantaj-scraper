@@ -165,6 +165,8 @@ async function runScraperLogic(isAIEnabled: boolean) {
                     if (!campaignData.image && fullImageUrl) {
                         campaignData.image = fullImageUrl;
                     }
+                    campaignData.category = campaignData.category || 'Diğer';
+                    campaignData.sector_slug = generateSectorSlug(campaignData.category);
                     campaignData.is_active = true;
 
                     // Filter out expired campaigns if end_date exists

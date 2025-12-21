@@ -142,6 +142,8 @@ async function runVakifbankWorldScraper() {
                     if (!campaignData.image && fallbackData.image) {
                         campaignData.image = fallbackData.image;
                     }
+                    campaignData.category = campaignData.category || 'Diğer';
+                    campaignData.sector_slug = generateSectorSlug(campaignData.category);
                     campaignData.is_active = true;
 
                     const { error } = await supabase

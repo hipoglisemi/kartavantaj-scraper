@@ -157,6 +157,8 @@ async function runParafScraper() {
                     if (!campaignData.image && fallbackData.image) {
                         campaignData.image = fallbackData.image;
                     }
+                    campaignData.category = campaignData.category || 'Diğer';
+                    campaignData.sector_slug = generateSectorSlug(campaignData.category);
                     campaignData.is_active = true;
 
                     // Filter out expired campaigns if end_date exists

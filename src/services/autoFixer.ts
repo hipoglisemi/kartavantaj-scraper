@@ -8,6 +8,7 @@ import * as dotenv from 'dotenv';
 import { parseWithGemini } from './geminiParser';
 import { assignBadge } from './badgeAssigner';
 import { CampaignValidation } from './qualityChecker';
+import { generateSectorSlug } from '../utils/slugify';
 
 dotenv.config();
 
@@ -130,6 +131,7 @@ async function aiReparse(campaign: any): Promise<FixResult> {
             provider: campaign.provider,
             badge_text: badge.text,
             badge_color: badge.color,
+            sector_slug: generateSectorSlug(aiData.category || 'Diğer'),
             ai_enhanced: true
         };
 
