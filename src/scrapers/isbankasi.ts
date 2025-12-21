@@ -16,19 +16,36 @@ const CAMPAIGNS_URL = 'https://www.maximum.com.tr/kampanyalar';
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-async function runIsBankasiScraper() {
-    console.log('🚀 Starting İş Bankası (Maximum) Scraper...');
-    const isAIEnabled = process.argv.includes('--ai');
-
+async function runScraperLogic(isAIEnabled: boolean) {
     const browser = await puppeteer.launch({
-        headless: true, // Use boolean true for new headless mode
-        args: ['--no-sandbox', '--disable-setuid-sandbox']
+        headless: true,
+        args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-blink-features=AutomationControlled',
+            '--disable-web-security',
+            '--disable-features=IsolateOrigins,site-per-process'
+        ]
     });
     const page = await browser.newPage();
 
+    // Set realistic User-Agent
+    await page.setUserAgent(
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+    );
+
+    // Set extra headers
+    await page.setExtraHTTPHeaders({
+        'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Connection': 'keep-alive',
+        'Upgrade-Insecure-Requests': '1'
+    });
+
     try {
         console.log(`\n   🔍 Navigating to ${CAMPAIGNS_URL}...`);
-        await page.goto(CAMPAIGNS_URL, { waitUntil: 'networkidle2', timeout: 60000 });
+        await page.goto(CAMPAIGNS_URL, { waitUntil: 'networkidle2', timeout: 30000 });
 
         // Handle "Daha Fazla" (Load More) button logic
         let hasMore = true;
@@ -87,7 +104,7 @@ async function runIsBankasiScraper() {
             console.log(`\n   🔍 Processing: ${fullUrl}`);
 
             try {
-                await page.goto(fullUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+                await page.goto(fullUrl, { waitUntil: 'domcontentloaded', timeout: 20000 });
 
                 // Get page content
                 // Maximum site loads details dynamically too? Python script implies it.
@@ -152,7 +169,19 @@ async function runIsBankasiScraper() {
                 }
 
             } catch (err: any) {
-                console.error(`      ❌ Error processing detail ${fullUrl}: ${err.message}`);
+                const errorMsg = err.message || String(err);
+
+                // Specific handling for connection errors
+                if (errorMsg.includes('ERR_CONNECTION_RESET') ||
+                    errorMsg.includes('ERR_CONNECTION_REFUSED') ||
+                    errorMsg.includes('net::')) {
+                    console.error(`      ⚠️ Network error: ${errorMsg}`);
+                    console.error(`      💡 This might be temporary. Will retry on next run.`);
+                } else if (errorMsg.includes('timeout')) {
+                    console.error(`      ⏱️ Timeout error: ${errorMsg}`);
+                } else {
+                    console.error(`      ❌ Error processing ${fullUrl}: ${errorMsg}`);
+                }
             }
 
             await sleep(1000);
@@ -160,8 +189,38 @@ async function runIsBankasiScraper() {
 
     } catch (error: any) {
         console.error(`❌ Global Error: ${error.message}`);
+        throw error;
     } finally {
         await browser.close();
+    }
+}
+
+async function runIsBankasiScraper() {
+    console.log('🚀 Starting İş Bankası (Maximum) Scraper...');
+    const isAIEnabled = process.argv.includes('--ai');
+
+    const MAX_RETRIES = 3;
+    const RETRY_DELAY = 5000; // 5 seconds
+
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+        try {
+            console.log(`\n   🔄 Attempt ${attempt}/${MAX_RETRIES}...`);
+            await runScraperLogic(isAIEnabled);
+            console.log('\n✅ İş Bankası scraper completed successfully!');
+            return; // Success, exit
+        } catch (error: any) {
+            const errorMsg = error.message || String(error);
+            console.error(`\n   ❌ Attempt ${attempt} failed: ${errorMsg}`);
+
+            if (attempt < MAX_RETRIES) {
+                console.log(`   ⏳ Retrying in ${RETRY_DELAY / 1000}s...`);
+                await sleep(RETRY_DELAY);
+            } else {
+                console.error(`\n   ❌ All ${MAX_RETRIES} attempts failed.`);
+                console.error(`   💡 Possible causes: Site blocking, network issues, or temporary downtime.`);
+                throw error;
+            }
+        }
     }
 }
 
