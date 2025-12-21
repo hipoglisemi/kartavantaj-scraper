@@ -125,6 +125,8 @@ async function runAdiosScraper() {
                 campaignData = {
                     title: title,
                     description: title,
+                    category: 'Diğer',
+                    sector_slug: 'diger',
                     card_name: CARD_CONFIG.cardName,
                     bank: CARD_CONFIG.bank,
                     url: fullUrl,

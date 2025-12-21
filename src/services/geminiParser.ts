@@ -1,10 +1,5 @@
-/**
- * Enhanced Gemini AI Parser with Master Data Integration
- * Fetches valid banks, brands, and categories from Supabase
- */
-
-import * as dotenv from 'dotenv';
 import { createClient } from '@supabase/supabase-js';
+import { generateSectorSlug } from '../utils/slugify';
 
 dotenv.config();
 
@@ -279,19 +274,10 @@ Return ONLY valid JSON with the missing fields, no markdown.
             else if (titleLower.includes('elektronik') || titleLower.includes('teknoloji')) finalData.category = 'Elektronik';
         }
 
-        finalData.sector_slug = finalData.category
-            .toLowerCase()
-            .replace(/\s*&\s*/g, '-')  // "Market & Gıda" -> "market-gida"
-            .replace(/\s+/g, '-')       // Spaces to dashes
-            .replace(/ı/g, 'i')         // Turkish i
-            .replace(/ğ/g, 'g')         // Turkish g
-            .replace(/ü/g, 'u')         // Turkish u
-            .replace(/ş/g, 's')         // Turkish s
-            .replace(/ö/g, 'o')         // Turkish o
-            .replace(/ç/g, 'c')         // Turkish c
-            .replace(/[^a-z0-9-]/g, '') // Remove special chars
-            .replace(/-+/g, '-')        // Multiple dashes to single
-            .replace(/^-|-$/g, '');     // Trim dashes
+        finalData.sector_slug = generateSectorSlug(finalData.category);
+    } else {
+        finalData.category = 'Diğer';
+        finalData.sector_slug = 'diger';
     }
 
     console.log('   ✅ Stage 2: Complete (missing fields filled)');

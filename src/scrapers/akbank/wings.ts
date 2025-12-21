@@ -66,7 +66,7 @@ async function runWingsScraper() {
             if (isAIEnabled) {
                 campaignData = await parseWithGemini(html, fullUrl);
             } else {
-                campaignData = { title, description: title, card_name: CARD_CONFIG.cardName, bank: CARD_CONFIG.bank, url: fullUrl, reference_url: fullUrl, is_active: true };
+                campaignData = { title, description: title, category: 'Diğer', sector_slug: 'diger', card_name: CARD_CONFIG.cardName, bank: CARD_CONFIG.bank, url: fullUrl, reference_url: fullUrl, is_active: true };
             }
             if (campaignData) {
                 campaignData.title = title;
