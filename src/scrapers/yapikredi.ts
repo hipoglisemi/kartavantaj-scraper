@@ -22,29 +22,30 @@ interface CardConfig {
 }
 
 const CARDS: CardConfig[] = [
-    name: 'World',
-    cardName: 'World',
-    baseUrl: 'https://www.worldcard.com.tr',
-    listApiUrl: 'https://www.worldcard.com.tr/api/campaigns?campaignSectorId=6d897e71-1849-43a3-a64f-62840e8c0442&campaignSectorKey=tum-kampanyalar'
+    {
+        name: 'World',
+        cardName: 'World',
+        baseUrl: 'https://www.worldcard.com.tr',
+        listApiUrl: 'https://www.worldcard.com.tr/api/campaigns?campaignSectorId=6d897e71-1849-43a3-a64f-62840e8c0442&campaignSectorKey=tum-kampanyalar'
     },
-{
-    name: 'Adios',
+    {
+        name: 'Adios',
         cardName: 'Adios',
-            baseUrl: 'https://www.adioscard.com.tr',
-                listApiUrl: 'https://www.adioscard.com.tr/api/campaigns?campaignSectorId=dfe87afe-9b57-4dfd-869b-c87dd00b85a1&campaignSectorKey=tum-kampanyalar'
-},
-{
-    name: 'Play',
+        baseUrl: 'https://www.adioscard.com.tr',
+        listApiUrl: 'https://www.adioscard.com.tr/api/campaigns?campaignSectorId=dfe87afe-9b57-4dfd-869b-c87dd00b85a1&campaignSectorKey=tum-kampanyalar'
+    },
+    {
+        name: 'Play',
         cardName: 'Play',
-            baseUrl: 'https://www.yapikrediplay.com.tr',
-                listApiUrl: 'https://www.yapikrediplay.com.tr/api/campaigns?campaignSectorId=dfe87afe-9b57-4dfd-869b-c87dd00b85a1&campaignSectorKey=tum-kampanyalar'
-},
-{
-    name: 'Crystal',
+        baseUrl: 'https://www.yapikrediplay.com.tr',
+        listApiUrl: 'https://www.yapikrediplay.com.tr/api/campaigns?campaignSectorId=dfe87afe-9b57-4dfd-869b-c87dd00b85a1&campaignSectorKey=tum-kampanyalar'
+    },
+    {
+        name: 'Crystal',
         cardName: 'Crystal',
-            baseUrl: 'https://www.crystalcard.com.tr',
-                listApiUrl: 'https://www.crystalcard.com.tr/api/campaigns?campaignSectorId=a5e7279b-0c32-4b5f-a8cd-97089a1092c2&campaignSectorKey=tum-kampanyalar'
-}
+        baseUrl: 'https://www.crystalcard.com.tr',
+        listApiUrl: 'https://www.crystalcard.com.tr/api/campaigns?campaignSectorId=a5e7279b-0c32-4b5f-a8cd-97089a1092c2&campaignSectorKey=tum-kampanyalar'
+    }
 ];
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
