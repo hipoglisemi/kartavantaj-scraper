@@ -63,22 +63,28 @@ export function validateFields(campaign: any): FieldValidationResult {
 
 /**
  * Try to extract missing field from title or description
+ * Now uses master_sectors table for dynamic category matching
  */
-export function extractFromText(text: string, field: string): string | null {
+export function extractFromText(text: string, field: string, masterSectors?: string[]): string | null {
     if (!text) return null;
 
     const lowerText = text.toLowerCase();
 
-    // Category extraction
+    // Category extraction using master_sectors
     if (field === 'category') {
+        // Build keyword map dynamically from master_sectors
         const categoryKeywords: Record<string, string> = {
+            // Fallback keywords if master_sectors not provided
             'market': 'Market',
             'gıda': 'Market',
             'akaryakıt': 'Yakıt',
             'benzin': 'Yakıt',
             'yakıt': 'Yakıt',
+            'shell': 'Yakıt',
+            'opet': 'Yakıt',
             'giyim': 'Giyim & Moda',
             'moda': 'Giyim & Moda',
+            'kıyafet': 'Giyim & Moda',
             'restoran': 'Restoran & Kafe',
             'kafe': 'Restoran & Kafe',
             'yemek': 'Restoran & Kafe',
@@ -86,10 +92,39 @@ export function extractFromText(text: string, field: string): string | null {
             'tatil': 'Seyahat',
             'uçak': 'Seyahat',
             'otel': 'Seyahat',
+            'thy': 'Seyahat',
             'elektronik': 'Elektronik',
-            'teknoloji': 'Elektronik'
+            'teknoloji': 'Elektronik',
+            'telefon': 'Elektronik',
+            'bilgisayar': 'Elektronik',
+            'online': 'Online Alışveriş',
+            'e-ticaret': 'Online Alışveriş',
+            'trendyol': 'Online Alışveriş',
+            'hepsiburada': 'Online Alışveriş',
+            'ev': 'Ev & Yaşam',
+            'mobilya': 'Ev & Yaşam',
+            'ikea': 'Ev & Yaşam',
+            'sağlık': 'Sağlık & Güzellik',
+            'kozmetik': 'Sağlık & Güzellik',
+            'spor': 'Spor & Outdoor',
+            'fitness': 'Spor & Outdoor',
+            'kitap': 'Kitap & Kırtasiye',
+            'kırtasiye': 'Kitap & Kırtasiye',
+            'eğlence': 'Eğlence',
+            'sinema': 'Eğlence',
+            'konser': 'Eğlence'
         };
 
+        // First try exact match with master_sectors if provided
+        if (masterSectors) {
+            for (const sector of masterSectors) {
+                if (lowerText.includes(sector.toLowerCase())) {
+                    return sector;
+                }
+            }
+        }
+
+        // Then try keyword matching
         for (const [keyword, category] of Object.entries(categoryKeywords)) {
             if (lowerText.includes(keyword)) {
                 return category;

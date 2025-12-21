@@ -22,6 +22,14 @@ interface AuditStats {
     errors: number;
 }
 
+// Fetch master sectors once at startup
+let masterSectors: string[] = [];
+
+async function fetchMasterSectors(): Promise<string[]> {
+    const { data } = await supabase.from('master_sectors').select('name');
+    return data?.map(s => s.name) || [];
+}
+
 async function logAudit(campaignId: string, auditType: string, fieldName: string | null, oldValue: any, newValue: any, autoFixed: boolean, confidence: number = 1.0) {
     try {
         await supabase.from('campaign_audit_log').insert({
@@ -98,7 +106,7 @@ async function auditCampaign(campaign: any, stats: AuditStats): Promise<void> {
     if (!fieldResult.isComplete) {
         // Try to extract missing category from title
         if (fieldResult.criticalMissing.includes('category')) {
-            const extractedCategory = extractFromText(campaign.title || campaign.description, 'category');
+            const extractedCategory = extractFromText(campaign.title || campaign.description, 'category', masterSectors);
             if (extractedCategory) {
                 console.log(`   🏷️  Category fix: ${campaign.title.substring(0, 50)}...`);
                 console.log(`      → ${extractedCategory}`);
@@ -144,6 +152,10 @@ async function auditCampaign(campaign: any, stats: AuditStats): Promise<void> {
 
 async function runQualityAudit() {
     console.log('🔍 Starting Campaign Quality Audit...\n');
+
+    // Fetch master sectors first
+    masterSectors = await fetchMasterSectors();
+    console.log(`📚 Loaded ${masterSectors.length} sectors from master_sectors table\n`);
 
     const stats: AuditStats = {
         total: 0,
