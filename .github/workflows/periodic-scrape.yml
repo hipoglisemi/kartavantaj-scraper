@@ -29,12 +29,18 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # Scraper'lar SIRAYLA çalışır - her biri bitmeden bir sonraki başlamaz
+      # Her scraper kendi kampanyalarını Supabase'e yazar
+      
       - name: 🚀 Run Yapı Kredi Scraper (World, Adios, Play, Crystal)
         run: npx tsx src/scrapers/yapikredi.ts --ai
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
+
+      - name: ⏸️ Wait for Supabase (Yapı Kredi)
+        run: sleep 5
 
       - name: 🚀 Run Akbank Scraper (Axess, Free, Wings)
         run: npx tsx src/scrapers/akbank.ts --ai
@@ -43,12 +49,18 @@ jobs:
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
 
+      - name: ⏸️ Wait for Supabase (Akbank)
+        run: sleep 5
+
       - name: 🚀 Run İş Bankası Scraper (Maximum)
         run: npx tsx src/scrapers/isbankasi.ts --ai
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
+
+      - name: ⏸️ Wait for Supabase (İş Bankası)
+        run: sleep 5
 
       - name: 🚀 Run Garanti BBVA Scraper (Bonus)
         run: npx tsx src/scrapers/garantibbva.ts --ai
@@ -57,12 +69,18 @@ jobs:
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
 
+      - name: ⏸️ Wait for Supabase (Garanti BBVA)
+        run: sleep 5
+
       - name: 🚀 Run Halkbank Scraper (Paraf)
         run: npx tsx src/scrapers/halkbank.ts --ai
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
+
+      - name: ⏸️ Wait for Supabase (Halkbank)
+        run: sleep 5
 
       - name: 🚀 Run VakıfBank Scraper (World)
         run: npx tsx src/scrapers/vakifbank.ts --ai
@@ -71,12 +89,18 @@ jobs:
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
 
+      - name: ⏸️ Wait for Supabase (VakıfBank)
+        run: sleep 5
+
       - name: 🚀 Run Ziraat Bankası Scraper (Bankkart)
         run: npx tsx src/scrapers/ziraat.ts --ai
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
+
+      - name: ⏸️ Wait for Supabase (Ziraat)
+        run: sleep 5
 
       # Gelecekte diğer bankaları buraya ekleyebilirsiniz
       # - name: 🚀 Run Maximum Scraper
