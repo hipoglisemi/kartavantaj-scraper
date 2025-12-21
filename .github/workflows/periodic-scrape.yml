@@ -7,6 +7,79 @@ on:
     - cron: '1 0 1,8,15,22 * *'
   # Manuel tetiklemek isterseniz 'Run workflow' butonu için:
   workflow_dispatch:
+    inputs:
+      run_yapikredi:
+        description: 'Yapı Kredi (World, Adios, Play, Crystal)'
+        required: false
+        default: 'true'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+      run_akbank:
+        description: 'Akbank (Axess, Wings, Free)'
+        required: false
+        default: 'true'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+      run_isbankasi:
+        description: 'İş Bankası (Maximum)'
+        required: false
+        default: 'true'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+      run_garantibbva:
+        description: 'Garanti BBVA (Bonus)'
+        required: false
+        default: 'true'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+      run_halkbank:
+        description: 'Halkbank (Paraf)'
+        required: false
+        default: 'true'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+      run_vakifbank:
+        description: 'VakıfBank (World)'
+        required: false
+        default: 'true'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+      run_ziraat:
+        description: 'Ziraat Bankası (Bankkart)'
+        required: false
+        default: 'true'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+      run_autofix:
+        description: 'Auto-Fix Pipeline Çalıştır'
+        required: false
+        default: 'true'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+      run_garbage_collector:
+        description: 'Garbage Collector Çalıştır'
+        required: false
+        default: 'true'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
 
 jobs:
   scrape-and-fix:
@@ -33,6 +106,7 @@ jobs:
       # Her scraper kendi kampanyalarını Supabase'e yazar
       
       - name: 🚀 Run Yapı Kredi Scraper (World, Adios, Play, Crystal)
+        if: github.event.inputs.run_yapikredi != 'false'
         run: npx tsx src/scrapers/yapikredi.ts --ai
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -40,9 +114,11 @@ jobs:
           GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
 
       - name: ⏸️ Wait for Supabase (Yapı Kredi)
+        if: github.event.inputs.run_yapikredi != 'false'
         run: sleep 5
 
       - name: 🚀 Run Akbank Scraper (Axess, Free, Wings)
+        if: github.event.inputs.run_akbank != 'false'
         run: npx tsx src/scrapers/akbank.ts --ai
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -50,9 +126,11 @@ jobs:
           GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
 
       - name: ⏸️ Wait for Supabase (Akbank)
+        if: github.event.inputs.run_akbank != 'false'
         run: sleep 5
 
       - name: 🚀 Run İş Bankası Scraper (Maximum)
+        if: github.event.inputs.run_isbankasi != 'false'
         run: npx tsx src/scrapers/isbankasi.ts --ai
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -60,9 +138,11 @@ jobs:
           GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
 
       - name: ⏸️ Wait for Supabase (İş Bankası)
+        if: github.event.inputs.run_isbankasi != 'false'
         run: sleep 5
 
       - name: 🚀 Run Garanti BBVA Scraper (Bonus)
+        if: github.event.inputs.run_garantibbva != 'false'
         run: npx tsx src/scrapers/garantibbva.ts --ai
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -70,9 +150,11 @@ jobs:
           GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
 
       - name: ⏸️ Wait for Supabase (Garanti BBVA)
+        if: github.event.inputs.run_garantibbva != 'false'
         run: sleep 5
 
       - name: 🚀 Run Halkbank Scraper (Paraf)
+        if: github.event.inputs.run_halkbank != 'false'
         run: npx tsx src/scrapers/halkbank.ts --ai
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -80,9 +162,11 @@ jobs:
           GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
 
       - name: ⏸️ Wait for Supabase (Halkbank)
+        if: github.event.inputs.run_halkbank != 'false'
         run: sleep 5
 
       - name: 🚀 Run VakıfBank Scraper (World)
+        if: github.event.inputs.run_vakifbank != 'false'
         run: npx tsx src/scrapers/vakifbank.ts --ai
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -90,9 +174,11 @@ jobs:
           GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
 
       - name: ⏸️ Wait for Supabase (VakıfBank)
+        if: github.event.inputs.run_vakifbank != 'false'
         run: sleep 5
 
       - name: 🚀 Run Ziraat Bankası Scraper (Bankkart)
+        if: github.event.inputs.run_ziraat != 'false'
         run: npx tsx src/scrapers/ziraat.ts --ai
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -100,6 +186,7 @@ jobs:
           GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
 
       - name: ⏸️ Wait for Supabase (Ziraat)
+        if: github.event.inputs.run_ziraat != 'false'
         run: sleep 5
 
       # Gelecekte diğer bankaları buraya ekleyebilirsiniz
@@ -122,6 +209,7 @@ jobs:
           GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
 
       - name: 🗑️ Run Garbage Collector
+        if: github.event.inputs.run_garbage_collector != 'false'
         run: npx tsx src/garbageCollector.ts
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
