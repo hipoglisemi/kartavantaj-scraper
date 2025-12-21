@@ -129,7 +129,7 @@ async function runCrystalScraper() {
             // AI Parsing
             let campaignData;
             if (isAIEnabled) {
-                campaignData = await parseWithGemini(html, fullUrl);
+                campaignData = await parseWithGemini(html, fullUrl, CARD_CONFIG.bank);
             } else {
                 campaignData = {
                     title: title,

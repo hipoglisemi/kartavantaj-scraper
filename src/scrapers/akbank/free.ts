@@ -66,7 +66,7 @@ async function runFreeScraper() {
             const title = $('h2.pageTitle').text().trim() || 'Başlıksız';
             let campaignData;
             if (isAIEnabled) {
-                campaignData = await parseWithGemini(html, fullUrl);
+                campaignData = await parseWithGemini(html, fullUrl, 'Akbank');
             } else {
                 campaignData = { title, description: title, category: 'Diğer', sector_slug: 'diger', card_name: CARD_CONFIG.cardName, bank: CARD_CONFIG.bank, url: fullUrl, reference_url: fullUrl, is_active: true };
             }

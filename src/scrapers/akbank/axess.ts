@@ -117,7 +117,7 @@ async function runAxessScraper() {
             // AI Parsing
             let campaignData;
             if (isAIEnabled) {
-                campaignData = await parseWithGemini(html, fullUrl);
+                campaignData = await parseWithGemini(html, fullUrl, 'Akbank');
             } else {
                 campaignData = {
                     title: title,

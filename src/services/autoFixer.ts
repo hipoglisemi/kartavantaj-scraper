@@ -119,7 +119,7 @@ async function aiReparse(campaign: any): Promise<FixResult> {
 
         // Parse with AI
         console.log('   🤖 Parsing with Gemini...');
-        const aiData = await parseWithGemini(html, targetUrl);
+        const aiData = await parseWithGemini(html, targetUrl, campaign.bank);
 
         // Assign badge
         const badge = assignBadge(aiData);
@@ -127,6 +127,7 @@ async function aiReparse(campaign: any): Promise<FixResult> {
         // Update campaign
         const updatedData = {
             ...aiData,
+            bank: campaign.bank, // Strictly preserve original bank
             image: campaign.image, // Preserve image
             card_name: campaign.card_name, // Preserve card name
             provider: campaign.provider,

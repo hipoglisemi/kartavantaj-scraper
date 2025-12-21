@@ -114,7 +114,7 @@ async function runBankkartScraper() {
                 // AI Parsing
                 let campaignData;
                 if (isAIEnabled) {
-                    campaignData = await parseWithGemini(html, fullUrl);
+                    campaignData = await parseWithGemini(html, fullUrl, 'Ziraat Bankası');
                 } else {
                     campaignData = {
                         title: fallbackData.title,

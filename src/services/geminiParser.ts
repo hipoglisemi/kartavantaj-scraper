@@ -151,7 +151,7 @@ function checkMissingFields(data: any): string[] {
     return missing;
 }
 
-export async function parseWithGemini(html: string, url: string): Promise<any> {
+export async function parseWithGemini(html: string, url: string, sourceBank?: string): Promise<any> {
     const text = html
         .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
         .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
@@ -185,24 +185,16 @@ Extract campaign data into JSON matching this EXACT schema:
   "difficulty_level": "string (Kolay/Orta/Zor)",
   "bank": "string (MUST be one of: ${masterData.banks.join(', ')})",
   "card_name": "string (card type)",
-  "brand": ["array of brand names from the list if multiple merchants mentioned, or empty array"]
+  "brand": "string (Extract the merchant/brand name, e.g. 'Trendyol', 'Shell')",
   "ai_enhanced": true
 }
 
 CRITICAL RULES:
-- category: MUST be EXACTLY one from the list above
-- bank: MUST be EXACTLY one from the list above (for WorldCard, use "Yapı Kredi")
-- brand: LOOK CAREFULLY. If the campaign mentions a specific brand/store (e.g. "Migros", "Trendyol", "Shell"), use that name. If it matches a value in: ${masterData.brands.slice(0, 50).join(', ')}..., use that exact value. Return a SINGLE string.
-  "ai_enhanced": true
-}
-
-CRITICAL RULES:
-- category: MUST be EXACTLY one from the list above
-- bank: MUST be EXACTLY one from the list above (for WorldCard, use "Yapı Kredi")
-- brand: Extract the merchant/brand name (e.g. "Trendyol", "Shell"). If mentioned, return the name as a string. If irrelevant (generic campaign), return empty string.
-- Extract ALL fields, especially: valid_until, eligible_customers, min_spend, category, bank
-
-Use Turkish language. Return ONLY valid JSON, no markdown.
+- category: MUST be EXACTLY one from the list above.
+- bank: MUST be EXACTLY one from the list above. ${sourceBank ? `The source bank is likely "${sourceBank}", use this unless explicitly stated otherwise.` : ''}
+- brand: LOOK CAREFULLY. If the campaign mentions a specific brand/store, use that name. Return a SINGLE string.
+- Extraction: Extract ALL fields, especially valid_until, category, and bank.
+- Formatting: Return ONLY valid JSON, no markdown.
 
 TEXT:
 "${text.replace(/"/g, '\\"')}"
@@ -239,8 +231,8 @@ FIELD DEFINITIONS:
 - min_spend: Minimum spending amount as a number
 - earning: Reward amount or description (e.g. "500 TL Puan")
 - category: MUST be EXACTLY one of: ${masterData.categories.join(', ')}
-- bank: MUST be EXACTLY one of: ${masterData.banks.join(', ')}
-- brand: Single string from: ${masterData.brands.slice(0, 50).join(', ')}... or empty
+- bank: MUST be EXACTLY one of: ${masterData.banks.join(', ')}. ${sourceBank ? `(Source: ${sourceBank})` : ''}
+- brand: Extract the merchant/brand name (e.g. 'Trendyol', 'Shell') as a single string.
 
 TEXT:
 "${text.replace(/"/g, '\\"')}"

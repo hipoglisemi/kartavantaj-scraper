@@ -90,7 +90,7 @@ async function runGarantiScraper() {
                 // AI Parsing
                 let campaignData;
                 if (isAIEnabled) {
-                    campaignData = await parseWithGemini(html, fullUrl);
+                    campaignData = await parseWithGemini(html, fullUrl, 'Garanti BBVA');
                 } else {
                     campaignData = {
                         title: title,

@@ -129,7 +129,7 @@ async function runParafScraper() {
                 // AI Parsing
                 let campaignData;
                 if (isAIEnabled) {
-                    campaignData = await parseWithGemini(html, fullUrl);
+                    campaignData = await parseWithGemini(html, fullUrl, 'Halkbank');
                 } else {
                     campaignData = {
                         title: fallbackData.title,
