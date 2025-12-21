@@ -80,10 +80,22 @@ async function runWorldScraper() {
         }
     }
 
-    console.log(`\n🎉 Total ${allCampaigns.length} campaigns found. Processing details...\n`);
+    console.log(`\n🎉 Total ${allCampaigns.length} campaigns found. Filtering active ones...\n`);
+
+    // Filter only active campaigns (EndDate >= today)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Start of today
+
+    const activeCampaigns = allCampaigns.filter(item => {
+        if (!item.EndDate) return true; // Include if no end date
+        const endDate = new Date(item.EndDate);
+        return endDate >= today;
+    });
+
+    console.log(`✅ ${activeCampaigns.length} active campaigns (${allCampaigns.length - activeCampaigns.length} expired filtered out)\n`);
 
     // 2. Process Details
-    for (const item of allCampaigns) {
+    for (const item of activeCampaigns) {
         const urlPart = item.Url;
         if (!urlPart) continue;
 
