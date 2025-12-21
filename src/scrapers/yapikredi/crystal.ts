@@ -59,7 +59,21 @@ async function runCrystalScraper() {
         }
     }
 
-    console.log(`\n🎉 Total ${allCampaigns.length} campaigns found. Processing details...\n`);
+    console.log(`\n🎉 Total ${allCampaigns.length} campaigns found. Filtering active ones...\n`);
+
+    // Filter only active campaigns (EndDate >= today)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const activeCampaigns = allCampaigns.filter(item => {
+        if (!item.EndDate) return true;
+        const endDate = new Date(item.EndDate);
+        return endDate >= today;
+    });
+
+    console.log(`✅ ${activeCampaigns.length} active campaigns (${allCampaigns.length - activeCampaigns.length} expired filtered out)\n`);
+
+    // 2. Process Details
+    for (const item of activeCampaigns) {
 
     // 2. Process Details
     for (const item of allCampaigns) {
