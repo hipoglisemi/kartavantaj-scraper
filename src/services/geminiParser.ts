@@ -169,8 +169,8 @@ Extract campaign data into JSON matching this EXACT schema:
 {
   "description": "string (2-3 sentences with emojis)",
   "category": "string (MUST be one of: ${masterData.categories.join(', ')})",
-  "discount": "string (e.g., '1000 TL İndirim')",
-  "earning": "string (e.g., '500 TL Puan')",
+  "discount": "string (CONCISE summary, max 20 chars, e.g. '1000 TL İndirim')",
+  "earning": "string (CONCISE total benefit, max 20 chars, e.g. '500 TL Puan')",
   "min_spend": number (minimum spending),
   "max_discount": number,
   "discount_percentage": number,
