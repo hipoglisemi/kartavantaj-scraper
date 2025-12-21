@@ -97,6 +97,8 @@ async function runGarantiScraper() {
                         url: fullUrl,           // Mapped
                         reference_url: fullUrl, // Mapped
                         image: imageUrl || '',  // Mapped
+                        category: 'Diğer',
+                        sector_slug: 'diger',
                         is_active: true
                     };
                 }

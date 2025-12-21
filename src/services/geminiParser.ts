@@ -1,3 +1,4 @@
+import * as dotenv from 'dotenv';
 import { createClient } from '@supabase/supabase-js';
 import { generateSectorSlug } from '../utils/slugify';
 

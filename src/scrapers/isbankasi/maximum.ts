@@ -144,6 +144,8 @@ async function runScraperLogic(isAIEnabled: boolean) {
                         url: fullUrl,
                         reference_url: fullUrl,
                         image: fullImageUrl,
+                        category: 'Diğer',
+                        sector_slug: 'diger',
                         is_active: true
                     };
                 }

@@ -121,6 +121,8 @@ async function runVakifbankWorldScraper() {
                         url: fullUrl,
                         reference_url: fullUrl,
                         image: fallbackData.image || '',
+                        category: 'Diğer',
+                        sector_slug: 'diger',
                         is_active: true
                     };
                 }
