@@ -63,35 +63,78 @@ async function fetchMasterData(): Promise<MasterData> {
     return cachedMasterData;
 }
 
-async function callGeminiAPI(prompt: string): Promise<any> {
-    const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}`,
-        {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                contents: [{ parts: [{ text: prompt }] }]
-            })
+// Rate limiting: Track last request time
+let lastRequestTime = 0;
+const MIN_REQUEST_INTERVAL_MS = 1000; // Minimum 1 second between requests
+
+// Sleep utility
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+async function callGeminiAPI(prompt: string, retryCount = 0): Promise<any> {
+    const MAX_RETRIES = 3;
+    const BASE_DELAY_MS = 2000; // Start with 2 seconds
+
+    try {
+        // Rate limiting: Ensure minimum interval between requests
+        const now = Date.now();
+        const timeSinceLastRequest = now - lastRequestTime;
+        if (timeSinceLastRequest < MIN_REQUEST_INTERVAL_MS) {
+            const waitTime = MIN_REQUEST_INTERVAL_MS - timeSinceLastRequest;
+            console.log(`   ⏳ Rate limiting: waiting ${waitTime}ms...`);
+            await sleep(waitTime);
         }
-    );
+        lastRequestTime = Date.now();
 
-    if (!response.ok) {
-        throw new Error(`Gemini API error: ${response.status}`);
+        const response = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}`,
+            {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: prompt }] }]
+                })
+            }
+        );
+
+        // Handle 429 (Too Many Requests) with exponential backoff
+        if (response.status === 429) {
+            if (retryCount >= MAX_RETRIES) {
+                throw new Error(`Gemini API rate limit exceeded after ${MAX_RETRIES} retries`);
+            }
+
+            const retryDelay = BASE_DELAY_MS * Math.pow(2, retryCount); // Exponential: 2s, 4s, 8s
+            console.log(`   ⚠️  Rate limit hit (429). Retry ${retryCount + 1}/${MAX_RETRIES} after ${retryDelay}ms...`);
+            await sleep(retryDelay);
+            return callGeminiAPI(prompt, retryCount + 1);
+        }
+
+        if (!response.ok) {
+            throw new Error(`Gemini API error: ${response.status} ${response.statusText}`);
+        }
+
+        const data: any = await response.json();
+        const responseText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+        if (!responseText) {
+            throw new Error('No response from Gemini');
+        }
+
+        const cleanJson = responseText
+            .replace(/```json/g, '')
+            .replace(/```/g, '')
+            .trim();
+
+        return JSON.parse(cleanJson);
+    } catch (error: any) {
+        // Retry on network errors or JSON parse errors (but not on 429, handled above)
+        if (retryCount < MAX_RETRIES && !error.message.includes('rate limit')) {
+            const retryDelay = BASE_DELAY_MS * Math.pow(2, retryCount);
+            console.log(`   ⚠️  Error: ${error.message}. Retry ${retryCount + 1}/${MAX_RETRIES} after ${retryDelay}ms...`);
+            await sleep(retryDelay);
+            return callGeminiAPI(prompt, retryCount + 1);
+        }
+        throw error;
     }
-
-    const data: any = await response.json();
-    const responseText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-
-    if (!responseText) {
-        throw new Error('No response from Gemini');
-    }
-
-    const cleanJson = responseText
-        .replace(/```json/g, '')
-        .replace(/```/g, '')
-        .trim();
-
-    return JSON.parse(cleanJson);
 }
 
 function checkMissingFields(data: any): string[] {
@@ -210,6 +253,18 @@ Return ONLY valid JSON with the missing fields, no markdown.
     }
 
     console.log('   ✅ Stage 2: Complete (missing fields filled)');
+
+    // Final validation: Ensure critical fields are present
+    const stillMissing = checkMissingFields(finalData);
+    if (stillMissing.length > 0) {
+        console.warn(`   ⚠️  WARNING: Still missing critical fields after 2 stages: ${stillMissing.join(', ')}`);
+        console.warn(`   ⚠️  This campaign may have incomplete data. URL: ${url}`);
+
+        // Add a flag to indicate incomplete data
+        finalData.ai_parsing_incomplete = true;
+        finalData.missing_fields = stillMissing;
+    }
+
     return finalData;
 }
 
