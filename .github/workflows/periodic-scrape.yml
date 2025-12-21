@@ -30,49 +30,49 @@ jobs:
         run: npm ci
 
       - name: 🚀 Run Yapı Kredi Scraper (World, Adios, Play, Crystal)
-        run: npx ts-node src/scrapers/yapikredi.ts --ai
+        run: npx tsx src/scrapers/yapikredi.ts --ai
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
 
       - name: 🚀 Run Akbank Scraper (Axess, Free, Wings)
-        run: npx ts-node src/scrapers/akbank.ts --ai
+        run: npx tsx src/scrapers/akbank.ts --ai
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
 
       - name: 🚀 Run İş Bankası Scraper (Maximum)
-        run: npx ts-node src/scrapers/isbankasi.ts --ai
+        run: npx tsx src/scrapers/isbankasi.ts --ai
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
 
       - name: 🚀 Run Garanti BBVA Scraper (Bonus)
-        run: npx ts-node src/scrapers/garantibbva.ts --ai
+        run: npx tsx src/scrapers/garantibbva.ts --ai
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
 
       - name: 🚀 Run Halkbank Scraper (Paraf)
-        run: npx ts-node src/scrapers/halkbank.ts --ai
+        run: npx tsx src/scrapers/halkbank.ts --ai
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
 
       - name: 🚀 Run VakıfBank Scraper (World)
-        run: npx ts-node src/scrapers/vakifbank.ts --ai
+        run: npx tsx src/scrapers/vakifbank.ts --ai
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
 
       - name: 🚀 Run Ziraat Bankası Scraper (Bankkart)
-        run: npx ts-node src/scrapers/ziraat.ts --ai
+        run: npx tsx src/scrapers/ziraat.ts --ai
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
@@ -83,7 +83,7 @@ jobs:
       #   run: npx ts-node src/scrapers/maximum.ts --ai
 
       - name: 🔧 Run Auto-Fix Pipeline (Pass 1)
-        run: npx ts-node src/qualityPipeline.ts --autofix
+        run: npx tsx src/autoFix.ts
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
@@ -91,14 +91,14 @@ jobs:
 
       - name: 🔧 Run Auto-Fix Pipeline (Pass 2 - Double Check)
         # İlk geçişte düzelmeyen varsa tekrar dene (Tam kontrol)
-        run: npx ts-node src/qualityPipeline.ts --autofix
+        run: npx tsx src/autoFix.ts
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
 
-      - name: 🧹 Run Garbage Collector (Delete Expired > 10 Days)
-        run: npx ts-node src/garbageCollector.ts
+      - name: 🗑️ Run Garbage Collector
+        run: npx tsx src/garbageCollector.ts
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
