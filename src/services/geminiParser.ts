@@ -195,7 +195,14 @@ Extract campaign data into JSON matching this EXACT schema:
 CRITICAL RULES:
 - category: MUST be EXACTLY one from the list above
 - bank: MUST be EXACTLY one from the list above (for WorldCard, use "Yapı Kredi")
-- brand: If merchant is in the brands list, use EXACT name. Otherwise leave empty.
+- brand: LOOK CAREFULLY. If the campaign mentions a specific brand/store (e.g. "Migros", "Trendyol", "Shell"), use that name. If it matches a value in: ${masterData.brands.slice(0, 50).join(', ')}..., use that exact value. Return a SINGLE string.
+  "ai_enhanced": true
+}
+
+CRITICAL RULES:
+- category: MUST be EXACTLY one from the list above
+- bank: MUST be EXACTLY one from the list above (for WorldCard, use "Yapı Kredi")
+- brand: Extract the merchant/brand name (e.g. "Trendyol", "Shell"). If mentioned, return the name as a string. If irrelevant (generic campaign), return empty string.
 - Extract ALL fields, especially: valid_until, eligible_customers, min_spend, category, bank
 
 Use Turkish language. Return ONLY valid JSON, no markdown.
@@ -212,6 +219,8 @@ TEXT:
 
     if (missingFields.length === 0) {
         console.log('   ✅ Stage 1: Complete (all fields extracted)');
+        // Ensure brand is string
+        if (Array.isArray(stage1Data.brand)) stage1Data.brand = stage1Data.brand[0] || '';
         return stage1Data;
     }
 
@@ -232,7 +241,7 @@ FIELD DEFINITIONS:
 - earning: Reward amount or description (e.g. "500 TL Puan")
 - category: MUST be EXACTLY one of: ${masterData.categories.join(', ')}
 - bank: MUST be EXACTLY one of: ${masterData.banks.join(', ')}
-- brand: LOOK CAREFULLY. If the campaign mentions a specific brand/store (e.g. "Migros", "Trendyol", "Shell"), verify if it is in the list: ${masterData.brands.slice(0, 50).join(', ')}... If yes, use it. If not in list, leave empty.
+- brand: Single string from: ${masterData.brands.slice(0, 50).join(', ')}... or empty
 
 TEXT:
 "${text.replace(/"/g, '\\"')}"
@@ -248,9 +257,11 @@ Return ONLY valid JSON with the missing fields, no markdown.
         ...stage2Data
     };
 
-    // Clean up brand data
-    if (finalData.brand) {
-        finalData.brand = normalizeBrands(finalData.brand);
+    // Ensure brand is string
+    if (Array.isArray(finalData.brand)) {
+        finalData.brand = finalData.brand[0] || '';
+    } else if (!finalData.brand) {
+        finalData.brand = '';
     }
 
     // Generate sector_slug from category (for frontend URL routing)

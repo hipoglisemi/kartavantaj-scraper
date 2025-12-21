@@ -94,8 +94,9 @@ async function runGarantiScraper() {
                         title: title,
                         description: title,
                         card_name: 'Bonus',
-                        reference_url: fullUrl,
-                        image_url: imageUrl || '',
+                        url: fullUrl,           // Mapped
+                        reference_url: fullUrl, // Mapped
+                        image: imageUrl || '',  // Mapped
                         is_active: true
                     };
                 }
@@ -103,9 +104,15 @@ async function runGarantiScraper() {
                 if (campaignData) {
                     // Force fields
                     campaignData.card_name = 'Bonus'; // Default to Bonus, specific cards handled by AI if needed or generic override
-                    campaignData.reference_url = fullUrl;
-                    if (!campaignData.image_url && imageUrl) {
-                        campaignData.image_url = imageUrl;
+
+                    // MAP FIELDS TO DB SCHEMA (SCRAPER_SCHEMA_GUIDE.md)
+                    campaignData.url = fullUrl;           // Mapping reference_url -> url
+                    campaignData.reference_url = fullUrl; // Keeping for upsert constraint
+                    campaignData.image = imageUrl;        // Mapping image_url -> image
+                    // campaignData.image_url = imageUrl; // Removing old field
+
+                    if (!campaignData.image && imageUrl) {
+                        campaignData.image = imageUrl;
                     }
                     campaignData.is_active = true;
                     // Garanti campaigns often mention specific cards like "Money Bonus", "Flexi" etc. 

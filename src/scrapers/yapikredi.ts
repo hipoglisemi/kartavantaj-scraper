@@ -130,8 +130,9 @@ async function fetchCampaignsForCard(card: CardConfig, isAIEnabled: boolean) {
                     title: title,
                     description: title,
                     card_name: card.cardName,
-                    reference_url: fullUrl,
-                    image_url: imageUrl,
+                    url: fullUrl,           // Mapped
+                    reference_url: fullUrl, // Mapped
+                    image: imageUrl,        // Mapped
                     is_active: true
                 };
             }
@@ -140,8 +141,13 @@ async function fetchCampaignsForCard(card: CardConfig, isAIEnabled: boolean) {
                 // Ensure critical fields are set
                 campaignData.title = title; // Explicitly set title from list API
                 campaignData.card_name = card.cardName;
-                campaignData.reference_url = fullUrl;
-                campaignData.image_url = imageUrl; // Use high-res image from API list if available
+
+                // MAP FIELDS TO DB SCHEMA (SCRAPER_SCHEMA_GUIDE.md)
+                campaignData.url = fullUrl;           // Mapping reference_url -> url
+                campaignData.reference_url = fullUrl; // Keeping for upsert constraint
+                campaignData.image = imageUrl;        // Mapping image_url -> image
+                // campaignData.image_url = imageUrl; // Old field, removing to catch schema drift
+
                 campaignData.category = campaignData.category || 'Diğer';
                 campaignData.is_active = true;
 
