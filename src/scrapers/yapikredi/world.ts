@@ -58,17 +58,8 @@ async function runWorldScraper() {
                     break; // Exit retry loop
                 }
 
-                // Filter active campaigns from this page
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
-                const activeItems = items.filter((item: any) => {
-                    if (!item.EndDate) return true;
-                    const endDate = new Date(item.EndDate);
-                    return endDate >= today;
-                });
-
-                allCampaigns.push(...activeItems);
-                console.log(`   ✅ Found ${items.length} campaigns (${activeItems.length} active) on page ${page}.`);
+                allCampaigns.push(...items);
+                console.log(`   ✅ Found ${items.length} campaigns on page ${page}.`);
                 page++;
                 await sleep(1000);
                 break; // Success, exit retry loop
@@ -89,7 +80,7 @@ async function runWorldScraper() {
         }
     }
 
-    console.log(`\n🎉 Total ${allCampaigns.length} active campaigns collected.\n`);
+    console.log(`\n🎉 Total ${allCampaigns.length} campaigns collected.\n`);
 
     // 2. Process Details
     for (const item of allCampaigns) {
