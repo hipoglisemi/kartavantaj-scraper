@@ -185,14 +185,14 @@ Extract campaign data into JSON matching this EXACT schema:
   "difficulty_level": "string (Kolay/Orta/Zor)",
   "bank": "string (MUST be one of: ${masterData.banks.join(', ')})",
   "card_name": "string (card type)",
-  "brand": "string (Extract the merchant/brand name, e.g. 'Trendyol', 'Shell')",
+  "brand": ["array", "of", "brand", "names", "mentioned", "in", "the", "campaign"],
   "ai_enhanced": true
 }
 
 CRITICAL RULES:
 - category: MUST be EXACTLY one from the list above.
 - bank: MUST be EXACTLY one from the list above. ${sourceBank ? `The source bank is likely "${sourceBank}", use this unless explicitly stated otherwise.` : ''}
-- brand: LOOK CAREFULLY. If the campaign mentions a specific brand/store, use that name. Return a SINGLE string.
+- brand: Extract ALL mentioned brands (e.g. "Burger King", "Migros"). Return them as an ARRAY of strings. Match names to the list below if possible, otherwise use the canonical merchant name. List ALL brands if multiple are mentioned. List: ${masterData.brands.slice(0, 200).join(', ')}...
 - Extraction: Extract ALL fields, especially valid_until, category, and bank.
 - Formatting: Return ONLY valid JSON, no markdown.
 
@@ -210,8 +210,10 @@ IMPORTANT: Avoid 'Diğer' if possible. Guess the most likely category based on k
 
     if (missingFields.length === 0) {
         console.log('   ✅ Stage 1: Complete (all fields extracted)');
-        // Ensure brand is string
-        if (Array.isArray(stage1Data.brand)) stage1Data.brand = stage1Data.brand[0] || '';
+        // Ensure brand is properly formatted as a string/json for DB
+        if (Array.isArray(stage1Data.brand)) {
+            stage1Data.brand = stage1Data.brand.join(', ');
+        }
         return stage1Data;
     }
 
@@ -232,7 +234,7 @@ FIELD DEFINITIONS:
 - earning: Reward amount or description (e.g. "500 TL Puan")
 - category: MUST be EXACTLY one of: ${masterData.categories.join(', ')}
 - bank: MUST be EXACTLY one of: ${masterData.banks.join(', ')}. ${sourceBank ? `(Source: ${sourceBank})` : ''}
-- brand: Extract the merchant/brand name (e.g. 'Trendyol', 'Shell') as a single string.
+- brand: Array of strings representing ALL mentioned merchants/brands.
 
 TEXT:
 "${text.replace(/"/g, '\\"')}"
@@ -248,10 +250,14 @@ Return ONLY valid JSON with the missing fields, no markdown.
         ...stage2Data
     };
 
-    // Ensure brand is string
+    // Finalize brand format
     if (Array.isArray(finalData.brand)) {
-        finalData.brand = finalData.brand[0] || '';
-    } else if (!finalData.brand) {
+        const uniqueBrands = [...new Set(finalData.brand)]
+            .filter((b: any) => b && typeof b === 'string' && b.toLowerCase() !== 'yok');
+        finalData.brand = uniqueBrands.join(', ');
+    } else if (typeof finalData.brand === 'string') {
+        finalData.brand = finalData.brand === 'Yok' ? '' : finalData.brand;
+    } else {
         finalData.brand = '';
     }
 

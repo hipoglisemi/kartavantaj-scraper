@@ -92,5 +92,28 @@ export function syncEarningAndDiscount(data: any): any {
     data.earning = earning;
     data.discount = discount;
 
+    syncBrands(data);
+
+    return data;
+}
+
+/**
+ * Deduplicates and standardizes brands based on comma distribution.
+ */
+export function syncBrands(data: any): any {
+    if (!data || !data.brand) return data;
+
+    let brandsStr = data.brand;
+    if (typeof brandsStr !== 'string') return data;
+
+    // Split, clean, deduplicate
+    const brandList = brandsStr
+        .split(',')
+        .map((b: string) => b.trim())
+        .filter((b: string) => b && b.toLowerCase() !== 'yok' && b.toLowerCase() !== 'null');
+
+    const uniqueBrands = [...new Set(brandList)];
+    data.brand = uniqueBrands.join(', ');
+
     return data;
 }
