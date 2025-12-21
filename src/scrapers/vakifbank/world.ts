@@ -73,7 +73,6 @@ async function runVakifbankWorldScraper() {
             await sleep(1000);
         }
 
-        console.log(`\n   🎉 Total unique campaigns found: ${campaignLinks.length}`);
 
         // 2. Process Details
         for (const fullUrl of campaignLinks) {

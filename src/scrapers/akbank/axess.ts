@@ -91,10 +91,8 @@ async function runAxessScraper() {
         }
     }
 
-    console.log(`\n🎉 Total ${allCampaigns.length} campaigns found. Processing...\n`);
 
     // 2. Process Details
-    for (const item of allCampaigns) {
         const urlPart = item.href;
         if (!urlPart) continue;
 
