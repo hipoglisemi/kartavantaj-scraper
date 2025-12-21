@@ -251,12 +251,40 @@ Return ONLY valid JSON with the missing fields, no markdown.
     };
 
     // Finalize brand format
+    // Finalize brand format
     if (Array.isArray(finalData.brand)) {
-        const uniqueBrands = [...new Set(finalData.brand)]
-            .filter((b: any) => b && typeof b === 'string' && b.toLowerCase() !== 'yok');
+        // Cleaning and Deduplication
+        const forbiddenTerms = [
+            'yapı kredi', 'world', 'worldcard', 'worldpuan', 'puan', 'taksit', 'indirim',
+            'kampanya', 'fırsat', 'troy', 'visa', 'mastercard', 'express', 'bonus', 'maximum',
+            'axess', 'bankkart', 'paraf', 'card', 'kredi kartı', 'nakit', 'chippin', 'adios', 'play',
+            ...masterData.banks.map(b => b.toLowerCase())
+        ];
+
+        const cleanedBrands = finalData.brand
+            .filter((b: any) => b && typeof b === 'string')
+            .map((b: string) => b.trim())
+            .filter((b: string) => {
+                const lower = b.toLowerCase();
+                if (lower === 'yok' || lower === 'null') return false;
+                if (forbiddenTerms.some(term => lower === term || lower.includes(term + ' '))) return false; // Strict check
+                return true;
+            })
+            // Match with master data - STRICT
+            .map((b: string) => {
+                const lower = b.toLowerCase();
+                const matched = masterData.brands.find(mb => mb.toLowerCase() === lower);
+                return matched ? matched : null; // Only keep if matched
+            })
+            .filter((b: string | null) => b !== null); // Remove non-matches
+
+        const uniqueBrands = [...new Set(cleanedBrands)];
         finalData.brand = uniqueBrands.join(', ');
     } else if (typeof finalData.brand === 'string') {
-        finalData.brand = finalData.brand === 'Yok' ? '' : finalData.brand;
+        // Strict check for single string too
+        const lower = finalData.brand.trim().toLowerCase();
+        const matched = masterData.brands.find(mb => mb.toLowerCase() === lower);
+        finalData.brand = matched ? matched : '';
     } else {
         finalData.brand = '';
     }
