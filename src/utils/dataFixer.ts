@@ -8,57 +8,58 @@ export function standardizeBenefit(text: string): string {
 
     let clean = text.trim();
 
-    // 1. Standardize Taksit
+    // 1. Standardize Taksit (extract max installment)
     if (clean.toLowerCase().includes('taksit')) {
-        const match = clean.match(/(\d+)\s*aya?\s*varan\s*taksit/i) || clean.match(/(\d+)\s*taksit/i);
-        if (match) return `${match[1]} Taksit`;
+        const match = clean.match(/(\d+)\s*(?:aya?\s*varan\s*)?taksit/i);
+        if (match) {
+            // Check for additional point benefit
+            const pointMatch = clean.match(/(\d+[\d.,]*)\s*TL/i);
+            return pointMatch
+                ? `${pointMatch[1]} TL Puan + ${match[1]} Taksit`
+                : `${match[1]} Taksit`;
+        }
     }
 
-    // 2. Standardize Puan / TL sum
-    if (clean.includes('+') && clean.toLowerCase().includes('tl')) {
-        const amounts = clean.match(/(\d+[\d.,]*)\s*TL/gi);
-        if (amounts && amounts.length > 1) {
-            // If "Toplam" is mentioned, it likely already includes the sum.
-            if (clean.toLowerCase().includes('toplam')) {
-                const totalMatch = clean.match(/toplam\s*(\d+[\d.,]*)\s*TL/i);
-                if (totalMatch) return `${totalMatch[1]} TL Puan`;
-            }
+    // 2. Standardize Puan / TL sums and remove fillers
+    clean = clean
+        .replace(/peşin fiyatına|vade farksız|ücretsiz|toplamda|varan|değerinde|hediye|fırsatı|imkanı|kazanma|özel|ayrıcalığı/gi, '')
+        .replace(/worldpuan|bonus|chip-?para|maxipuan|bankkart lira|parafpara/gi, 'Puan')
+        .replace(/\s+/g, ' ')
+        .trim();
 
+    // 3. Extract pure amounts if explicitly monetary
+    if (clean.toLowerCase().includes('tl')) {
+        const amounts = clean.match(/(\d+[\d.,]*)\s*TL/gi);
+        if (amounts && amounts.length > 0) {
+            // If multiple amounts, sum them
             const uniqueValues = new Set<number>();
             const sum = amounts.reduce((acc, curr) => {
                 const val = parseFloat(curr.replace(/[^\d]/g, '').replace('.', '').replace(',', '.'));
+                // Simple de-dupe logic (crudely avoids summing same value twice if stated redundantly)
                 if (!uniqueValues.has(val)) {
                     uniqueValues.add(val);
                     return acc + val;
                 }
-                return acc;
+                return acc; // Don't add duplicates
             }, 0);
-            if (sum > 0) return `${sum.toLocaleString('tr-TR')} TL Puan`;
+
+            // If sum is substantial and text is long, return just the sum
+            if (sum > 0 && clean.length > 20) return `${sum.toLocaleString('tr-TR')} TL Puan`;
         }
     }
 
-    // 3. Trim and summarize if too long (Max ~25 chars)
+    // 4. Percentage simplifications
+    if (clean.includes('%')) {
+        const pctMatch = clean.match(/(%\s*\d+|\d+\s*%)/);
+        if (pctMatch) {
+            if (clean.toLowerCase().includes('indirim')) return `${pctMatch[1].replace(/\s/g, '')} İndirim`;
+            return `${pctMatch[1].replace(/\s/g, '')} Puan`;
+        }
+    }
+
+    // 5. Final max length truncation
     if (clean.length > 25) {
-        // Percentage mapping
-        if (clean.includes('%')) {
-            const pctMatch = clean.match(/(%\d+|\d+%)/);
-            if (pctMatch) {
-                if (clean.toLowerCase().includes('puan')) return `${pctMatch[1]} Puan`;
-                if (clean.toLowerCase().includes('indirim')) return `${pctMatch[1]} İndirim`;
-                return `${pctMatch[1]} Avantaj`;
-            }
-        }
-
-        // Remove common fillers
-        clean = clean
-            .replace(/İmkanı|Fırsatı|Hediye|Kazanma|Kadar|Toplamda|Veren|Özel/gi, '')
-            .replace(/\s+/g, ' ')
-            .trim();
-
-        // Final truncation if still too long
-        if (clean.length > 30) {
-            clean = clean.substring(0, 27) + '...';
-        }
+        clean = clean.substring(0, 22) + '...';
     }
 
     return clean;
