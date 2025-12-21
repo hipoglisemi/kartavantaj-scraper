@@ -4,6 +4,7 @@ import * as cheerio from 'cheerio';
 import { createClient } from '@supabase/supabase-js';
 import * as dotenv from 'dotenv';
 import { parseWithGemini } from '../../services/geminiParser';
+import { generateSectorSlug } from '../../utils/slugify';
 
 dotenv.config();
 
@@ -152,6 +153,7 @@ async function runCrystalScraper() {
                 campaignData.reference_url = fullUrl;
                 campaignData.image = imageUrl;
                 campaignData.category = campaignData.category || 'Diğer';
+                campaignData.sector_slug = generateSectorSlug(campaignData.category);
                 campaignData.is_active = true;
 
                 // Upsert to Supabase

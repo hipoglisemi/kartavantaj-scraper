@@ -3,6 +3,7 @@ import * as cheerio from 'cheerio';
 import { createClient } from '@supabase/supabase-js';
 import * as dotenv from 'dotenv';
 import { parseWithGemini } from '../../services/geminiParser';
+import { generateSectorSlug } from '../../utils/slugify';
 
 dotenv.config();
 
@@ -75,6 +76,7 @@ async function runWingsScraper() {
                 campaignData.url = fullUrl;
                 campaignData.reference_url = fullUrl;
                 campaignData.category = campaignData.category || 'Diğer';
+                campaignData.sector_slug = generateSectorSlug(campaignData.category);
                 campaignData.is_active = true;
 
                 // Filter out expired campaigns if end_date exists

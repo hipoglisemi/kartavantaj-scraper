@@ -4,6 +4,7 @@ import * as cheerio from 'cheerio';
 import { createClient } from '@supabase/supabase-js';
 import * as dotenv from 'dotenv';
 import { parseWithGemini } from '../../services/geminiParser';
+import { generateSectorSlug } from '../../utils/slugify';
 
 dotenv.config();
 
