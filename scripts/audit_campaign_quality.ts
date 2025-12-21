@@ -102,7 +102,9 @@ async function auditCampaign(campaign: any, stats: AuditStats): Promise<void> {
     }
 
     // 3. Extract missing min_spend and earning using AI
-    if (!campaign.min_spend || !campaign.earning || campaign.min_spend === 0) {
+    // Skip if campaign was already AI-enhanced during scraping
+    if ((!campaign.min_spend || !campaign.earning || campaign.min_spend === 0) &&
+        !campaign.ai_enhanced) {
         const { extractSpendAndEarning } = await import('./utils/aiExtractor');
         const extracted = await extractSpendAndEarning(campaign);
 
@@ -206,16 +208,18 @@ async function runQualityAudit() {
     };
 
     try {
-        // Fetch all campaigns
+        // Fetch only campaigns that need correction
+        // Skip campaigns that are already auto-corrected to reduce load
         const { data: campaigns, error } = await supabase
             .from('campaigns')
             .select('*')
+            .or('auto_corrected.is.null,auto_corrected.eq.false')
             .order('created_at', { ascending: false });
 
         if (error) throw error;
 
         stats.total = campaigns?.length || 0;
-        console.log(`📊 Found ${stats.total} campaigns to audit\n`);
+        console.log(`📊 Found ${stats.total} campaigns to audit (skipping already corrected ones)\n`);
 
         // Process each campaign
         for (const campaign of campaigns || []) {

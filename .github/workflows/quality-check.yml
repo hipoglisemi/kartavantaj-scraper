@@ -10,9 +10,9 @@ on:
   # Manual trigger
   workflow_dispatch:
   
-  # Daily scheduled run
+  # Weekly scheduled run (reduced from daily to minimize load)
   schedule:
-    - cron: '0 2 * * *'  # 2 AM daily
+    - cron: '0 2 * * 0'  # 2 AM every Sunday
 
 jobs:
   quality-audit:
