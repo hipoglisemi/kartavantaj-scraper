@@ -29,12 +29,13 @@ async function fetchMasterData(): Promise<MasterData> {
 
     console.log('📚 Fetching master data from Supabase...');
 
-    const [categoriesRes, brandsRes] = await Promise.all([
-        supabase.from('master_categories').select('name'),
+    const [sectorsRes, brandsRes] = await Promise.all([
+        supabase.from('master_sectors').select('name'),
         supabase.from('master_brands').select('name')
     ]);
 
-    const categories = categoriesRes.data?.map(c => c.name) || [
+    // Use master_sectors (same as frontend) instead of master_categories
+    const categories = sectorsRes.data?.map(c => c.name) || [
         'Market', 'Yakıt', 'Restoran & Kafe', 'Elektronik', 'Giyim & Moda',
         'Ev & Yaşam', 'Online Alışveriş', 'Seyahat', 'Eğlence', 'Sağlık & Güzellik',
         'Spor & Outdoor', 'Kitap & Kırtasiye', 'Diğer'
