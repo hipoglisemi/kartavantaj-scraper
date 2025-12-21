@@ -9,6 +9,7 @@ import { parseWithGemini } from './geminiParser';
 import { assignBadge } from './badgeAssigner';
 import { CampaignValidation } from './qualityChecker';
 import { generateSectorSlug } from '../utils/slugify';
+import { syncEarningAndDiscount } from '../utils/dataFixer';
 
 dotenv.config();
 
@@ -134,6 +135,9 @@ async function aiReparse(campaign: any): Promise<FixResult> {
             sector_slug: generateSectorSlug(aiData.category || 'Diğer'),
             ai_enhanced: true
         };
+
+        // Final sync check
+        syncEarningAndDiscount(updatedData);
 
         const { error } = await supabase
             .from('campaigns')

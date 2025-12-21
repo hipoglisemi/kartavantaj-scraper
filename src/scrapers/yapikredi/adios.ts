@@ -5,6 +5,7 @@ import { createClient } from '@supabase/supabase-js';
 import * as dotenv from 'dotenv';
 import { parseWithGemini } from '../../services/geminiParser';
 import { generateSectorSlug } from '../../utils/slugify';
+import { syncEarningAndDiscount } from '../../utils/dataFixer';
 
 dotenv.config();
 
@@ -147,6 +148,7 @@ async function runAdiosScraper() {
                 campaignData.image = imageUrl;
                 campaignData.category = campaignData.category || 'Diğer';
                 campaignData.sector_slug = generateSectorSlug(campaignData.category);
+                syncEarningAndDiscount(campaignData);
                 campaignData.is_active = true;
 
                 // Upsert to Supabase

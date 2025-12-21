@@ -4,6 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 import * as dotenv from 'dotenv';
 import { parseWithGemini } from '../../services/geminiParser';
 import { generateSectorSlug } from '../../utils/slugify';
+import { syncEarningAndDiscount } from '../../utils/dataFixer';
 
 dotenv.config();
 
@@ -167,6 +168,7 @@ async function runScraperLogic(isAIEnabled: boolean) {
                     }
                     campaignData.category = campaignData.category || 'Diğer';
                     campaignData.sector_slug = generateSectorSlug(campaignData.category);
+                    syncEarningAndDiscount(campaignData);
                     campaignData.is_active = true;
 
                     // Filter out expired campaigns if end_date exists

@@ -1,6 +1,7 @@
 import * as dotenv from 'dotenv';
 import { createClient } from '@supabase/supabase-js';
 import { generateSectorSlug } from '../utils/slugify';
+import { syncEarningAndDiscount } from '../utils/dataFixer';
 
 dotenv.config();
 
@@ -282,6 +283,9 @@ Return ONLY valid JSON with the missing fields, no markdown.
     }
 
     console.log('   ✅ Stage 2: Complete (missing fields filled)');
+
+    // SYNC EARNING AND DISCOUNT: Ensure consistency for UI cards and details
+    syncEarningAndDiscount(finalData);
 
     // Final validation: Ensure critical fields are present
     const stillMissing = checkMissingFields(finalData);
