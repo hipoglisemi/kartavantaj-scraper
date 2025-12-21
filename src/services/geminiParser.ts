@@ -253,6 +253,23 @@ Return ONLY valid JSON with the missing fields, no markdown.
         finalData.brand = normalizeBrands(finalData.brand);
     }
 
+    // Generate sector_slug from category (for frontend URL routing)
+    if (finalData.category) {
+        finalData.sector_slug = finalData.category
+            .toLowerCase()
+            .replace(/\s*&\s*/g, '-')  // "Market & Gıda" -> "market-gida"
+            .replace(/\s+/g, '-')       // Spaces to dashes
+            .replace(/ı/g, 'i')         // Turkish i
+            .replace(/ğ/g, 'g')         // Turkish g
+            .replace(/ü/g, 'u')         // Turkish u
+            .replace(/ş/g, 's')         // Turkish s
+            .replace(/ö/g, 'o')         // Turkish o
+            .replace(/ç/g, 'c')         // Turkish c
+            .replace(/[^a-z0-9-]/g, '') // Remove special chars
+            .replace(/-+/g, '-')        // Multiple dashes to single
+            .replace(/^-|-$/g, '');     // Trim dashes
+    }
+
     console.log('   ✅ Stage 2: Complete (missing fields filled)');
 
     // Final validation: Ensure critical fields are present
