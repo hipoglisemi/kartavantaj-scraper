@@ -74,9 +74,6 @@ async function runAdiosScraper() {
 
     // 2. Process Details
     for (const item of activeCampaigns) {
-
-    // 2. Process Details
-    for (const item of allCampaigns) {
         const urlPart = item.Url;
         if (!urlPart) continue;
 
