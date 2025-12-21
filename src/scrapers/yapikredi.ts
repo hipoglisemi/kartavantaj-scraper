@@ -141,6 +141,7 @@ async function fetchCampaignsForCard(card: CardConfig, isAIEnabled: boolean) {
                 // Ensure critical fields are set
                 campaignData.title = title; // Explicitly set title from list API
                 campaignData.card_name = card.cardName;
+                campaignData.bank = 'Yapı Kredi'; // Enforce strict bank assignment
 
                 // MAP FIELDS TO DB SCHEMA (SCRAPER_SCHEMA_GUIDE.md)
                 campaignData.url = fullUrl;           // Mapping reference_url -> url

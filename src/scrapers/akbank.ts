@@ -180,6 +180,7 @@ async function fetchCampaignsForCard(card: CardConfig, isAIEnabled: boolean) {
             if (campaignData) {
                 // Ensure critical fields are set
                 campaignData.card_name = card.cardName; // Enforce card name from config
+                campaignData.bank = 'Akbank'; // Enforce strict bank assignment
 
                 // MAP FIELDS TO DB SCHEMA
                 campaignData.url = fullUrl;

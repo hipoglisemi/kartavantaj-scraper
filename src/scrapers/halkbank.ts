@@ -143,6 +143,7 @@ async function runHalkbankScraper() {
                 if (campaignData) {
                     // Force fields
                     campaignData.card_name = 'Paraf';
+                    campaignData.bank = 'Halkbank'; // Enforce strict bank assignment
 
                     // MAP FIELDS TO DB SCHEMA
                     campaignData.url = fullUrl;

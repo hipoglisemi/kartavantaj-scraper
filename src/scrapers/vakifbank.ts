@@ -129,6 +129,7 @@ async function runVakifbankScraper() {
                 if (campaignData) {
                     // Force fields
                     campaignData.card_name = 'VakıfBank World'; // Most common
+                    campaignData.bank = 'Vakıfbank'; // Enforce strict bank assignment
 
                     // MAP FIELDS TO DB SCHEMA
                     campaignData.url = fullUrl;

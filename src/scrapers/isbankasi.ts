@@ -151,6 +151,7 @@ async function runScraperLogic(isAIEnabled: boolean) {
                 if (campaignData) {
                     // Force fields
                     campaignData.card_name = 'Maximum';
+                    campaignData.bank = 'İş Bankası'; // Enforce strict bank assignment
 
                     // MAP FIELDS TO DB SCHEMA
                     campaignData.url = fullUrl;

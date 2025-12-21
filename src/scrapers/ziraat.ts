@@ -128,6 +128,7 @@ async function runZiraatScraper() {
                 if (campaignData) {
                     // Force fields
                     campaignData.card_name = 'Bankkart';
+                    campaignData.bank = 'Ziraat Bankası'; // Enforce strict bank assignment
 
                     // MAP FIELDS TO DB SCHEMA
                     campaignData.url = fullUrl;

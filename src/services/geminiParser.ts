@@ -209,6 +209,8 @@ Use Turkish language. Return ONLY valid JSON, no markdown.
 
 TEXT:
 "${text.replace(/"/g, '\\"')}"
+
+IMPORTANT: Avoid 'Diğer' if possible. Guess the most likely category based on keywords (e.g. 'Market', 'Giyim', 'Akaryakıt').
 `;
 
     console.log('   🤖 Stage 1: Full parse...');
@@ -266,6 +268,17 @@ Return ONLY valid JSON with the missing fields, no markdown.
 
     // Generate sector_slug from category (for frontend URL routing)
     if (finalData.category) {
+        // Fallback for 'Diğer' or 'Genel' if title has strong keywords
+        if (finalData.category === 'Diğer' || finalData.category === 'Genel') {
+            const titleLower = finalData.title?.toLowerCase() || '';
+            if (titleLower.includes('market') || titleLower.includes('gıda')) finalData.category = 'Market';
+            else if (titleLower.includes('giyim') || titleLower.includes('moda')) finalData.category = 'Giyim & Moda';
+            else if (titleLower.includes('akaryakıt') || titleLower.includes('benzin') || titleLower.includes('otopet') || titleLower.includes('yakıt')) finalData.category = 'Yakıt';
+            else if (titleLower.includes('restoran') || titleLower.includes('yemek')) finalData.category = 'Restoran & Kafe';
+            else if (titleLower.includes('seyahat') || titleLower.includes('tatil') || titleLower.includes('uçak') || titleLower.includes('otel')) finalData.category = 'Seyahat';
+            else if (titleLower.includes('elektronik') || titleLower.includes('teknoloji')) finalData.category = 'Elektronik';
+        }
+
         finalData.sector_slug = finalData.category
             .toLowerCase()
             .replace(/\s*&\s*/g, '-')  // "Market & Gıda" -> "market-gida"

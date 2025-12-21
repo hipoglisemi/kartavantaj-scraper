@@ -104,6 +104,7 @@ async function runGarantiScraper() {
                 if (campaignData) {
                     // Force fields
                     campaignData.card_name = 'Bonus'; // Default to Bonus, specific cards handled by AI if needed or generic override
+                    campaignData.bank = 'Garanti BBVA'; // Enforce strict bank assignment
 
                     // MAP FIELDS TO DB SCHEMA (SCRAPER_SCHEMA_GUIDE.md)
                     campaignData.url = fullUrl;           // Mapping reference_url -> url
