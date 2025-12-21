@@ -135,7 +135,7 @@ async function runWorldScraper() {
                     .upsert(campaignData, { onConflict: 'reference_url' });
 
                 if (error) {
-                    console.error(`      ❌ Supabase Error: ${error.message}`);
+                    console.error(`      ❌ Supabase Error: ${error?.message || 'Unknown error'}`);
                 } else {
                     console.log(`      ✅ Saved: ${campaignData.title}`);
                 }
