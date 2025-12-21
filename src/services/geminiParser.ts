@@ -65,7 +65,7 @@ async function fetchMasterData(): Promise<MasterData> {
 
 // Rate limiting: Track last request time
 let lastRequestTime = 0;
-const MIN_REQUEST_INTERVAL_MS = 1000; // Minimum 1 second between requests
+const MIN_REQUEST_INTERVAL_MS = 5000; // Minimum 5 seconds between requests (12 RPM limit)
 
 // Sleep utility
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
