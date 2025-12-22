@@ -37,16 +37,18 @@ async function runWingsScraper() {
             const $ = cheerio.load(html);
             const links = $('.campaingBox a.dLink');
             if (links.length === 0) break;
-            let foundNew = false;
+
+            let newCount = 0;
             links.each((_: number, el: any) => {
                 const href = $(el).attr('href');
                 if (href && !allCampaigns.some((c: any) => c.href === href)) {
                     allCampaigns.push({ href });
-                    foundNew = true;
+                    newCount++;
                 }
             });
-            console.log(`   ✅ Page ${page}: ${links.length} campaigns`);
-            if (!foundNew && page > 1) break;
+            console.log(`   ✅ Page ${page}: ${links.length} campaigns (${newCount} new, ${links.length - newCount} duplicates)`);
+
+            // Continue to next page regardless of duplicates
             page++;
             await sleep(1000);
         } catch (error: any) {
