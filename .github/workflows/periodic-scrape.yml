@@ -101,7 +101,7 @@ jobs:
 
       # --- YAPI KREDİ ---
       - name: 💳 Run World Card (World Kart Tarama)
-        if: matrix.group == 'world'
+        if: matrix.group == 'world' && (github.event_name == 'schedule' || inputs.run_world == 'true')
         run: npx tsx src/scrapers/yapikredi/world.ts --ai
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -111,9 +111,9 @@ jobs:
       - name: 💳 Run YK Lite (Diğer YK Kartlar - Adios, Play, Crystal)
         if: matrix.group == 'yapikredi-lite'
         run: |
-          npx tsx src/scrapers/yapikredi/adios.ts --ai
-          npx tsx src/scrapers/yapikredi/play.ts --ai
-          npx tsx src/scrapers/yapikredi/crystal.ts --ai
+          if [[ "${{ github.event_name }}" == "schedule" || "${{ inputs.run_adios }}" == "true" ]]; then npx tsx src/scrapers/yapikredi/adios.ts --ai; fi
+          if [[ "${{ github.event_name }}" == "schedule" || "${{ inputs.run_play }}" == "true" ]]; then npx tsx src/scrapers/yapikredi/play.ts --ai; fi
+          if [[ "${{ github.event_name }}" == "schedule" || "${{ inputs.run_crystal }}" == "true" ]]; then npx tsx src/scrapers/yapikredi/crystal.ts --ai; fi
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
@@ -121,7 +121,7 @@ jobs:
 
       # --- AKBANK ---
       - name: 💳 Run Axess (Axess Kart Tarama)
-        if: matrix.group == 'axess'
+        if: matrix.group == 'axess' && (github.event_name == 'schedule' || inputs.run_axess == 'true')
         run: npx tsx src/scrapers/akbank/axess.ts --ai
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -131,8 +131,8 @@ jobs:
       - name: 💳 Run Akbank Lite (Diğer Akbank Kartlar - Wings, Free)
         if: matrix.group == 'akbank-lite'
         run: |
-          npx tsx src/scrapers/akbank/wings.ts --ai
-          npx tsx src/scrapers/akbank/free.ts --ai
+          if [[ "${{ github.event_name }}" == "schedule" || "${{ inputs.run_wings }}" == "true" ]]; then npx tsx src/scrapers/akbank/wings.ts --ai; fi
+          if [[ "${{ github.event_name }}" == "schedule" || "${{ inputs.run_free }}" == "true" ]]; then npx tsx src/scrapers/akbank/free.ts --ai; fi
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
@@ -140,7 +140,7 @@ jobs:
 
       # --- OTHERS ---
       - name: 💳 Run Bonus (Bonus Kart Tarama)
-        if: matrix.group == 'bonus'
+        if: matrix.group == 'bonus' && (github.event_name == 'schedule' || inputs.run_bonus == 'true')
         run: npx tsx src/scrapers/garanti/bonus.ts --ai
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -148,19 +148,19 @@ jobs:
           GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
 
       - name: 💳 Run Maximum (Maximum Kart Tarama)
-        if: matrix.group == 'maximum'
+        if: matrix.group == 'maximum' && (github.event_name == 'schedule' || inputs.run_maximum == 'true')
         run: npx tsx src/scrapers/isbankasi/maximum.ts --ai
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
 
-      - name: 💳 Run State Banks (Devlet Bankaları - Ziraat, Paraf, Vakıf)
+      - name: 💳 Run State Banks (Devlet Bankaları - Ziraat, Paraf, Vakıfbank)
         if: matrix.group == 'state-banks'
         run: |
-          npx tsx src/scrapers/ziraat/bankkart.ts --ai
-          npx tsx src/scrapers/halkbank/paraf.ts --ai
-          npx tsx src/scrapers/vakifbank/world.ts --ai
+          if [[ "${{ github.event_name }}" == "schedule" || "${{ inputs.run_bankkart }}" == "true" ]]; then npx tsx src/scrapers/ziraat/bankkart.ts --ai; fi
+          if [[ "${{ github.event_name }}" == "schedule" || "${{ inputs.run_paraf }}" == "true" ]]; then npx tsx src/scrapers/halkbank/paraf.ts --ai; fi
+          if [[ "${{ github.event_name }}" == "schedule" || "${{ inputs.run_vakifbank_world }}" == "true" ]]; then npx tsx src/scrapers/vakifbank/world.ts --ai; fi
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
