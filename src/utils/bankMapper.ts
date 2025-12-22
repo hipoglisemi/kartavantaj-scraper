@@ -1,59 +1,137 @@
 /**
- * Centralized bank name mapping
- * Maps internal scraper names to official display names
+ * Dynamic Bank Name Mapper - Fetches from Supabase master_banks
+ * This replaces the static BANK_NAME_MAP with a dynamic system
  */
 
-export const BANK_NAME_MAP: Record<string, string> = {
-    // Garanti
-    'Garanti': 'Garanti BBVA',
-    'Garanti BBVA': 'Garanti BBVA',
+import { createClient } from '@supabase/supabase-js';
+import * as dotenv from 'dotenv';
 
-    // Akbank
-    'Akbank': 'Akbank',
+dotenv.config();
 
-    // İş Bankası
-    'İş Bankası': 'İş Bankası',
-    'Is Bankasi': 'İş Bankası',
+const supabase = createClient(
+    process.env.SUPABASE_URL!,
+    process.env.SUPABASE_ANON_KEY!
+);
 
-    // Yapı Kredi
-    'Yapı Kredi': 'Yapı Kredi',
-    'Yapi Kredi': 'Yapı Kredi',
+interface MasterBank {
+    id: number;
+    name: string;
+    slug: string;
+    aliases: string[];
+    logo_url?: string;
+    is_active: boolean;
+}
 
-    // Ziraat
-    'Ziraat': 'Ziraat Bankası',
-    'Ziraat Bankası': 'Ziraat Bankası',
-    'Ziraat Bankasi': 'Ziraat Bankası',
-
-    // Halkbank
-    'Halkbank': 'Halkbank',
-
-    // Vakıfbank - CRITICAL: Support both Turkish and English 'i'
-    'Vakıfbank': 'Vakıfbank',
-    'Vakifbank': 'Vakıfbank',  // Fallback for English 'i'
-};
+let cachedBanks: MasterBank[] = [];
+let lastFetch: number = 0;
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 /**
- * Normalize bank name to official display name
+ * Fetch banks from Supabase (with caching)
  */
-export function normalizeBankName(bankName: string): string {
-    if (!bankName) return '';
+async function fetchMasterBanks(): Promise<MasterBank[]> {
+    const now = Date.now();
 
-    // Try exact match first
-    if (BANK_NAME_MAP[bankName]) {
-        return BANK_NAME_MAP[bankName];
+    // Return cache if still valid
+    if (cachedBanks.length > 0 && (now - lastFetch) < CACHE_DURATION) {
+        return cachedBanks;
     }
 
-    // Try case-insensitive match
-    const normalized = Object.keys(BANK_NAME_MAP).find(
-        key => key.toLowerCase() === bankName.toLowerCase()
-    );
+    try {
+        const { data, error } = await supabase
+            .from('master_banks')
+            .select('*')
+            .eq('is_active', true)
+            .order('sort_order');
 
-    return normalized ? BANK_NAME_MAP[normalized] : bankName;
+        if (error) {
+            console.error('❌ Error fetching master_banks:', error.message);
+            // Fallback to static list if DB fails
+            return getStaticBankList();
+        }
+
+        cachedBanks = data || [];
+        lastFetch = now;
+        return cachedBanks;
+    } catch (err) {
+        console.error('❌ Exception fetching master_banks:', err);
+        return getStaticBankList();
+    }
+}
+
+/**
+ * Normalize bank name using master_banks table
+ */
+export async function normalizeBankName(inputName: string): Promise<string> {
+    if (!inputName) return '';
+
+    const banks = await fetchMasterBanks();
+
+    // Try exact match
+    const exactMatch = banks.find(b => b.name === inputName);
+    if (exactMatch) return exactMatch.name;
+
+    // Try case-insensitive match
+    const caseMatch = banks.find(b => b.name.toLowerCase() === inputName.toLowerCase());
+    if (caseMatch) return caseMatch.name;
+
+    // Try aliases
+    const aliasMatch = banks.find(b =>
+        b.aliases && b.aliases.some(alias => alias.toLowerCase() === inputName.toLowerCase())
+    );
+    if (aliasMatch) return aliasMatch.name;
+
+    // No match found, return original (will be caught in data quality checks)
+    console.warn(`⚠️  Unknown bank name: "${inputName}" - please add to master_banks`);
+    return inputName;
 }
 
 /**
  * Get all official bank names
  */
-export function getOfficialBankNames(): string[] {
-    return [...new Set(Object.values(BANK_NAME_MAP))];
+export async function getOfficialBankNames(): Promise<string[]> {
+    const banks = await fetchMasterBanks();
+    return banks.map(b => b.name);
+}
+
+/**
+ * Fallback static bank list (used if Supabase is unavailable)
+ */
+function getStaticBankList(): MasterBank[] {
+    return [
+        { id: 1, name: 'Garanti BBVA', slug: 'garanti-bbva', aliases: ['Garanti', 'BBVA'], is_active: true },
+        { id: 2, name: 'Akbank', slug: 'akbank', aliases: ['Akbank'], is_active: true },
+        { id: 3, name: 'İş Bankası', slug: 'is-bankasi', aliases: ['Is Bankasi', 'Isbank'], is_active: true },
+        { id: 4, name: 'Yapı Kredi', slug: 'yapi-kredi', aliases: ['Yapi Kredi', 'YKB'], is_active: true },
+        { id: 5, name: 'Ziraat Bankası', slug: 'ziraat-bankasi', aliases: ['Ziraat', 'Ziraat Bankasi'], is_active: true },
+        { id: 6, name: 'Halkbank', slug: 'halkbank', aliases: ['Halk Bankası'], is_active: true },
+        { id: 7, name: 'Vakıfbank', slug: 'vakifbank', aliases: ['Vakifbank', 'VakıfBank'], is_active: true },
+    ];
+}
+
+/**
+ * Synchronous version (uses cache, may be stale)
+ * Use this only when async is not possible
+ */
+export function normalizeBankNameSync(inputName: string): string {
+    if (!inputName) return '';
+
+    // Use cached data
+    if (cachedBanks.length === 0) {
+        // No cache, use static fallback
+        cachedBanks = getStaticBankList();
+    }
+
+    const exactMatch = cachedBanks.find(b => b.name === inputName);
+    if (exactMatch) return exactMatch.name;
+
+    const caseMatch = cachedBanks.find(b => b.name.toLowerCase() === inputName.toLowerCase());
+    if (caseMatch) return caseMatch.name;
+
+    const aliasMatch = cachedBanks.find(b =>
+        b.aliases && b.aliases.some(alias => alias.toLowerCase() === inputName.toLowerCase())
+    );
+    if (aliasMatch) return aliasMatch.name;
+
+    return inputName;
 }

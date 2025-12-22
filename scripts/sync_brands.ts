@@ -111,6 +111,26 @@ async function addBrandsAndRefill() {
                 .eq('id', c.id);
 
             if (!error) fixedCount++;
+        } else {
+            // Fallback: Check for "Genel" keywords
+            const titleLower = c.title.toLowerCase();
+            const genericKeywords = [
+                'marketlerde', 'akaryakıt', 'istasyon', 'giyim', 'mağaza',
+                'restoran', 'kafe', 'tüm sektör', 'seçili sektör',
+                'üye işyeri', 'pos', 'vade farksız', 'taksit', 'faizsiz', 'masrafsız',
+                'alışveriş', 'harcama', 'ödeme', 'e-ticaret', 'online'
+            ];
+
+            if (genericKeywords.some(kw => titleLower.includes(kw))) {
+                console.log(`   🔗 ID ${c.id} [${c.bank}]: Title "${c.title.substring(0, 30)}..." -> Assigned "Genel"`);
+
+                const { error } = await supabase
+                    .from('campaigns')
+                    .update({ brand: 'Genel', ai_enhanced: true })
+                    .eq('id', c.id);
+
+                if (!error) fixedCount++;
+            }
         }
     }
 

@@ -134,7 +134,7 @@ async function runVakifbankWorldScraper() {
                     // Force fields
                     campaignData.title = fallbackData.title; // Strict Assignment
                     campaignData.card_name = 'VakıfBank World'; // Most common
-                    campaignData.bank = normalizeBankName('Vakıfbank'); // Centralized mapping
+                    campaignData.bank = await normalizeBankName('Vakıfbank'); // Dynamic mapping from master_banks
 
                     // MAP FIELDS TO DB SCHEMA
                     campaignData.url = fullUrl;
