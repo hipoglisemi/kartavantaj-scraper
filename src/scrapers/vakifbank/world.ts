@@ -114,7 +114,7 @@ async function runVakifbankWorldScraper() {
                 // AI Parsing
                 let campaignData;
                 if (isAIEnabled) {
-                    campaignData = await parseWithGemini(html, fullUrl, 'Vakıfbank');
+                    campaignData = await parseWithGemini(html, fullUrl, 'Vakifbank');
                 } else {
                     campaignData = {
                         title: fallbackData.title,
@@ -133,7 +133,7 @@ async function runVakifbankWorldScraper() {
                     // Force fields
                     campaignData.title = fallbackData.title; // Strict Assignment
                     campaignData.card_name = 'VakıfBank World'; // Most common
-                    campaignData.bank = 'Vakıfbank'; // Enforce strict bank assignment
+                    campaignData.bank = 'Vakifbank'; // Enforce strict bank assignment (English 'i' for consistency)
 
                     // MAP FIELDS TO DB SCHEMA
                     campaignData.url = fullUrl;
