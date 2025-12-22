@@ -112,9 +112,11 @@ async function runParafScraper() {
                     let image = null;
 
                     // NEW: AEM-based structure - Try img tag first
-                    // @ts-ignore
+                    // @ts-ignore - browser context
                     const imgElement = document.querySelector('.cmp-image__image') ||
+                        // @ts-ignore - browser context
                         document.querySelector('.cmp-teaser__image img') ||
+                        // @ts-ignore - browser context
                         document.querySelector('img[src*="teaser.coreimg"]');
 
                     if (imgElement) {
