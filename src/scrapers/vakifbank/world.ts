@@ -5,6 +5,7 @@ import * as dotenv from 'dotenv';
 import { parseWithGemini } from '../../services/geminiParser';
 import { generateSectorSlug } from '../../utils/slugify';
 import { syncEarningAndDiscount } from '../../utils/dataFixer';
+import { normalizeBankName } from '../../utils/bankMapper';
 
 dotenv.config();
 
@@ -133,7 +134,7 @@ async function runVakifbankWorldScraper() {
                     // Force fields
                     campaignData.title = fallbackData.title; // Strict Assignment
                     campaignData.card_name = 'VakıfBank World'; // Most common
-                    campaignData.bank = 'Vakıfbank'; // Enforce strict bank assignment
+                    campaignData.bank = normalizeBankName('Vakıfbank'); // Centralized mapping
 
                     // MAP FIELDS TO DB SCHEMA
                     campaignData.url = fullUrl;
