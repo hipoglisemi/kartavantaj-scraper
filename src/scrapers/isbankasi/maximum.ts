@@ -91,6 +91,10 @@ async function runScraperLogic(isAIEnabled: boolean) {
             document.querySelectorAll('a').forEach((a: any) => {
                 const href = a.getAttribute('href');
                 if (href && href.includes('/kampanyalar/') && !href.includes('arsiv') && href.length > 25) {
+                    // Filter out category pages
+                    if (href.endsWith('-kampanyalari') || href.endsWith('-odemeleri') || href.includes('yilbasi-kampanyalari')) {
+                        return;
+                    }
                     links.push(href);
                 }
             });

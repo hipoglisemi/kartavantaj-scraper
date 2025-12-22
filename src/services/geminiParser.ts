@@ -289,6 +289,24 @@ Return ONLY valid JSON with the missing fields, no markdown.
         finalData.brand = '';
     }
 
+    // 🔗 Generic Brand Fallback (Genel)
+    if (!finalData.brand || finalData.brand === '') {
+        const titleLower = finalData.title?.toLowerCase() || '';
+        const descLower = finalData.description?.toLowerCase() || '';
+
+        // Keywords that strongly hint at "Genel" (non-brand specific)
+        const genericKeywords = [
+            'marketlerde', 'akaryakıt istasyonlarında', 'giyim mağazalarında',
+            'restoranlarda', 'kafe', 'tüm sektörler', 'seçili sektörl',
+            'üye işyeri', 'pos', 'vade farksız', 'taksit', 'faizsiz', 'masrafsız',
+            'alışverişlerinizde', 'harcamanıza', 'ödemelerinize'
+        ];
+
+        if (genericKeywords.some(kw => titleLower.includes(kw) || descLower.includes(kw))) {
+            finalData.brand = 'Genel';
+        }
+    }
+
     // Generate sector_slug from category (for frontend URL routing)
     if (finalData.category) {
         // Fallback for 'Diğer' or 'Genel' if title has strong keywords
