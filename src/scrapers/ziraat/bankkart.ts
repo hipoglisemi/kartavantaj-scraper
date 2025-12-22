@@ -93,9 +93,11 @@ async function runBankkartScraper() {
                 // Extract basic info for fallback
                 const fallbackData = await page.evaluate((baseUrl) => {
                     // @ts-ignore
-                    const titleEl = document.querySelector('h1') || document.querySelector('.page-title');
+                    const candidates = [...document.querySelectorAll('h1, h2')];
                     // @ts-ignore
-                    const title = titleEl ? titleEl.innerText.trim() : 'Başlıksız Kampanya';
+                    const validTitle = candidates.find(el => el.innerText.trim().length > 5);
+                    // @ts-ignore
+                    const title = validTitle ? validTitle.innerText.trim() : 'Başlıksız Kampanya';
 
                     let image = null;
                     // @ts-ignore
