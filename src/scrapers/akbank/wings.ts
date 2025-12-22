@@ -5,13 +5,14 @@ import * as dotenv from 'dotenv';
 import { parseWithGemini } from '../../services/geminiParser';
 import { generateSectorSlug } from '../../utils/slugify';
 import { syncEarningAndDiscount } from '../../utils/dataFixer';
+import { normalizeBankName } from '../../utils/bankMapper';
 
 dotenv.config();
 
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!);
 
 const CARD_CONFIG = {
-    name: 'Wings', cardName: 'Wings', bank: 'Akbank',
+    name: 'Wings', cardName: 'Wings', bank: await normalizeBankName('Akbank'),
     baseUrl: 'https://www.axess.com.tr',
     listApiUrl: 'https://www.axess.com.tr/ajax/kampanya-ajax-ticari.aspx',
     refererUrl: 'https://www.axess.com.tr/ticarikartlar/kampanya/8/450/kampanyalar',

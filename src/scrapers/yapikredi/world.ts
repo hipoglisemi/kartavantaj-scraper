@@ -6,6 +6,7 @@ import * as dotenv from 'dotenv';
 import { parseWithGemini } from '../../services/geminiParser';
 import { generateSectorSlug } from '../../utils/slugify';
 import { syncEarningAndDiscount } from '../../utils/dataFixer';
+import { normalizeBankName } from '../../utils/bankMapper';
 
 dotenv.config();
 
@@ -17,7 +18,7 @@ const supabase = createClient(
 const CARD_CONFIG = {
     name: 'World',
     cardName: 'World',
-    bank: 'Yapı Kredi',
+    bank: await normalizeBankName('Yapı Kredi'),
     baseUrl: 'https://www.worldcard.com.tr',
     listApiUrl: 'https://www.worldcard.com.tr/api/campaigns?campaignSectorId=6d897e71-1849-43a3-a64f-62840e8c0442&campaignSectorKey=tum-kampanyalar'
 };

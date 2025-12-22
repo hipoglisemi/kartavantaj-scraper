@@ -5,13 +5,14 @@ import * as dotenv from 'dotenv';
 import { parseWithGemini } from '../../services/geminiParser';
 import { generateSectorSlug } from '../../utils/slugify';
 import { syncEarningAndDiscount } from '../../utils/dataFixer';
+import { normalizeBankName } from '../../utils/bankMapper';
 
 dotenv.config();
 
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!);
 
 const CARD_CONFIG = {
-    name: 'Free', cardName: 'Free', bank: 'Akbank',
+    name: 'Free', cardName: 'Free', bank: await normalizeBankName('Akbank'),
     baseUrl: 'https://www.kartfree.com',
     listApiUrl: 'https://www.kartfree.com/ajax/kampanya-ajax-free.aspx',
     refererUrl: 'https://www.kartfree.com/free/kampanya/8/395/kampanyalar',

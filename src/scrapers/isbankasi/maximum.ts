@@ -5,6 +5,7 @@ import * as dotenv from 'dotenv';
 import { parseWithGemini } from '../../services/geminiParser';
 import { generateSectorSlug } from '../../utils/slugify';
 import { syncEarningAndDiscount } from '../../utils/dataFixer';
+import { normalizeBankName } from '../../utils/bankMapper';
 
 dotenv.config();
 
@@ -160,7 +161,7 @@ async function runScraperLogic(isAIEnabled: boolean) {
                     // Force fields
                     campaignData.title = title; // Strict Assignment
                     campaignData.card_name = 'Maximum';
-                    campaignData.bank = 'İş Bankası'; // Enforce strict bank assignment
+                    campaignData.bank = await normalizeBankName('İş Bankası'); // Enforce strict bank assignment
 
                     // MAP FIELDS TO DB SCHEMA
                     campaignData.url = fullUrl;

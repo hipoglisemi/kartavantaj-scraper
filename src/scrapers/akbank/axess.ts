@@ -6,6 +6,7 @@ import * as dotenv from 'dotenv';
 import { parseWithGemini } from '../../services/geminiParser';
 import { generateSectorSlug } from '../../utils/slugify';
 import { syncEarningAndDiscount } from '../../utils/dataFixer';
+import { normalizeBankName } from '../../utils/bankMapper';
 
 dotenv.config();
 
@@ -17,7 +18,7 @@ const supabase = createClient(
 const CARD_CONFIG = {
     name: 'Axess',
     cardName: 'Axess',
-    bank: 'Akbank',
+    bank: await normalizeBankName('Akbank'),
     baseUrl: 'https://www.axess.com.tr',
     listApiUrl: 'https://www.axess.com.tr/ajax/kampanya-ajax.aspx',
     refererUrl: 'https://www.axess.com.tr/kampanyalar',
