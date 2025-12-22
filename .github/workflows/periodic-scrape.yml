@@ -70,9 +70,21 @@ on:
         options: ['true', 'false']
 
 jobs:
-  scrape-and-fix:
+  scrape:
+    name: Scrape ${{ matrix.group }}
     runs-on: ubuntu-latest
-    timeout-minutes: 360
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        group: 
+          - world            # Yapı Kredi World (Longest)
+          - axess            # Akbank Axess (Long)
+          - bonus            # Garanti Bonus (Longest ~1h)
+          - maximum          # İş Bankası Maximum
+          - yapikredi-lite   # Adios, Play, Crystal
+          - akbank-lite      # Wings, Free
+          - state-banks      # Bankkart, Paraf, Vakıfbank
 
     steps:
       - name: Checkout code
@@ -87,113 +99,98 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # YAPI KREDİ CARDS
-      - name: 💳 World Card
-        if: github.event.inputs.run_world != 'false'
+      # --- YAPI KREDİ ---
+      - name: 💳 Run World Card
+        if: matrix.group == 'world'
         run: npx tsx src/scrapers/yapikredi/world.ts --ai
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
 
-      - name: 💳 Adios Card
-        if: github.event.inputs.run_adios != 'false'
-        run: npx tsx src/scrapers/yapikredi/adios.ts --ai
+      - name: 💳 Run YK Lite (Adios, Play, Crystal)
+        if: matrix.group == 'yapikredi-lite'
+        run: |
+          npx tsx src/scrapers/yapikredi/adios.ts --ai
+          npx tsx src/scrapers/yapikredi/play.ts --ai
+          npx tsx src/scrapers/yapikredi/crystal.ts --ai
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
 
-      - name: 💳 Play Card
-        if: github.event.inputs.run_play != 'false'
-        run: npx tsx src/scrapers/yapikredi/play.ts --ai
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-          GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
-
-      - name: 💳 Crystal Card
-        if: github.event.inputs.run_crystal != 'false'
-        run: npx tsx src/scrapers/yapikredi/crystal.ts --ai
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-          GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
-
-      # AKBANK CARDS
-      - name: 💳 Axess Card
-        if: github.event.inputs.run_axess != 'false'
+      # --- AKBANK ---
+      - name: 💳 Run Axess
+        if: matrix.group == 'axess'
         run: npx tsx src/scrapers/akbank/axess.ts --ai
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
 
-      - name: 💳 Free Card
-        if: github.event.inputs.run_free != 'false'
-        run: npx tsx src/scrapers/akbank/free.ts --ai
+      - name: 💳 Run Akbank Lite (Wings, Free)
+        if: matrix.group == 'akbank-lite'
+        run: |
+          npx tsx src/scrapers/akbank/wings.ts --ai
+          npx tsx src/scrapers/akbank/free.ts --ai
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
 
-      - name: 💳 Wings Card
-        if: github.event.inputs.run_wings != 'false'
-        run: npx tsx src/scrapers/akbank/wings.ts --ai
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-          GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
-
-      # OTHER CARDS
-      - name: 💳 Bonus Card
-        if: github.event.inputs.run_bonus != 'false'
+      # --- OTHERS ---
+      - name: 💳 Run Bonus
+        if: matrix.group == 'bonus'
         run: npx tsx src/scrapers/garanti/bonus.ts --ai
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
 
-      - name: 💳 Maximum Card
-        if: github.event.inputs.run_maximum != 'false'
+      - name: 💳 Run Maximum
+        if: matrix.group == 'maximum'
         run: npx tsx src/scrapers/isbankasi/maximum.ts --ai
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
 
-      - name: 💳 VakıfBank World
-        if: github.event.inputs.run_vakifbank_world != 'false'
-        run: npx tsx src/scrapers/vakifbank/world.ts --ai
+      - name: 💳 Run State Banks (Ziraat, Paraf, Vakif)
+        if: matrix.group == 'state-banks'
+        run: |
+          npx tsx src/scrapers/ziraat/bankkart.ts --ai
+          npx tsx src/scrapers/halkbank/paraf.ts --ai
+          npx tsx src/scrapers/vakifbank/world.ts --ai
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
 
-      - name: 💳 Bankkart
-        if: github.event.inputs.run_bankkart != 'false'
-        run: npx tsx src/scrapers/ziraat/bankkart.ts --ai
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-          GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
+  post-process:
+    name: 🔧 Finalize & Auto-Fix
+    needs: scrape
+    runs-on: ubuntu-latest
+    if: always() # Run even if one scraper fails, to try and fix what succeeded
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - name: 💳 Paraf Card
-        if: github.event.inputs.run_paraf != 'false'
-        run: npx tsx src/scrapers/halkbank/paraf.ts --ai
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-          GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
 
-      # POST-PROCESSING
+      - name: Install dependencies
+        run: npm ci
+
       - name: 🔧 Run Auto-Fix Pipeline (Pass 1)
         run: npx tsx src/services/autoFixer.ts
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
-
+      
       - name: 🔧 Run Auto-Fix Pipeline (Pass 2)
         run: npx tsx src/services/autoFixer.ts
         env:
