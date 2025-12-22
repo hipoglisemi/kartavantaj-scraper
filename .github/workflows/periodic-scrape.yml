@@ -73,7 +73,7 @@ jobs:
   scrape:
     name: Scrape ${{ matrix.group }}
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 360
     strategy:
       fail-fast: false
       matrix:
