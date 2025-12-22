@@ -154,18 +154,12 @@ async function runParafScraper() {
                     campaignData.url = fullUrl;
                     campaignData.reference_url = fullUrl;
 
-                    // Fallback Image
-                    if (!fallbackData.image && !campaignData.image) {
-                        // Use a generic logic or leave properly null
-                        // But ensure we don't crash Supabase if it expects string
-                        // For now letting it be null is fine, but if we want to ensure visibility:
-                        // campaignData.image = 'https://www.paraf.com.tr/content/dam/parafki/logo/paraf-logo-yeni.png'; 
-                    } else if (fallbackData.image) {
+                    // Prioritize fallback image extraction
+                    if (fallbackData.image) {
                         campaignData.image = fallbackData.image;
-                    }
-
-                    if (!campaignData.image) {
-                        campaignData.image = 'https://www.halkbank.com.tr/content/dam/halkbank/logo/halkbank-logo.png'; // Fallback
+                    } else if (!campaignData.image) {
+                        // Only use generic logo if no image was found at all
+                        campaignData.image = 'https://www.halkbank.com.tr/content/dam/halkbank/logo/halkbank-logo.png';
                     }
 
                     // campaignData.image_url = fallbackData.image;
