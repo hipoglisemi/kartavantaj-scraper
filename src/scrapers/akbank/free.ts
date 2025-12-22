@@ -64,6 +64,11 @@ async function runFreeScraper() {
             const html = detailResponse.data;
             const $ = cheerio.load(html);
             const title = $('h2.pageTitle').text().trim() || 'Başlıksız';
+
+            // Image Extraction
+            const imagePath = $('.campaingDetailImage img').attr('src');
+            const imageUrl = imagePath ? new URL(imagePath, CARD_CONFIG.baseUrl).toString() : null;
+
             let campaignData;
             if (isAIEnabled) {
                 campaignData = await parseWithGemini(html, fullUrl, 'Akbank');
@@ -72,6 +77,7 @@ async function runFreeScraper() {
             }
             if (campaignData) {
                 campaignData.title = title;
+                campaignData.image = imageUrl; // Add extracted image
                 campaignData.card_name = CARD_CONFIG.cardName;
                 campaignData.bank = CARD_CONFIG.bank;
                 campaignData.url = fullUrl;

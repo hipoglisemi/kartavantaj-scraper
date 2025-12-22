@@ -114,6 +114,10 @@ async function runAxessScraper() {
 
             const title = $('h2.pageTitle').text().trim() || 'Başlıksız Kampanya';
 
+            // Image Extraction
+            const imagePath = $('.campaingDetailImage img').attr('src');
+            const imageUrl = imagePath ? new URL(imagePath, CARD_CONFIG.baseUrl).toString() : null;
+
             // AI Parsing
             let campaignData;
             if (isAIEnabled) {
@@ -135,6 +139,7 @@ async function runAxessScraper() {
             if (campaignData) {
                 // STRICT ASSIGNMENT
                 campaignData.title = title;
+                campaignData.image = imageUrl; // Add extracted image
                 campaignData.card_name = CARD_CONFIG.cardName;
                 campaignData.bank = CARD_CONFIG.bank;
                 campaignData.url = fullUrl;
