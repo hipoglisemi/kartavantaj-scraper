@@ -12,7 +12,9 @@ dotenv.config();
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!);
 
 const CARD_CONFIG = {
-    name: 'Wings', cardName: 'Wings', bank: await normalizeBankName('Akbank'),
+    name: 'Wings',
+    cardName: 'Wings',
+    bank: 'Akbank', // Will be normalized in the function
     baseUrl: 'https://www.axess.com.tr',
     listApiUrl: 'https://www.axess.com.tr/ajax/kampanya-ajax-ticari.aspx',
     refererUrl: 'https://www.axess.com.tr/ticarikartlar/kampanya/8/450/kampanyalar',
@@ -22,7 +24,8 @@ const CARD_CONFIG = {
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 async function runWingsScraper() {
-    console.log(`\n💳 ${CARD_CONFIG.name} (${CARD_CONFIG.bank})\n`);
+    const normalizedBank = await normalizeBankName('Akbank');
+    console.log(`\n💳 ${CARD_CONFIG.name} (${normalizedBank})\n`);
     const isAIEnabled = process.argv.includes('--ai');
     let page = 1, allCampaigns: any[] = [];
 
@@ -76,13 +79,13 @@ async function runWingsScraper() {
             if (isAIEnabled) {
                 campaignData = await parseWithGemini(html, fullUrl, 'Akbank');
             } else {
-                campaignData = { title, description: title, category: 'Diğer', sector_slug: 'diger', card_name: CARD_CONFIG.cardName, bank: CARD_CONFIG.bank, url: fullUrl, reference_url: fullUrl, is_active: true };
+                campaignData = { title, description: title, category: 'Diğer', sector_slug: 'diger', card_name: CARD_CONFIG.cardName, bank: normalizedBank, url: fullUrl, reference_url: fullUrl, is_active: true };
             }
             if (campaignData) {
                 campaignData.title = title;
                 campaignData.image = imageUrl; // Add extracted image
                 campaignData.card_name = CARD_CONFIG.cardName;
-                campaignData.bank = CARD_CONFIG.bank;
+                campaignData.bank = normalizedBank;
                 campaignData.url = fullUrl;
                 campaignData.reference_url = fullUrl;
                 campaignData.category = campaignData.category || 'Diğer';
