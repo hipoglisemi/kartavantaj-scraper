@@ -146,18 +146,30 @@ async function runParafScraper() {
 
                 if (campaignData) {
                     // Force fields
+                    campaignData.title = fallbackData.title; // Strict Assignment
                     campaignData.card_name = 'Paraf';
                     campaignData.bank = 'Halkbank'; // Enforce strict bank assignment
 
                     // MAP FIELDS TO DB SCHEMA
                     campaignData.url = fullUrl;
                     campaignData.reference_url = fullUrl;
-                    campaignData.image = fallbackData.image;
-                    // campaignData.image_url = fallbackData.image;
 
-                    if (!campaignData.image && fallbackData.image) {
+                    // Fallback Image
+                    if (!fallbackData.image && !campaignData.image) {
+                        // Use a generic logic or leave properly null
+                        // But ensure we don't crash Supabase if it expects string
+                        // For now letting it be null is fine, but if we want to ensure visibility:
+                        // campaignData.image = 'https://www.paraf.com.tr/content/dam/parafki/logo/paraf-logo-yeni.png'; 
+                    } else if (fallbackData.image) {
                         campaignData.image = fallbackData.image;
                     }
+
+                    if (!campaignData.image) {
+                        campaignData.image = 'https://www.halkbank.com.tr/content/dam/halkbank/logo/halkbank-logo.png'; // Fallback
+                    }
+
+                    // campaignData.image_url = fallbackData.image;
+
                     campaignData.category = campaignData.category || 'Diğer';
                     campaignData.sector_slug = generateSectorSlug(campaignData.category);
                     syncEarningAndDiscount(campaignData);

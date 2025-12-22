@@ -107,6 +107,7 @@ async function runGarantiScraper() {
 
                 if (campaignData) {
                     // Force fields
+                    campaignData.title = title; // Strict Assignment
                     campaignData.card_name = 'Bonus'; // Default to Bonus, specific cards handled by AI if needed or generic override
                     campaignData.bank = 'Garanti BBVA'; // Enforce strict bank assignment
 

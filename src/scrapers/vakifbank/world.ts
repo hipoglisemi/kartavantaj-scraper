@@ -131,6 +131,7 @@ async function runVakifbankWorldScraper() {
 
                 if (campaignData) {
                     // Force fields
+                    campaignData.title = fallbackData.title; // Strict Assignment
                     campaignData.card_name = 'VakıfBank World'; // Most common
                     campaignData.bank = 'Vakıfbank'; // Enforce strict bank assignment
 

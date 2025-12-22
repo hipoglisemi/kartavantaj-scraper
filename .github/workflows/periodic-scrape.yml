@@ -100,7 +100,7 @@ jobs:
         run: npm ci
 
       # --- YAPI KREDİ ---
-      - name: 💳 Run World Card
+      - name: 💳 Run World Card (World Kart Tarama)
         if: matrix.group == 'world'
         run: npx tsx src/scrapers/yapikredi/world.ts --ai
         env:
@@ -108,7 +108,7 @@ jobs:
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
 
-      - name: 💳 Run YK Lite (Adios, Play, Crystal)
+      - name: 💳 Run YK Lite (Diğer YK Kartlar - Adios, Play, Crystal)
         if: matrix.group == 'yapikredi-lite'
         run: |
           npx tsx src/scrapers/yapikredi/adios.ts --ai
@@ -120,7 +120,7 @@ jobs:
           GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
 
       # --- AKBANK ---
-      - name: 💳 Run Axess
+      - name: 💳 Run Axess (Axess Kart Tarama)
         if: matrix.group == 'axess'
         run: npx tsx src/scrapers/akbank/axess.ts --ai
         env:
@@ -128,7 +128,7 @@ jobs:
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
 
-      - name: 💳 Run Akbank Lite (Wings, Free)
+      - name: 💳 Run Akbank Lite (Diğer Akbank Kartlar - Wings, Free)
         if: matrix.group == 'akbank-lite'
         run: |
           npx tsx src/scrapers/akbank/wings.ts --ai
@@ -139,7 +139,7 @@ jobs:
           GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
 
       # --- OTHERS ---
-      - name: 💳 Run Bonus
+      - name: 💳 Run Bonus (Bonus Kart Tarama)
         if: matrix.group == 'bonus'
         run: npx tsx src/scrapers/garanti/bonus.ts --ai
         env:
@@ -147,7 +147,7 @@ jobs:
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
 
-      - name: 💳 Run Maximum
+      - name: 💳 Run Maximum (Maximum Kart Tarama)
         if: matrix.group == 'maximum'
         run: npx tsx src/scrapers/isbankasi/maximum.ts --ai
         env:
@@ -155,7 +155,7 @@ jobs:
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
 
-      - name: 💳 Run State Banks (Ziraat, Paraf, Vakif)
+      - name: 💳 Run State Banks (Devlet Bankaları - Ziraat, Paraf, Vakıf)
         if: matrix.group == 'state-banks'
         run: |
           npx tsx src/scrapers/ziraat/bankkart.ts --ai
@@ -184,21 +184,27 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: 🔧 Run Auto-Fix Pipeline (Pass 1)
+      - name: 🔧 Run Auto-Fix Pipeline (Otomatik Düzeltme - Tur 1)
         run: npx tsx src/services/autoFixer.ts
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
       
-      - name: 🔧 Run Auto-Fix Pipeline (Pass 2)
+      - name: 🔧 Run Auto-Fix Pipeline (Otomatik Düzeltme - Tur 2)
         run: npx tsx src/services/autoFixer.ts
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
 
-      - name: 🗑️ Run Garbage Collector
+      - name: 🏷️ Sync & Fix Brands (Marka Eşleştirme)
+        run: npm run fix:brands
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+
+      - name: 🗑️ Run Garbage Collector (Çöp Temizliği)
         run: npx tsx src/garbageCollector.ts
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}

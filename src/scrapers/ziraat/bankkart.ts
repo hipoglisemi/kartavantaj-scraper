@@ -131,6 +131,7 @@ async function runBankkartScraper() {
 
                 if (campaignData) {
                     // Force fields
+                    campaignData.title = fallbackData.title; // Strict Assignment
                     campaignData.card_name = 'Bankkart';
                     campaignData.bank = 'Ziraat Bankası'; // Enforce strict bank assignment
 

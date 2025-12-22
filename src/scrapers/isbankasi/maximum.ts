@@ -154,6 +154,7 @@ async function runScraperLogic(isAIEnabled: boolean) {
 
                 if (campaignData) {
                     // Force fields
+                    campaignData.title = title; // Strict Assignment
                     campaignData.card_name = 'Maximum';
                     campaignData.bank = 'İş Bankası'; // Enforce strict bank assignment
 

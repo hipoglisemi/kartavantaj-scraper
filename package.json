@@ -7,7 +7,9 @@
     "dev": "tsx src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "scrape:worldcard": "tsx src/scrapers/worldcard.ts"
+    "scrape:worldcard": "tsx src/scrapers/worldcard.ts",
+    "fix:brands": "tsx scripts/sync_brands.ts",
+    "fix:titles": "tsx scripts/restore_titles.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",
