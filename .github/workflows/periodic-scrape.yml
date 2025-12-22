@@ -84,7 +84,9 @@ jobs:
           - maximum          # İş Bankası Maximum
           - yapikredi-lite   # Adios, Play, Crystal
           - akbank-lite      # Wings, Free
-          - state-banks      # Bankkart, Paraf, Vakıfbank
+          - ziraat           # Ziraat Bankkart
+          - halkbank         # Halkbank Paraf
+          - vakifbank        # VakıfBank World
 
     steps:
       - name: Checkout code
@@ -155,12 +157,25 @@ jobs:
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
 
-      - name: 💳 Run State Banks (Devlet Bankaları - Ziraat, Paraf, Vakıfbank)
-        if: matrix.group == 'state-banks'
-        run: |
-          if [[ "${{ github.event_name }}" == "schedule" || "${{ inputs.run_bankkart }}" == "true" ]]; then npx tsx src/scrapers/ziraat/bankkart.ts --ai; fi
-          if [[ "${{ github.event_name }}" == "schedule" || "${{ inputs.run_paraf }}" == "true" ]]; then npx tsx src/scrapers/halkbank/paraf.ts --ai; fi
-          if [[ "${{ github.event_name }}" == "schedule" || "${{ inputs.run_vakifbank_world }}" == "true" ]]; then npx tsx src/scrapers/vakifbank/world.ts --ai; fi
+      - name: 💳 Run State Banks - Ziraat Bankkart
+        if: matrix.group == 'ziraat' && (github.event_name == 'schedule' || inputs.run_bankkart == 'true')
+        run: npx tsx src/scrapers/ziraat/bankkart.ts --ai
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
+
+      - name: 💳 Run State Banks - Halkbank Paraf
+        if: matrix.group == 'halkbank' && (github.event_name == 'schedule' || inputs.run_paraf == 'true')
+        run: npx tsx src/scrapers/halkbank/paraf.ts --ai
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
+
+      - name: 💳 Run State Banks - VakıfBank World
+        if: matrix.group == 'vakifbank' && (github.event_name == 'schedule' || inputs.run_vakifbank_world == 'true')
+        run: npx tsx src/scrapers/vakifbank/world.ts --ai
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
