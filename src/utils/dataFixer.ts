@@ -53,7 +53,19 @@ export function standardizeBenefit(text: string): string {
     if (clean.includes('%')) {
         const pctMatch = clean.match(/(%\s*\d+|\d+\s*%)/);
         if (pctMatch) {
+            // Keep existing label if it explicitly says Indirim/Discount
             if (clean.toLowerCase().includes('indirim')) return `${pctMatch[1].replace(/\s/g, '')} İndirim`;
+            // Default to Puan ONLY if it says Puan/Chip/Bonus/Worldpuan etc. or if ambiguous but NOT discount
+            if (clean.match(/puan|chip|bonus|world|maxi|paraf/i)) return `${pctMatch[1].replace(/\s/g, '')} Puan`;
+
+            // If completely ambiguous (just "%10"), rely on field name context (earning vs discount) or default to Puan as last resort?
+            // Better to leave it ambiguous or assume Puan for now but allow "İndirim" passed from AI to survive step 2.
+
+            // To ensure "İndirim" survives if it was stripped in step 2:
+            // Step 2 removed "İmkanı", "Fırsatı" etc but NOT "İndirim" (wait, check step 2)
+            // Original Step 2 removed: peşin fiyatına, vade farksız, ücretsiz, toplamda, varan, değerinde, hediye, fırsatı, imkanı, kazanma, özel, ayrıcalığı
+            // "İndirim" was NOT removed in step 2.
+
             return `${pctMatch[1].replace(/\s/g, '')} Puan`;
         }
     }
