@@ -55,22 +55,20 @@ export function standardizeBenefit(text: string): string {
         if (pctMatch) {
             // Keep existing label if it explicitly says Indirim/Discount
             if (clean.toLowerCase().includes('indirim')) return `${pctMatch[1].replace(/\s/g, '')} İndirim`;
-            // Default to Puan ONLY if it says Puan/Chip/Bonus/Worldpuan etc. or if ambiguous but NOT discount
+            // USE PUAN only if explicit point keywords exist
             if (clean.match(/puan|chip|bonus|world|maxi|paraf/i)) return `${pctMatch[1].replace(/\s/g, '')} Puan`;
 
-            // If completely ambiguous (just "%10"), rely on field name context (earning vs discount) or default to Puan as last resort?
-            // Better to leave it ambiguous or assume Puan for now but allow "İndirim" passed from AI to survive step 2.
-
-            // To ensure "İndirim" survives if it was stripped in step 2:
-            // Step 2 removed "İmkanı", "Fırsatı" etc but NOT "İndirim" (wait, check step 2)
-            // Original Step 2 removed: peşin fiyatına, vade farksız, ücretsiz, toplamda, varan, değerinde, hediye, fırsatı, imkanı, kazanma, özel, ayrıcalığı
-            // "İndirim" was NOT removed in step 2.
-
-            return `${pctMatch[1].replace(/\s/g, '')} Puan`;
+            // Default fallback for percentages: In Turkey, % usually means DISCOUNT (İndirim), not points.
+            return `${pctMatch[1].replace(/\s/g, '')} İndirim`;
         }
     }
 
-    // 5. Final max length truncation
+    // 5. Cleanup Junk (0% Puan, 0 TL)
+    if (clean === '0% Puan' || clean === '0 TL Puan' || clean.startsWith('0 TL') || clean.startsWith('0%')) {
+        return ''; // Return empty to indicate invalid/missing
+    }
+
+    // 6. Final max length truncation
     if (clean.length > 25) {
         clean = clean.substring(0, 22) + '...';
     }
