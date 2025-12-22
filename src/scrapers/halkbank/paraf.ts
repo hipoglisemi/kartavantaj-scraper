@@ -110,13 +110,25 @@ async function runParafScraper() {
                     const title = titleEl ? titleEl.innerText.trim() : 'Başlıksız Kampanya';
 
                     let image = null;
+
+                    // NEW: AEM-based structure - Try img tag first
                     // @ts-ignore
-                    const imgDiv = document.querySelector('.master-banner__image');
-                    if (imgDiv) {
-                        const style = imgDiv.getAttribute('style');
-                        if (style) {
-                            const match = style.match(/url\(['"]?(.*?)['"]?\)/);
-                            if (match) image = match[1];
+                    const imgElement = document.querySelector('.cmp-image__image') ||
+                        document.querySelector('.cmp-teaser__image img') ||
+                        document.querySelector('img[src*="teaser.coreimg"]');
+
+                    if (imgElement) {
+                        image = imgElement.getAttribute('src');
+                    } else {
+                        // FALLBACK: Old structure with background-image (kept for compatibility)
+                        // @ts-ignore
+                        const imgDiv = document.querySelector('.master-banner__image');
+                        if (imgDiv) {
+                            const style = imgDiv.getAttribute('style');
+                            if (style) {
+                                const match = style.match(/url\(['"]?(.*?)['"]?\)/);
+                                if (match) image = match[1];
+                            }
                         }
                     }
 
