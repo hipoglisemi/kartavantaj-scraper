@@ -42,6 +42,11 @@ on:
         default: 'false'
         type: choice
         options: ['true', 'false']
+      run_business:
+        description: 'Business Card'
+        default: 'false'
+        type: choice
+        options: ['true', 'false']
       # Other Cards
       run_bonus:
         description: 'Bonus Card'
@@ -130,11 +135,12 @@ jobs:
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
 
-      - name: 💳 Run Akbank Lite (Diğer Akbank Kartlar - Wings, Free)
+      - name: 💳 Run Akbank Lite (Diğer Akbank Kartlar - Wings, Free, Business)
         if: matrix.group == 'akbank-lite'
         run: |
           if [[ "${{ github.event_name }}" == "schedule" || "${{ inputs.run_wings }}" == "true" ]]; then npx tsx src/scrapers/akbank/wings.ts --ai; fi
           if [[ "${{ github.event_name }}" == "schedule" || "${{ inputs.run_free }}" == "true" ]]; then npx tsx src/scrapers/akbank/free.ts --ai; fi
+          if [[ "${{ github.event_name }}" == "schedule" || "${{ inputs.run_business }}" == "true" ]]; then npx tsx src/scrapers/akbank/business.ts --ai; fi
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
