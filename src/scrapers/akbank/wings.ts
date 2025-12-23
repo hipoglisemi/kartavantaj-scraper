@@ -1,5 +1,6 @@
 import axios from 'axios';
 import * as cheerio from 'cheerio';
+import puppeteer from 'puppeteer';
 import { createClient } from '@supabase/supabase-js';
 import * as dotenv from 'dotenv';
 import { parseWithGemini } from '../../services/geminiParser';
@@ -151,30 +152,36 @@ async function runWingsScraper() {
     console.log(`   📊 Total: ${campaignsToProcess.length}, New: ${campaignsToProcess.length - existingUrls.size}, Incomplete: ${incompleteUrls.size}, Complete: ${completeCount}`);
     console.log(`   ⚡ Skipping ${completeCount} complete campaigns, processing ${campaignsToScrape.length} (${campaignsToProcess.length - existingUrls.size} new + ${incompleteUrls.size} incomplete)...\n`);
 
+    // Launch Puppeteer browser for JavaScript rendering
+    const browser = await puppeteer.launch({
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-blink-features=AutomationControlled']
+    });
+    const browserPage = await browser.newPage();
+    await browserPage.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+
     // Process New + Incomplete Campaigns
     for (const item of campaignsToScrape) {
         const fullUrl = new URL(item.href, CARD_CONFIG.baseUrl).toString();
         console.log(`   🔍 ${fullUrl}`);
         try {
-            const detailResponse = await axios.get(fullUrl, {
-                headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' }
-            });
-            const html = detailResponse.data;
+            // Use Puppeteer to render JavaScript
+            await browserPage.goto(fullUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+            await browserPage.waitForSelector('img', { timeout: 5000 }).catch(() => { });
+
+            const html = await browserPage.content();
             const $ = cheerio.load(html);
 
-            // Wings detail page structure analysis from research:
-            // Title: h1.banner-title or similar.
+            // Extract title
             const title = $('h1.banner-title').text().trim() || item.title || 'Başlıksız';
 
-            // Image: Wings doesn't use specific classes, but campaign images are in /api/uploads/
-            // Get first image that's from uploads (excluding logo.svg)
-            let imageUrl: string | null = null;
-            $('img').each((_, el) => {
-                const src = $(el).attr('src');
-                if (src && src.includes('/api/uploads/') && !src.includes('logo')) {
-                    imageUrl = new URL(src, CARD_CONFIG.baseUrl).toString();
-                    return false; // break
-                }
+            // Extract image using page.evaluate (more reliable for JS-rendered content)
+            const imageUrl = await browserPage.evaluate(() => {
+                const imgs = Array.from(document.querySelectorAll('img'));
+                const campaignImg = imgs.find(img =>
+                    img.src && img.src.includes('/api/uploads/') && !img.src.includes('logo')
+                );
+                return campaignImg?.src || null;
             });
 
             let campaignData;
@@ -234,6 +241,7 @@ async function runWingsScraper() {
         }
         await sleep(1500);
     }
+    await browser.close();
     console.log(`\n✅ Done!`);
 }
 
