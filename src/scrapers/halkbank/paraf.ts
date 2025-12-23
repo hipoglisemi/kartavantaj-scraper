@@ -5,6 +5,7 @@ import * as dotenv from 'dotenv';
 import { parseWithGemini } from '../../services/geminiParser';
 import { generateSectorSlug } from '../../utils/slugify';
 import { syncEarningAndDiscount } from '../../utils/dataFixer';
+import { optimizeCampaigns } from '../../utils/campaignOptimizer';
 import { normalizeBankName } from '../../utils/bankMapper';
 
 dotenv.config();
@@ -20,84 +21,47 @@ const CAMPAIGNS_URL = 'https://www.paraf.com.tr/tr/kampanyalar.html';
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 async function runParafScraper() {
-    console.log('🚀 Starting Halkbank (Paraf) Scraper...');
-    const isAIEnabled = process.argv.includes('--ai');
-    const limitArg = process.argv.find(arg => arg.startsWith('--limit='));
-    const limit = limitArg ? parseInt(limitArg.split('=')[1]) : Infinity;
+    console.log('\n💳 Paraf (Halkbank)');
+
+    const args = process.argv.slice(2);
+    const limitArgIndex = args.indexOf('--limit');
+    const limit = limitArgIndex !== -1 ? parseInt(args[limitArgIndex + 1]) : 999;
+    const isAIEnabled = args.includes('--ai');
 
     const browser = await puppeteer.launch({
         headless: true,
-        args: [
-            '--no-sandbox',
-            '--disable-setuid-sandbox',
-            '--disable-blink-features=AutomationControlled',
-            '--disable-features=IsolateOrigins,site-per-process'
-        ]
+        args: ['--no-sandbox', '--disable-setuid-sandbox']
     });
     const page = await browser.newPage();
 
-    // Set realistic user agent
-    await page.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
-
-    // Set extra headers
-    await page.setExtraHTTPHeaders({
-        'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
-    });
-
-    // Set viewport for better loading
-    await page.setViewport({ width: 1920, height: 1080 });
-
-    // Hide webdriver
+    // Bot detection bypass
     await page.evaluateOnNewDocument(() => {
-        // @ts-ignore - browser context
+        // @ts-ignore
         Object.defineProperty(navigator, 'webdriver', { get: () => false });
+        // @ts-ignore
+        window.chrome = { runtime: {} };
     });
 
     try {
-        console.log(`\n   🔍 Navigating to ${CAMPAIGNS_URL}...`);
-        await page.goto(CAMPAIGNS_URL, { waitUntil: 'networkidle2', timeout: 60000 });
+        await page.goto(CAMPAIGNS_URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
 
-        // Handle "Daha Fazla" (Load More) button logic
+        // Load more campaigns if needed
         let hasMore = true;
         let buttonClickCount = 0;
-        const MAX_CLICKS = 30; // Paraf uses many clicks
+        const maxClicks = 5;
 
-        console.log('   🔄 Loading campaigns...');
-
-        while (hasMore && buttonClickCount < MAX_CLICKS) {
-            // Check current campaign count
-            const currentCount = await page.evaluate(() => {
-                // @ts-ignore
-                return document.querySelectorAll('.cmp-list--campaigns .cmp-teaser__title a').length;
-            });
-
-            if (currentCount >= limit) {
-                console.log(`   ✅ Enough campaigns loaded (${currentCount} >= ${limit})`);
-                break;
-            }
-
+        while (hasMore && buttonClickCount < maxClicks) {
             try {
-                // Selector based on Python script: ".button--more-campaign a"
-                const buttonFound = await page.evaluate(() => {
-                    // @ts-ignore
-                    const btn = document.querySelector('.button--more-campaign a');
-                    if (btn && btn.offsetParent !== null) { // Check visibility
-                        (btn as any).click();
-                        return true;
-                    }
-                    return false;
-                });
-
-                if (buttonFound) {
-                    await sleep(3000); // Paraf is slow, wait more
+                const loadMoreBtn = await page.$('.cmp-list--campaigns .cmp-list__load-more button');
+                if (loadMoreBtn) {
+                    await loadMoreBtn.click();
+                    await sleep(2000);
                     buttonClickCount++;
-                    process.stdout.write('.');
+                    console.log(`   👇 Loaded more campaigns (${buttonClickCount}/${maxClicks})`);
                 } else {
                     hasMore = false;
                 }
             } catch (e) {
-                console.log('   ℹ️ No more buttons found or error clicking.');
                 hasMore = false;
             }
         }
@@ -114,41 +78,22 @@ async function runParafScraper() {
                     links.push(href);
                 }
             });
+            // @ts-ignore
             return [...new Set(links)];
         });
 
         const campaignLinks = allCampaignLinks.slice(0, limit);
         console.log(`   🎉 Found ${allCampaignLinks.length} campaigns. Processing first ${campaignLinks.length}...`);
 
-        // AI OPTIMIZATION: Check which campaigns already exist in database
-        console.log(`   🔍 Checking for existing campaigns in database...`);
+        // Check for new and incomplete campaigns
         const fullUrls = campaignLinks.map(link =>
             link.startsWith('http') ? link : `${BASE_URL}${link}`
         );
 
-        const { data: existingCampaigns } = await supabase
-            .from('campaigns')
-            .select('reference_url')
-            .eq('card_name', 'Paraf')
-            .in('reference_url', fullUrls);
+        const { urlsToProcess } = await optimizeCampaigns(fullUrls, 'Paraf');
 
-        const existingUrls = new Set(
-            existingCampaigns?.map(c => c.reference_url) || []
-        );
-
-        // Filter to only new campaigns
-        const newCampaignLinks = campaignLinks.filter(link => {
-            const fullUrl = link.startsWith('http') ? link : `${BASE_URL}${link}`;
-            return !existingUrls.has(fullUrl);
-        });
-
-        console.log(`   📊 Total: ${campaignLinks.length}, Existing: ${existingUrls.size}, New: ${newCampaignLinks.length}`);
-        console.log(`   ⚡ Skipping ${existingUrls.size} existing campaigns, processing ${newCampaignLinks.length} new ones...`);
-
-        // Process Only New Campaigns
-        for (const link of newCampaignLinks) {
-            const fullUrl = link.startsWith('http') ? link : `${BASE_URL}${link}`;
-
+        // Process New + Incomplete Campaigns
+        for (const fullUrl of urlsToProcess) {
             console.log(`\n   🔍 Processing: ${fullUrl}`);
 
             try {
@@ -177,96 +122,64 @@ async function runParafScraper() {
                         image = teaserImg.getAttribute('src');
                     }
 
-                    // PRIORITY 2: Any image with /kampanyalar/ in path (skip header/logo images)
+                    // PRIORITY 2: Banner image
                     if (!image) {
                         // @ts-ignore
-                        const allImages = Array.from(document.querySelectorAll('img'));
-                        for (const img of allImages) {
-                            const src = (img as any).getAttribute('src');
-                            if (src && src.includes('/kampanyalar/') && !src.includes('logo') && !src.includes('menu')) {
-                                image = src;
-                                break;
-                            }
-                        }
-                    }
-
-                    // PRIORITY 3: coreimg images (excluding header)
-                    if (!image) {
-                        // @ts-ignore
-                        const coreimgImages = Array.from(document.querySelectorAll('img[src*="coreimg"]'));
-                        for (const img of coreimgImages) {
-                            const src = (img as any).getAttribute('src');
-                            if (src && !src.includes('Header') && !src.includes('logo') && !src.includes('menu')) {
-                                image = src;
-                                break;
-                            }
-                        }
-                    }
-
-                    // FALLBACK: Old structure with background-image
-                    if (!image) {
-                        // @ts-ignore
-                        const imgDiv = document.querySelector('.master-banner__image');
-                        if (imgDiv) {
-                            const style = imgDiv.getAttribute('style');
-                            if (style) {
-                                const match = style.match(/url\(['"]?(.*?)['"]?\)/);
-                                if (match) image = match[1];
-                            }
-                        }
+                        const bannerImg = document.querySelector('.master-banner__image img');
+                        if (bannerImg) image = bannerImg.getAttribute('src');
                     }
 
                     if (image && !image.startsWith('http')) {
                         image = baseUrl + image;
                     }
 
-                    return { title, image };
+                    // @ts-ignore
+                    const descEl = document.querySelector('.cmp-text p');
+                    // @ts-ignore
+                    const description = descEl ? descEl.innerText.trim() : title;
+
+                    return { title, image, description };
                 }, BASE_URL);
 
-                // AI Parsing
                 let campaignData;
+                const normalizedBank = normalizeBankName('Halkbank');
+
                 if (isAIEnabled) {
-                    campaignData = await parseWithGemini(html, fullUrl, 'Halkbank');
+                    campaignData = await parseWithGemini(html, fullUrl, 'Paraf');
+
+                    // Merge fallback image if AI missed it
+                    if (!campaignData.image && fallbackData.image) {
+                        campaignData.image = fallbackData.image;
+                        console.log('      🔧 Used Puppeteer fallback image');
+                    }
                 } else {
                     campaignData = {
                         title: fallbackData.title,
-                        description: fallbackData.title,
+                        description: fallbackData.description,
+                        image: fallbackData.image,
+                        category: 'Diğer',
+                        sector_slug: 'genel',
                         card_name: 'Paraf',
+                        bank: normalizedBank,
                         url: fullUrl,
                         reference_url: fullUrl,
-                        image: fallbackData.image || '',
-                        category: 'Diğer',
-                        sector_slug: 'diger',
-                        is_active: true
+                        is_active: true,
+                        terms: [],
+                        tags: []
                     };
                 }
 
                 if (campaignData) {
-                    // Force fields
-                    campaignData.title = fallbackData.title; // Strict Assignment
+                    // Ensure critical fields
                     campaignData.card_name = 'Paraf';
-                    campaignData.bank = await normalizeBankName('Halkbank'); // Enforce strict bank assignment
-
-                    // MAP FIELDS TO DB SCHEMA
+                    campaignData.bank = normalizedBank;
                     campaignData.url = fullUrl;
                     campaignData.reference_url = fullUrl;
+                    if (!campaignData.sector_slug) campaignData.sector_slug = 'genel';
 
-                    // Prioritize AI-extracted image, use fallback only if AI didn't find one
-                    if (!campaignData.image && fallbackData.image) {
-                        campaignData.image = fallbackData.image;
-                    } else if (!campaignData.image && !fallbackData.image) {
-                        // Only use generic logo if no image was found at all
-                        campaignData.image = 'https://www.halkbank.com.tr/content/dam/halkbank/logo/halkbank-logo.png';
-                    }
-
-                    // campaignData.image_url = fallbackData.image;
-
-                    campaignData.category = campaignData.category || 'Diğer';
-                    campaignData.sector_slug = generateSectorSlug(campaignData.category);
                     syncEarningAndDiscount(campaignData);
-                    campaignData.is_active = true;
 
-                    // Filter out expired campaigns if end_date exists
+                    // Check expiration
                     if (campaignData.end_date) {
                         const today = new Date();
                         today.setHours(0, 0, 0, 0);
@@ -277,29 +190,24 @@ async function runParafScraper() {
                         }
                     }
 
-                    const { error } = await supabase
-                        .from('campaigns')
-                        .upsert(campaignData, { onConflict: 'reference_url' });
-
+                    const { error } = await supabase.from('campaigns').upsert(campaignData, { onConflict: 'reference_url' });
                     if (error) {
-                        console.error(`      ❌ Supabase Error: ${error.message}`);
+                        console.error(`      ❌ Error saving: ${error.message}`);
                     } else {
-                        console.log(`      🖼️  Image: ${campaignData.image}`);
-                        console.log(`      ✅ Saved to DB: ${fallbackData.title}`);
+                        console.log(`      ✅ Saved: ${campaignData.title}`);
                     }
                 }
-
-            } catch (err: any) {
-                console.error(`      ❌ Error processing detail ${fullUrl}: ${err.message}`);
+            } catch (error: any) {
+                console.error(`      ❌ Error scraping detail: ${error.message}`);
             }
-
-            await sleep(1000);
         }
 
-    } catch (error: any) {
-        console.error(`❌ Global Error: ${error.message}`);
+    } catch (error) {
+        console.error('❌ General error:', error);
     } finally {
         await browser.close();
+        console.log('\n✅ Scraper finished.');
+        process.exit(0);
     }
 }
 
