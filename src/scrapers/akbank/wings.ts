@@ -162,7 +162,8 @@ async function runWingsScraper() {
             '--disable-features=IsolateOrigins,site-per-process',
             '--window-size=1920,1080',
             '--disable-web-security',
-            '--disable-infobars'
+            '--disable-infobars',
+            '--ignore-certificate-errors'
         ]
     });
     const browserPage = await browser.newPage();
@@ -170,17 +171,17 @@ async function runWingsScraper() {
 
     // Bot detection bypass
     await browserPage.evaluateOnNewDocument(() => {
-        // @ts-ignore - Browser context
+        // @ts-ignore
         Object.defineProperty(navigator, 'webdriver', { get: () => false });
-        // @ts-ignore - Browser context
+        // @ts-ignore
         window.chrome = { runtime: {} };
-        // @ts-ignore - Browser context
+        // @ts-ignore
         Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3] });
-        // @ts-ignore - Browser context
+        // @ts-ignore
         Object.defineProperty(navigator, 'languages', { get: () => ['tr-TR', 'tr'] });
     });
 
-    // Request interception to block unnecessary resources and reduce connection load
+    // Request interception
     await browserPage.setRequestInterception(true);
     browserPage.on('request', (req: any) => {
         if (['image', 'script', 'document', 'xhr', 'fetch'].includes(req.resourceType())) {
@@ -195,127 +196,138 @@ async function runWingsScraper() {
         const fullUrl = new URL(item.href, CARD_CONFIG.baseUrl).toString();
         console.log(`   🔍 ${fullUrl}`);
 
-        let retries = 3;
-        let success = false;
+        let html = '';
+        let imageUrl: string | null = null;
+        let useFallback = false;
 
-        while (retries > 0 && !success) {
+        // Try Puppeteer First
+        try {
+            await browserPage.goto(fullUrl, {
+                waitUntil: 'domcontentloaded',
+                timeout: 45000
+            });
+
+            // Wait safely for image
             try {
-                // Use Puppeteer to render JavaScript with retry
-                // Switching to domcontentloaded + manual wait to avoid networkidle2 connection resets
-                await browserPage.goto(fullUrl, {
-                    waitUntil: 'domcontentloaded',
-                    timeout: 60000
+                await sleep(2000); // Basic wait
+                await browserPage.waitForSelector('.privileges-detail-image img', { timeout: 4000 });
+            } catch (e) {
+                // ignore timeout
+            }
+
+            html = await browserPage.content();
+
+            // Extract image via Puppeteer
+            imageUrl = await browserPage.evaluate(() => {
+                // @ts-ignore
+                const detailImg = document.querySelector('.privileges-detail-image img');
+                // @ts-ignore
+                if (detailImg && detailImg.src && detailImg.src.includes('/api/uploads/')) {
+                    // @ts-ignore
+                    return detailImg.src;
+                }
+                // @ts-ignore
+                const imgs = Array.from(document.querySelectorAll('img'));
+                // @ts-ignore
+                const campaignImg = imgs.find((img: any) =>
+                    img.src &&
+                    img.src.includes('/api/uploads/') &&
+                    !img.src.includes('logo') &&
+                    img.naturalWidth > 400 &&
+                    img.naturalHeight > 250
+                );
+                return (campaignImg as any)?.src || null;
+            });
+
+        } catch (puppeteerError: any) {
+            console.warn(`      ⚠️  Puppeteer failed (${puppeteerError.message}), using Axios fallback...`);
+            useFallback = true;
+
+            // Fallback to Axios
+            try {
+                const response = await axios.get(fullUrl, {
+                    headers: {
+                        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
+                    },
+                    timeout: 20000
                 });
-
-                // Wait specifically for campaign images to load
-                try {
-                    await sleep(3000);  // Basic wait
-                    // Try to wait for the specific detail image container
-                    await browserPage.waitForSelector('.privileges-detail-image img', { timeout: 5000 });
-                } catch (e) {
-                    // If specific class not found, perform generic wait
-                    await sleep(2000);
-                }
-
-                success = true;
-
-                const html = await browserPage.content();
-                const $ = cheerio.load(html);
-
-                // Extract title
-                const title = $('h1.banner-title').text().trim() || item.title || 'Başlıksız';
-
-                // Extract image using page.evaluate (more reliable for JS-rendered content)
-                const imageUrl = await browserPage.evaluate(() => {
-                    // @ts-ignore - Browser context
-                    // 1. Look for the specific detail image class found in analysis
-                    const detailImg = document.querySelector('.privileges-detail-image img');
-                    // @ts-ignore
-                    if (detailImg && detailImg.src && detailImg.src.includes('/api/uploads/')) {
-                        // @ts-ignore
-                        return detailImg.src;
-                    }
-
-                    // 2. Fallback: Look for large landscape images (filtering out small generic logos/banners)
-                    // @ts-ignore
-                    const imgs = Array.from(document.querySelectorAll('img'));
-                    // @ts-ignore
-                    const campaignImg = imgs.find((img: any) =>
-                        img.src &&
-                        img.src.includes('/api/uploads/') &&
-                        !img.src.includes('logo') &&
-                        img.naturalWidth > 400 && // Filter out small generic images (like the 238px wing image)
-                        img.naturalHeight > 250
-                    );
-                    return (campaignImg as any)?.src || null;
-                });
-
-                let campaignData;
-                if (isAIEnabled) {
-                    campaignData = await parseWithGemini(html, fullUrl, 'Akbank');
-                } else {
-                    campaignData = {
-                        title,
-                        description: title,
-                        category: 'Diğer',
-                        sector_slug: 'diger',
-                        card_name: CARD_CONFIG.cardName,
-                        bank: normalizedBank,
-                        url: fullUrl,
-                        reference_url: fullUrl,
-                        is_active: true
-                    };
-                }
-                if (campaignData) {
-                    campaignData.title = title;
-
-                    // Image priority: AI > Scraper fallback > Placeholder
-                    if (!campaignData.image && imageUrl) {
-                        campaignData.image = imageUrl;
-                        console.log(`      🔧 Using Puppeteer image (AI didn't find one)`);
-                    } else if (campaignData.image) {
-                        console.log(`      🤖 Using AI image`);
-                    } else if (!campaignData.image && !imageUrl) {
-                        console.log('      ⚠️  No image found (neither AI nor Puppeteer)');
-                    }
-
-                    campaignData.card_name = CARD_CONFIG.cardName;
-                    campaignData.bank = normalizedBank;
-                    campaignData.url = fullUrl;
-                    campaignData.reference_url = fullUrl;
-                    campaignData.category = campaignData.category || 'Diğer';
-                    campaignData.sector_slug = generateSectorSlug(campaignData.category);
-                    syncEarningAndDiscount(campaignData);
-                    campaignData.is_active = true;
-
-                    if (campaignData.end_date) {
-                        const today = new Date();
-                        today.setHours(0, 0, 0, 0);
-                        const endDate = new Date(campaignData.end_date);
-                        if (endDate < today) {
-                            console.log(`      ⚠️  Expired (${campaignData.end_date}), skipping...`);
-                            continue;
-                        }
-                    }
-
-                    const { error } = await supabase.from('campaigns').upsert(campaignData, { onConflict: 'reference_url' });
-                    if (error) console.error(`      ❌ ${error.message}`);
-                    else {
-                        console.log(`      🖼️  Puppeteer found: ${imageUrl || 'none'}`);
-                        console.log(`      💾 Saved image: ${campaignData.image || 'none'}`);
-                        console.log(`      ✅ Saved: ${title}`);
-                    }
-                }
-            } catch (error: any) {
-                retries--;
-                if (retries > 0) {
-                    console.log(`      ⚠️  Connection error, retrying... (${retries} attempts left)`);
-                    await sleep(3000 * (4 - retries)); // Exponential backoff
-                } else {
-                    console.error(`      ❌ ${error.message}`);
-                }
+                html = response.data;
+            } catch (axiosError: any) {
+                console.error(`      ❌ Axios fallback also failed: ${axiosError.message}`);
+                continue; // Skip this item if both fail
             }
         }
+
+        const $ = cheerio.load(html);
+        const title = $('h1.banner-title').text().trim() || item.title || 'Başlıksız';
+
+        // ... Process Logic (Cheerio/AI) same as before but using 'html' variable
+
+        let campaignData;
+        if (isAIEnabled) {
+            campaignData = await parseWithGemini(html, fullUrl, 'Akbank');
+        } else {
+            campaignData = {
+                title,
+                description: title,
+                category: 'Diğer',
+                sector_slug: 'diger',
+                card_name: CARD_CONFIG.cardName,
+                bank: normalizedBank,
+                url: fullUrl,
+                reference_url: fullUrl,
+                is_active: true
+            };
+        }
+
+        if (campaignData) {
+            campaignData.title = title;
+
+            // Image assignment logic
+            if (!campaignData.image && imageUrl) {
+                campaignData.image = imageUrl;
+                console.log(`      🔧 Using Puppeteer extracted image`);
+            } else if (!campaignData.image && !imageUrl && useFallback) {
+                // Try to find image in static HTML if fallback matched
+                // Usually client-side rendered but worth a try with Cheerio
+                const staticImg = $('.privileges-detail-image img').attr('src');
+                if (staticImg) {
+                    campaignData.image = staticImg.startsWith('http') ? staticImg : `https://www.wingscard.com.tr${staticImg}`;
+                    console.log(`      🔧 Using static HTML image`);
+                }
+            }
+
+            if (!campaignData.image) {
+                console.log('      ⚠️  No image found');
+            }
+
+            campaignData.card_name = CARD_CONFIG.cardName;
+            campaignData.bank = normalizedBank;
+            campaignData.url = fullUrl;
+            campaignData.reference_url = fullUrl;
+            campaignData.category = campaignData.category || 'Diğer';
+            campaignData.sector_slug = generateSectorSlug(campaignData.category);
+            syncEarningAndDiscount(campaignData);
+            campaignData.is_active = true;
+
+            if (campaignData.end_date) {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const endDate = new Date(campaignData.end_date);
+                if (endDate < today) {
+                    console.log(`      ⚠️  Expired (${campaignData.end_date}), skipping...`);
+                    continue;
+                }
+            }
+
+            const { error } = await supabase.from('campaigns').upsert(campaignData, { onConflict: 'reference_url' });
+            if (error) console.error(`      ❌ ${error.message}`);
+            else {
+                console.log(`      ✅ Saved: ${title}`);
+            }
+        }
+
         await sleep(2000);
     }
     await browser.close();
