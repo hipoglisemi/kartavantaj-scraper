@@ -50,6 +50,7 @@ async function runParafScraper() {
 
     // Hide webdriver
     await page.evaluateOnNewDocument(() => {
+        // @ts-ignore - browser context
         Object.defineProperty(navigator, 'webdriver', { get: () => false });
     });
 
@@ -156,7 +157,7 @@ async function runParafScraper() {
                         // @ts-ignore
                         const allImages = Array.from(document.querySelectorAll('img'));
                         for (const img of allImages) {
-                            const src = img.getAttribute('src');
+                            const src = (img as any).getAttribute('src');
                             if (src && src.includes('/kampanyalar/') && !src.includes('logo') && !src.includes('menu')) {
                                 image = src;
                                 break;
@@ -169,7 +170,7 @@ async function runParafScraper() {
                         // @ts-ignore
                         const coreimgImages = Array.from(document.querySelectorAll('img[src*="coreimg"]'));
                         for (const img of coreimgImages) {
-                            const src = img.getAttribute('src');
+                            const src = (img as any).getAttribute('src');
                             if (src && !src.includes('Header') && !src.includes('logo') && !src.includes('menu')) {
                                 image = src;
                                 break;
@@ -225,10 +226,10 @@ async function runParafScraper() {
                     campaignData.url = fullUrl;
                     campaignData.reference_url = fullUrl;
 
-                    // Prioritize fallback image extraction
-                    if (fallbackData.image) {
+                    // Prioritize AI-extracted image, use fallback only if AI didn't find one
+                    if (!campaignData.image && fallbackData.image) {
                         campaignData.image = fallbackData.image;
-                    } else if (!campaignData.image) {
+                    } else if (!campaignData.image && !fallbackData.image) {
                         // Only use generic logo if no image was found at all
                         campaignData.image = 'https://www.halkbank.com.tr/content/dam/halkbank/logo/halkbank-logo.png';
                     }
