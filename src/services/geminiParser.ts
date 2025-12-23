@@ -368,37 +368,33 @@ Extract campaign data into JSON matching this EXACT schema:
   "title": "string (catchy campaign title)",
   "description": "string (2-3 sentences with emojis)",
   "category": "string (MUST be one of: ${masterData.categories.join(', ')})",
-  "discount": "string (CONCISE summary, max 20 chars, e.g. '1000 TL İndirim')",
-  "earning": "string (CONCISE total benefit, max 20 chars. IMPORTANT: Use 'Puan' for points/cashback, 'İndirim' for discounts. E.g. '500 TL Puan', '%10 İndirim')",
-  "min_spend": number (CRITICAL: If the campaign is cumulative (e.g. 'Every 2500 TL get 150 TL, total 2000 TL'), calculate the TOTAL spend required to get the full reward. E.g. (2000/150)*2500 = 33333. If it's a single transaction campaign, use the minimum transaction amount.),
-  "max_discount": number (The TOTAL maximum earning/discount cap for the entire campaign, not per transaction. If 'max 100 TL', put 100.),
+  "discount": "string (Use ONLY for installment info, e.g. '9 Taksit', '6 Ay Taksit'. Formatting MUST be '{Number} Taksit'. If no installment, leave empty.)",
+  "earning": "string (Use ONLY for points/cashback/discounts. Formatting MUST be '{Amount} TL Puan' or '{Amount} TL İndirim' or '%{X} İndirim'. Max 20 chars. If no benefit, leave empty.)",
+  "min_spend": number (CRITICAL: Total spend required. If FOREIGN CURRENCY, convert to TL using current approximate rates (e.g. $1=35, €1=38) for calculation.),
+  "max_discount": number (Total max cap),
   "discount_percentage": number,
   "valid_from": "YYYY-MM-DD",
   "valid_until": "YYYY-MM-DD",
-  "participation_method": "string (brief how-to)",
-  "participation_points": ["array", "of", "steps"],
-  "conditions": ["array", "of", "rules"],
-  "eligible_customers": ["array", "of", "card types"],
-  "valid_locations": ["array", "of", "locations"],
-  "merchant": "string (store name)",
-  "difficulty_level": "string (Kolay/Orta/Zor)",
-  "bank": "string (MUST be one of: ${masterData.banks.join(', ')})",
-  "card_name": "string (card type)",
-  "brand": ["array", "of", "brand", "names", "mentioned", "in", "the", "campaign"],
+  "participation_method": "string (brief)",
+  "merchant": "string",
+  "bank": "string (MUST be: ${masterData.banks.join(', ')})",
+  "card_name": "string",
+  "brand": ["array"],
   "ai_enhanced": true
 }
 
-CRITICAL RULES:
-- category: MUST be EXACTLY one from the list above.
-- bank: MUST be EXACTLY one from the list above. ${sourceBank ? `The source bank is likely "${sourceBank}", use this unless explicitly stated otherwise.` : ''}
-- brand: Extract ALL mentioned brands (e.g. "Burger King", "Migros"). Return them as an ARRAY of strings. Match names to the list below if possible, otherwise use the canonical merchant name. List ALL brands if multiple are mentioned. List: ${masterData.brands.slice(0, 200).join(', ')}...
-- Extraction: Extract ALL fields, especially valid_until, category, and bank.
-- Formatting: Return ONLY valid JSON, no markdown.
+STRICT STANDARDIZATION RULES:
+1. BADGE TEXTS:
+   - If points/cashback: Format MUST be "500 TL Puan" (NOT "500 TL Chip-para", NOT "500 Bonus"). Use 'Puan'.
+   - If discount: Format MUST be "500 TL İndirim" or "%15 İndirim".
+   - If installments: Format MUST be "9 Taksit" (NOT "Peşin fiyatına 9 taksit").
+2. MULTI-BENEFIT: If a campaign has BOTH installments and points (e.g. 9 installments + 500 TL Puan), fill BOTH "discount" (for installments) and "earning" (for points).
+3. MATH VALIDATION: Before finishing, compare earning and min_spend. Earning MUST BE MUCH SMALLER than min_spend. If earning > min_spend, rethink your extraction.
+4. FOREIGN CURRENCY: If the campaign is in USD or EUR, convert the values to TL in your head to ensure math makes sense, but display the Original Currency + TL equivalent in description if helpful. Set min_spend in TL.
+5. CATEGORY: Avoid 'Diğer'.
 
 TEXT:
 "${text.replace(/"/g, '\\"')}"
-
-IMPORTANT: Avoid 'Diğer' if possible. Guess the most likely category based on keywords (e.g. 'Market', 'Giyim', 'Akaryakıt').
 `;
 
     console.log('   🤖 Stage 1: Full parse...');
