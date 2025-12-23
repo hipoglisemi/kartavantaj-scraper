@@ -13,7 +13,7 @@ const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_AN
 
 const CARD_CONFIG = {
     name: 'Axess Business',
-    cardName: 'Axess Business',
+    cardName: 'Business',
     bankName: 'Akbank',
     baseUrl: 'https://www.axess.com.tr',
     listApiUrl: 'https://www.axess.com.tr/ajax/kampanya-ajax-ticari.aspx',
