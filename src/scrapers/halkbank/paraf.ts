@@ -27,12 +27,31 @@ async function runParafScraper() {
 
     const browser = await puppeteer.launch({
         headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox']
+        args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-blink-features=AutomationControlled',
+            '--disable-features=IsolateOrigins,site-per-process'
+        ]
     });
     const page = await browser.newPage();
 
+    // Set realistic user agent
+    await page.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+
+    // Set extra headers
+    await page.setExtraHTTPHeaders({
+        'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
+    });
+
     // Set viewport for better loading
     await page.setViewport({ width: 1920, height: 1080 });
+
+    // Hide webdriver
+    await page.evaluateOnNewDocument(() => {
+        Object.defineProperty(navigator, 'webdriver', { get: () => false });
+    });
 
     try {
         console.log(`\n   🔍 Navigating to ${CAMPAIGNS_URL}...`);
@@ -125,18 +144,41 @@ async function runParafScraper() {
 
                     let image = null;
 
-                    // NEW: AEM-based structure - Try img tag first
-                    // @ts-ignore - browser context
-                    const imgElement = document.querySelector('.cmp-image__image') ||
-                        // @ts-ignore - browser context
-                        document.querySelector('.cmp-teaser__image img') ||
-                        // @ts-ignore - browser context
-                        document.querySelector('img[src*="teaser.coreimg"]');
+                    // PRIORITY 1: Campaign teaser image (most specific)
+                    // @ts-ignore
+                    const teaserImg = document.querySelector('.cmp-teaser__image img');
+                    if (teaserImg && teaserImg.getAttribute('src')?.includes('/kampanyalar/')) {
+                        image = teaserImg.getAttribute('src');
+                    }
 
-                    if (imgElement) {
-                        image = imgElement.getAttribute('src');
-                    } else {
-                        // FALLBACK: Old structure with background-image (kept for compatibility)
+                    // PRIORITY 2: Any image with /kampanyalar/ in path (skip header/logo images)
+                    if (!image) {
+                        // @ts-ignore
+                        const allImages = Array.from(document.querySelectorAll('img'));
+                        for (const img of allImages) {
+                            const src = img.getAttribute('src');
+                            if (src && src.includes('/kampanyalar/') && !src.includes('logo') && !src.includes('menu')) {
+                                image = src;
+                                break;
+                            }
+                        }
+                    }
+
+                    // PRIORITY 3: coreimg images (excluding header)
+                    if (!image) {
+                        // @ts-ignore
+                        const coreimgImages = Array.from(document.querySelectorAll('img[src*="coreimg"]'));
+                        for (const img of coreimgImages) {
+                            const src = img.getAttribute('src');
+                            if (src && !src.includes('Header') && !src.includes('logo') && !src.includes('menu')) {
+                                image = src;
+                                break;
+                            }
+                        }
+                    }
+
+                    // FALLBACK: Old structure with background-image
+                    if (!image) {
                         // @ts-ignore
                         const imgDiv = document.querySelector('.master-banner__image');
                         if (imgDiv) {
