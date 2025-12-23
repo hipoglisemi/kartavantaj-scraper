@@ -152,10 +152,18 @@ async function runWingsScraper() {
     console.log(`   📊 Total: ${campaignsToProcess.length}, New: ${campaignsToProcess.length - existingUrls.size}, Incomplete: ${incompleteUrls.size}, Complete: ${completeCount}`);
     console.log(`   ⚡ Skipping ${completeCount} complete campaigns, processing ${campaignsToScrape.length} (${campaignsToProcess.length - existingUrls.size} new + ${incompleteUrls.size} incomplete)...\n`);
 
-    // Launch Puppeteer browser for JavaScript rendering
+    // Launch Puppeteer browser for JavaScript rendering with better evasion
     const browser = await puppeteer.launch({
         headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-blink-features=AutomationControlled']
+        args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-blink-features=AutomationControlled',
+            '--disable-features=IsolateOrigins,site-per-process',
+            '--window-size=1920,1080',
+            '--disable-web-security',
+            '--disable-infobars'
+        ]
     });
     const browserPage = await browser.newPage();
     await browserPage.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
@@ -166,6 +174,20 @@ async function runWingsScraper() {
         Object.defineProperty(navigator, 'webdriver', { get: () => false });
         // @ts-ignore - Browser context
         window.chrome = { runtime: {} };
+        // @ts-ignore - Browser context
+        Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3] });
+        // @ts-ignore - Browser context
+        Object.defineProperty(navigator, 'languages', { get: () => ['tr-TR', 'tr'] });
+    });
+
+    // Request interception to block unnecessary resources and reduce connection load
+    await browserPage.setRequestInterception(true);
+    browserPage.on('request', (req: any) => {
+        if (['image', 'script', 'document', 'xhr', 'fetch'].includes(req.resourceType())) {
+            req.continue();
+        } else {
+            req.abort();
+        }
     });
 
     // Process New + Incomplete Campaigns
@@ -179,13 +201,14 @@ async function runWingsScraper() {
         while (retries > 0 && !success) {
             try {
                 // Use Puppeteer to render JavaScript with retry
+                // Switching to domcontentloaded + manual wait to avoid networkidle2 connection resets
                 await browserPage.goto(fullUrl, {
-                    waitUntil: 'networkidle2',  // Wait for network to be idle (images loaded)
-                    timeout: 45000
+                    waitUntil: 'domcontentloaded',
+                    timeout: 60000
                 });
 
                 // Wait specifically for campaign images to load
-                await sleep(2000);  // Extra wait for images
+                await sleep(5000);  // Extra wait for images (increased for stability)
                 await browserPage.waitForSelector('img[src*="/api/uploads/"]', { timeout: 10000 }).catch(() => { });
                 success = true;
 
