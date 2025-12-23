@@ -82,7 +82,33 @@ async function runWingsScraper() {
     const campaignsToProcess = allCampaigns.slice(0, limit);
     console.log(`\n🎉 ${campaignsToProcess.length} campaigns. Processing...\n`);
 
-    for (const item of campaignsToProcess) {
+    // AI OPTIMIZATION: Check which campaigns already exist in database
+    console.log(`   🔍 Checking for existing campaigns in database...`);
+    const fullUrls = campaignsToProcess.map(item =>
+        new URL(item.href, CARD_CONFIG.baseUrl).toString()
+    );
+
+    const { data: existingCampaigns } = await supabase
+        .from('campaigns')
+        .select('reference_url')
+        .eq('card_name', CARD_CONFIG.cardName)
+        .in('reference_url', fullUrls);
+
+    const existingUrls = new Set(
+        existingCampaigns?.map(c => c.reference_url) || []
+    );
+
+    // Filter to only new campaigns
+    const newCampaigns = campaignsToProcess.filter(item => {
+        const fullUrl = new URL(item.href, CARD_CONFIG.baseUrl).toString();
+        return !existingUrls.has(fullUrl);
+    });
+
+    console.log(`   📊 Total: ${campaignsToProcess.length}, Existing: ${existingUrls.size}, New: ${newCampaigns.length}`);
+    console.log(`   ⚡ Skipping ${existingUrls.size} existing campaigns, processing ${newCampaigns.length} new ones...\n`);
+
+    // Process Only New Campaigns
+    for (const item of newCampaigns) {
         const fullUrl = new URL(item.href, CARD_CONFIG.baseUrl).toString();
         console.log(`   🔍 ${fullUrl}`);
         try {

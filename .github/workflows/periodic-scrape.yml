@@ -2,7 +2,7 @@ name: Periodic Scraper & Auto-Fix
 
 on:
   schedule:
-    - cron: '1 0 1,8,15,22 * *'  # Her ayın 1, 8, 15, 22'sinde 03:01 TR
+    - cron: '1 0 1,15 * *'  # Her ayın 1 ve 15'inde 03:01 TR
   workflow_dispatch:
     inputs:
       # Yapı Kredi Cards

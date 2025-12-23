@@ -111,11 +111,13 @@ async function callGeminiAPI(prompt: string, retryCount = 0): Promise<any> {
             throw new Error('No response from Gemini');
         }
 
-        const cleanJson = responseText
-            .replace(/```json/g, '')
-            .replace(/```/g, '')
-            .trim();
+        // Robust JSON extraction: Find the first '{' and last '}' to avoid conversational text
+        const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) {
+            throw new Error(`AI returned text but no valid JSON object was found. Base Response: "${responseText.substring(0, 100)}..."`);
+        }
 
+        const cleanJson = jsonMatch[0].trim();
         return JSON.parse(cleanJson);
     } catch (error: any) {
         // Retry on network errors or JSON parse errors (but not on 429, handled above)

@@ -120,8 +120,33 @@ async function runParafScraper() {
         const campaignLinks = allCampaignLinks.slice(0, limit);
         console.log(`   🎉 Found ${allCampaignLinks.length} campaigns. Processing first ${campaignLinks.length}...`);
 
-        // Process Each Campaign
-        for (const link of campaignLinks) {
+        // AI OPTIMIZATION: Check which campaigns already exist in database
+        console.log(`   🔍 Checking for existing campaigns in database...`);
+        const fullUrls = campaignLinks.map(link =>
+            link.startsWith('http') ? link : `${BASE_URL}${link}`
+        );
+
+        const { data: existingCampaigns } = await supabase
+            .from('campaigns')
+            .select('reference_url')
+            .eq('card_name', 'Paraf')
+            .in('reference_url', fullUrls);
+
+        const existingUrls = new Set(
+            existingCampaigns?.map(c => c.reference_url) || []
+        );
+
+        // Filter to only new campaigns
+        const newCampaignLinks = campaignLinks.filter(link => {
+            const fullUrl = link.startsWith('http') ? link : `${BASE_URL}${link}`;
+            return !existingUrls.has(fullUrl);
+        });
+
+        console.log(`   📊 Total: ${campaignLinks.length}, Existing: ${existingUrls.size}, New: ${newCampaignLinks.length}`);
+        console.log(`   ⚡ Skipping ${existingUrls.size} existing campaigns, processing ${newCampaignLinks.length} new ones...`);
+
+        // Process Only New Campaigns
+        for (const link of newCampaignLinks) {
             const fullUrl = link.startsWith('http') ? link : `${BASE_URL}${link}`;
 
             console.log(`\n   🔍 Processing: ${fullUrl}`);
