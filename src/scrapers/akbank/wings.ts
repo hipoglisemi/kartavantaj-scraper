@@ -160,86 +160,108 @@ async function runWingsScraper() {
     const browserPage = await browser.newPage();
     await browserPage.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
 
+    // Bot detection bypass
+    await browserPage.evaluateOnNewDocument(() => {
+        Object.defineProperty(navigator, 'webdriver', { get: () => false });
+        (window as any).chrome = { runtime: {} };
+    });
+
     // Process New + Incomplete Campaigns
     for (const item of campaignsToScrape) {
         const fullUrl = new URL(item.href, CARD_CONFIG.baseUrl).toString();
         console.log(`   🔍 ${fullUrl}`);
-        try {
-            // Use Puppeteer to render JavaScript
-            await browserPage.goto(fullUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
-            await browserPage.waitForSelector('img', { timeout: 5000 }).catch(() => { });
 
-            const html = await browserPage.content();
-            const $ = cheerio.load(html);
+        let retries = 3;
+        let success = false;
 
-            // Extract title
-            const title = $('h1.banner-title').text().trim() || item.title || 'Başlıksız';
+        while (retries > 0 && !success) {
+            try {
+                // Use Puppeteer to render JavaScript with retry
+                await browserPage.goto(fullUrl, {
+                    waitUntil: 'domcontentloaded',
+                    timeout: 45000
+                });
+                await browserPage.waitForSelector('img', { timeout: 8000 }).catch(() => { });
+                success = true;
 
-            // Extract image using page.evaluate (more reliable for JS-rendered content)
-            const imageUrl = await browserPage.evaluate(() => {
-                const imgs = Array.from(document.querySelectorAll('img'));
-                const campaignImg = imgs.find(img =>
-                    img.src && img.src.includes('/api/uploads/') && !img.src.includes('logo')
-                );
-                return campaignImg?.src || null;
-            });
+                const html = await browserPage.content();
+                const $ = cheerio.load(html);
 
-            let campaignData;
-            if (isAIEnabled) {
-                campaignData = await parseWithGemini(html, fullUrl, 'Akbank');
-            } else {
-                campaignData = {
-                    title,
-                    description: title,
-                    category: 'Diğer',
-                    sector_slug: 'diger',
-                    card_name: CARD_CONFIG.cardName,
-                    bank: normalizedBank,
-                    url: fullUrl,
-                    reference_url: fullUrl,
-                    is_active: true
-                };
-            }
-            if (campaignData) {
-                campaignData.title = title;
+                // Extract title
+                const title = $('h1.banner-title').text().trim() || item.title || 'Başlıksız';
 
-                // Image priority: AI > Scraper fallback > Placeholder
-                if (!campaignData.image && imageUrl) {
-                    campaignData.image = imageUrl;
-                } else if (!campaignData.image && !imageUrl) {
-                    console.log('      ⚠️  No image found, using placeholder');
+                // Extract image using page.evaluate (more reliable for JS-rendered content)
+                const imageUrl = await browserPage.evaluate(() => {
+                    const imgs = Array.from(document.querySelectorAll('img'));
+                    const campaignImg = imgs.find(img =>
+                        img.src && img.src.includes('/api/uploads/') && !img.src.includes('logo')
+                    );
+                    return campaignImg?.src || null;
+                });
+
+                let campaignData;
+                if (isAIEnabled) {
+                    campaignData = await parseWithGemini(html, fullUrl, 'Akbank');
+                } else {
+                    campaignData = {
+                        title,
+                        description: title,
+                        category: 'Diğer',
+                        sector_slug: 'diger',
+                        card_name: CARD_CONFIG.cardName,
+                        bank: normalizedBank,
+                        url: fullUrl,
+                        reference_url: fullUrl,
+                        is_active: true
+                    };
                 }
+                if (campaignData) {
+                    campaignData.title = title;
 
-                campaignData.card_name = CARD_CONFIG.cardName;
-                campaignData.bank = normalizedBank;
-                campaignData.url = fullUrl;
-                campaignData.reference_url = fullUrl;
-                campaignData.category = campaignData.category || 'Diğer';
-                campaignData.sector_slug = generateSectorSlug(campaignData.category);
-                syncEarningAndDiscount(campaignData);
-                campaignData.is_active = true;
+                    // Image priority: AI > Scraper fallback > Placeholder
+                    if (!campaignData.image && imageUrl) {
+                        campaignData.image = imageUrl;
+                    } else if (!campaignData.image && !imageUrl) {
+                        console.log('      ⚠️  No image found, using placeholder');
+                    }
 
-                if (campaignData.end_date) {
-                    const today = new Date();
-                    today.setHours(0, 0, 0, 0);
-                    const endDate = new Date(campaignData.end_date);
-                    if (endDate < today) {
-                        console.log(`      ⚠️  Expired (${campaignData.end_date}), skipping...`);
-                        continue;
+                    campaignData.card_name = CARD_CONFIG.cardName;
+                    campaignData.bank = normalizedBank;
+                    campaignData.url = fullUrl;
+                    campaignData.reference_url = fullUrl;
+                    campaignData.category = campaignData.category || 'Diğer';
+                    campaignData.sector_slug = generateSectorSlug(campaignData.category);
+                    syncEarningAndDiscount(campaignData);
+                    campaignData.is_active = true;
+
+                    if (campaignData.end_date) {
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        const endDate = new Date(campaignData.end_date);
+                        if (endDate < today) {
+                            console.log(`      ⚠️  Expired (${campaignData.end_date}), skipping...`);
+                            continue;
+                        }
+                    }
+
+                    const { error } = await supabase.from('campaigns').upsert(campaignData, { onConflict: 'reference_url' });
+                    if (error) console.error(`      ❌ ${error.message}`);
+                    else {
+                        console.log(`      🖼️  Image: ${imageUrl}`);
+                        console.log(`      ✅ Saved: ${title}`);
                     }
                 }
-
-                const { error } = await supabase.from('campaigns').upsert(campaignData, { onConflict: 'reference_url' });
-                if (error) console.error(`      ❌ ${error.message}`);
-                else {
-                    console.log(`      🖼️  Image: ${imageUrl}`);
-                    console.log(`      ✅ Saved: ${title}`);
+            } catch (error: any) {
+                retries--;
+                if (retries > 0) {
+                    console.log(`      ⚠️  Connection error, retrying... (${retries} attempts left)`);
+                    await sleep(3000 * (4 - retries)); // Exponential backoff
+                } else {
+                    console.error(`      ❌ ${error.message}`);
                 }
             }
-        } catch (error: any) {
-            console.error(`      ❌ ${error.message}`);
         }
-        await sleep(1500);
+        await sleep(2000);
     }
     await browser.close();
     console.log(`\n✅ Done!`);
