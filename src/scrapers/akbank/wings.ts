@@ -208,8 +208,15 @@ async function runWingsScraper() {
                 });
 
                 // Wait specifically for campaign images to load
-                await sleep(5000);  // Extra wait for images (increased for stability)
-                await browserPage.waitForSelector('img[src*="/api/uploads/"]', { timeout: 10000 }).catch(() => { });
+                try {
+                    await sleep(3000);  // Basic wait
+                    // Try to wait for the specific detail image container
+                    await browserPage.waitForSelector('.privileges-detail-image img', { timeout: 5000 });
+                } catch (e) {
+                    // If specific class not found, perform generic wait
+                    await sleep(2000);
+                }
+
                 success = true;
 
                 const html = await browserPage.content();
@@ -221,9 +228,24 @@ async function runWingsScraper() {
                 // Extract image using page.evaluate (more reliable for JS-rendered content)
                 const imageUrl = await browserPage.evaluate(() => {
                     // @ts-ignore - Browser context
+                    // 1. Look for the specific detail image class found in analysis
+                    const detailImg = document.querySelector('.privileges-detail-image img');
+                    // @ts-ignore
+                    if (detailImg && detailImg.src && detailImg.src.includes('/api/uploads/')) {
+                        // @ts-ignore
+                        return detailImg.src;
+                    }
+
+                    // 2. Fallback: Look for large landscape images (filtering out small generic logos/banners)
+                    // @ts-ignore
                     const imgs = Array.from(document.querySelectorAll('img'));
+                    // @ts-ignore
                     const campaignImg = imgs.find((img: any) =>
-                        img.src && img.src.includes('/api/uploads/') && !img.src.includes('logo')
+                        img.src &&
+                        img.src.includes('/api/uploads/') &&
+                        !img.src.includes('logo') &&
+                        img.naturalWidth > 400 && // Filter out small generic images (like the 238px wing image)
+                        img.naturalHeight > 250
                     );
                     return (campaignImg as any)?.src || null;
                 });
