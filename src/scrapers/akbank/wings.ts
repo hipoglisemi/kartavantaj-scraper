@@ -221,8 +221,11 @@ async function runWingsScraper() {
                     // Image priority: AI > Scraper fallback > Placeholder
                     if (!campaignData.image && imageUrl) {
                         campaignData.image = imageUrl;
+                        console.log(`      🔧 Using Puppeteer image (AI didn't find one)`);
+                    } else if (campaignData.image) {
+                        console.log(`      🤖 Using AI image`);
                     } else if (!campaignData.image && !imageUrl) {
-                        console.log('      ⚠️  No image found, using placeholder');
+                        console.log('      ⚠️  No image found (neither AI nor Puppeteer)');
                     }
 
                     campaignData.card_name = CARD_CONFIG.cardName;
@@ -247,7 +250,8 @@ async function runWingsScraper() {
                     const { error } = await supabase.from('campaigns').upsert(campaignData, { onConflict: 'reference_url' });
                     if (error) console.error(`      ❌ ${error.message}`);
                     else {
-                        console.log(`      🖼️  Image: ${imageUrl}`);
+                        console.log(`      🖼️  Puppeteer found: ${imageUrl || 'none'}`);
+                        console.log(`      💾 Saved image: ${campaignData.image || 'none'}`);
                         console.log(`      ✅ Saved: ${title}`);
                     }
                 }
