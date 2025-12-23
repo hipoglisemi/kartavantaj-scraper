@@ -150,6 +150,9 @@ async function runVakifbankWorldScraper() {
                     syncEarningAndDiscount(campaignData);
                     campaignData.is_active = true;
 
+                    // Set default min_spend
+                    campaignData.min_spend = campaignData.min_spend || 0;
+
                     const { error } = await supabase
                         .from('campaigns')
                         .upsert(campaignData, { onConflict: 'reference_url' });

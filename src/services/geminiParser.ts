@@ -218,7 +218,7 @@ RETURN ONLY VALID JSON. NO MARKDOWN.
         .maybeSingle();
 
     // Strict Brand Cleanup
-    const brandCleaned = cleanupBrands(result.brand, masterData);
+    const brandCleaned = await cleanupBrands(result.brand, masterData);
     result.brand = brandCleaned.brand;
     result.brand_suggestion = brandCleaned.suggestion;
 
@@ -242,9 +242,29 @@ RETURN ONLY VALID JSON. NO MARKDOWN.
 }
 
 /**
- * Normalizes and cleans brand data to ensure it's a flat string and matches master data.
+ * Standardizes brand names (Sync with frontend metadataService)
  */
-function cleanupBrands(brandInput: any, masterData: MasterData): { brand: string, suggestion: string } {
+function normalizeBrandName(name: string): string {
+    if (!name) return '';
+
+    // 1. Remove common domain extensions
+    let cleanName = name.replace(/\.com\.tr/gi, '')
+        .replace(/\.com/gi, '')
+        .replace(/\.net/gi, '')
+        .replace(/\.org/gi, '');
+
+    // 2. Title Case with Turkish support
+    return cleanName.split(' ').map(word => {
+        if (word.length === 0) return '';
+        return word.charAt(0).toLocaleUpperCase('tr-TR') + word.slice(1).toLocaleLowerCase('tr-TR');
+    }).join(' ').trim();
+}
+
+/**
+ * Normalizes and cleans brand data to ensure it's a flat string and matches master data.
+ * Automatically adds new brands to master_brands if they are valid and not existing.
+ */
+async function cleanupBrands(brandInput: any, masterData: MasterData): Promise<{ brand: string, suggestion: string }> {
     let brands: string[] = [];
 
     // 1. Normalize input to array
@@ -281,13 +301,51 @@ function cleanupBrands(brandInput: any, masterData: MasterData): { brand: string
         if (match) {
             matched.push(match);
         } else {
-            unmatched.push(b.trim());
+            // New brand found!
+            const normalized = normalizeBrandName(b);
+            if (normalized && normalized.length > 1) {
+                unmatched.push(normalized);
+            }
+        }
+    }
+
+    // Process new brands: Add to DB if they don't exist
+    if (unmatched.length > 0) {
+        console.log(`   🆕 New brands detected: ${unmatched.join(', ')}`);
+        for (const newBrand of unmatched) {
+            try {
+                // Double check if it exists in DB (case insensitive)
+                const { data: existing } = await supabase
+                    .from('master_brands')
+                    .select('name')
+                    .ilike('name', newBrand)
+                    .single();
+
+                if (!existing) {
+                    const { error } = await supabase
+                        .from('master_brands')
+                        .insert([{ name: newBrand }]);
+
+                    if (!error) {
+                        console.log(`   ✅ Added new brand: ${newBrand}`);
+                        matched.push(newBrand);
+                        // Update cache to include this new brand for future matches in this run
+                        masterData.brands.push(newBrand);
+                    } else {
+                        console.error(`   ❌ Error adding brand ${newBrand}:`, error.message);
+                    }
+                } else {
+                    matched.push(existing.name);
+                }
+            } catch (err) {
+                console.error(`   ❌ Failed to process brand ${newBrand}`);
+            }
         }
     }
 
     return {
         brand: [...new Set(matched)].join(', '),
-        suggestion: matched.length === 0 ? [...new Set(unmatched)].join(', ') : ''
+        suggestion: '' // Suggestions are now automatically added to matched if verified/added
     };
 }
 
@@ -412,7 +470,7 @@ Return ONLY valid JSON with the missing fields, no markdown.
 
     // Use unified brand cleanup
     const masterDataForFinal = await fetchMasterData();
-    const brandCleaned = cleanupBrands(finalData.brand, masterDataForFinal);
+    const brandCleaned = await cleanupBrands(finalData.brand, masterDataForFinal);
 
     finalData.brand = brandCleaned.brand;
     finalData.brand_suggestion = brandCleaned.suggestion;

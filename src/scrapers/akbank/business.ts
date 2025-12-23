@@ -127,9 +127,14 @@ async function runBusinessScraper() {
                     }
                 }
 
+                // Ensure min_spend has a default value to prevent DB constraint errors
+                campaignData.min_spend = campaignData.min_spend || 0;
+
                 const { error } = await supabase.from('campaigns').upsert(campaignData, { onConflict: 'reference_url' });
-                if (error) console.error(`      ❌ ${error.message}`);
-                else {
+                if (error) {
+                    console.error(`      ❌ Upsert Error for "${title}":`, JSON.stringify(error, null, 2));
+                    console.error(`      Start of Failed Payload:`, JSON.stringify(campaignData, null, 2).substring(0, 200) + '...');
+                } else {
                     console.log(`      🖼️  Image: ${imageUrl}`);
                     console.log(`      ✅ Saved: ${title}`);
                 }

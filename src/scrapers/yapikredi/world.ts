@@ -19,16 +19,17 @@ const supabase = createClient(
 const CARD_CONFIG = {
     name: 'World',
     cardName: 'World',
-    bank: await normalizeBankName('Yapı Kredi'),
+    bankName: 'Yapı Kredi',
     baseUrl: 'https://www.worldcard.com.tr',
     listApiUrl: 'https://www.worldcard.com.tr/api/campaigns?campaignSectorId=6d897e71-1849-43a3-a64f-62840e8c0442&campaignSectorKey=tum-kampanyalar'
 };
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-async function runWorldScraper() {
+export async function runWorldScraper() {
+    const normalizedBank = await normalizeBankName(CARD_CONFIG.bankName);
     console.log(`\n💳 Starting ${CARD_CONFIG.name} Card Scraper...`);
-    console.log(`   Bank: ${CARD_CONFIG.bank}`);
+    console.log(`   Bank: ${normalizedBank}`);
     console.log(`   Source: ${CARD_CONFIG.baseUrl}\n`);
 
     const isAIEnabled = process.argv.includes('--ai');
@@ -140,7 +141,7 @@ async function runWorldScraper() {
             // AI Parsing
             let campaignData;
             if (isAIEnabled) {
-                campaignData = await parseWithGemini(html, fullUrl, CARD_CONFIG.bank);
+                campaignData = await parseWithGemini(html, fullUrl, normalizedBank);
             } else {
                 campaignData = {
                     title: title,
@@ -148,7 +149,7 @@ async function runWorldScraper() {
                     category: 'Diğer',
                     sector_slug: 'diger',
                     card_name: CARD_CONFIG.cardName,
-                    bank: CARD_CONFIG.bank,
+                    bank: normalizedBank,
                     url: fullUrl,
                     reference_url: fullUrl,
                     image: imageUrl,
@@ -160,7 +161,7 @@ async function runWorldScraper() {
                 // STRICT ASSIGNMENT - Prevent AI misclassification
                 campaignData.title = title;
                 campaignData.card_name = CARD_CONFIG.cardName;
-                campaignData.bank = CARD_CONFIG.bank;
+                campaignData.bank = normalizedBank;
                 campaignData.url = fullUrl;
                 campaignData.reference_url = fullUrl;
                 campaignData.image = imageUrl;
@@ -168,6 +169,9 @@ async function runWorldScraper() {
                 campaignData.sector_slug = generateSectorSlug(campaignData.category);
                 syncEarningAndDiscount(campaignData);
                 campaignData.is_active = true;
+
+                // Set default min_spend
+                campaignData.min_spend = campaignData.min_spend || 0;
 
                 // Upsert to Supabase
                 const { error } = await supabase

@@ -18,16 +18,17 @@ const supabase = createClient(
 const CARD_CONFIG = {
     name: 'Adios',
     cardName: 'Adios',
-    bank: await normalizeBankName('Yapı Kredi'),
+    bankName: 'Yapı Kredi',
     baseUrl: 'https://www.adioscard.com.tr',
     listApiUrl: 'https://www.adioscard.com.tr/api/campaigns?campaignSectorId=dfe87afe-9b57-4dfd-869b-c87dd00b85a1&campaignSectorKey=tum-kampanyalar'
 };
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-async function runAdiosScraper() {
+export async function runAdiosScraper() {
+    const normalizedBank = await normalizeBankName(CARD_CONFIG.bankName);
     console.log(`\n💳 Starting ${CARD_CONFIG.name} Card Scraper...`);
-    console.log(`   Bank: ${CARD_CONFIG.bank}`);
+    console.log(`   Bank: ${normalizedBank}`);
     console.log(`   Source: ${CARD_CONFIG.baseUrl}\n`);
 
     const isAIEnabled = process.argv.includes('--ai');
@@ -123,7 +124,7 @@ async function runAdiosScraper() {
             // AI Parsing
             let campaignData;
             if (isAIEnabled) {
-                campaignData = await parseWithGemini(html, fullUrl, CARD_CONFIG.bank);
+                campaignData = await parseWithGemini(html, fullUrl, normalizedBank);
             } else {
                 campaignData = {
                     title: title,
@@ -131,7 +132,7 @@ async function runAdiosScraper() {
                     category: 'Diğer',
                     sector_slug: 'diger',
                     card_name: CARD_CONFIG.cardName,
-                    bank: CARD_CONFIG.bank,
+                    bank: normalizedBank,
                     url: fullUrl,
                     reference_url: fullUrl,
                     image: imageUrl,
@@ -143,7 +144,7 @@ async function runAdiosScraper() {
                 // STRICT ASSIGNMENT - Prevent AI misclassification
                 campaignData.title = title;
                 campaignData.card_name = CARD_CONFIG.cardName;
-                campaignData.bank = CARD_CONFIG.bank;
+                campaignData.bank = normalizedBank;
                 campaignData.url = fullUrl;
                 campaignData.reference_url = fullUrl;
                 campaignData.image = imageUrl;
@@ -151,6 +152,9 @@ async function runAdiosScraper() {
                 campaignData.sector_slug = generateSectorSlug(campaignData.category);
                 syncEarningAndDiscount(campaignData);
                 campaignData.is_active = true;
+
+                // Set default min_spend
+                campaignData.min_spend = campaignData.min_spend || 0;
 
                 // Upsert to Supabase
                 const { error } = await supabase

@@ -142,7 +142,7 @@ async function runParafScraper() {
                 }, BASE_URL);
 
                 let campaignData;
-                const normalizedBank = normalizeBankName('Halkbank');
+                const normalizedBank = await normalizeBankName('Halkbank');
 
                 if (isAIEnabled) {
                     campaignData = await parseWithGemini(html, fullUrl, 'Paraf');
@@ -189,6 +189,9 @@ async function runParafScraper() {
                             continue;
                         }
                     }
+
+                    // Set default min_spend
+                    campaignData.min_spend = campaignData.min_spend || 0;
 
                     const { error } = await supabase.from('campaigns').upsert(campaignData, { onConflict: 'reference_url' });
                     if (error) {

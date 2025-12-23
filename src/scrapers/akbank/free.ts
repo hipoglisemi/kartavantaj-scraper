@@ -106,6 +106,8 @@ async function runFreeScraper() {
                     }
                 }
 
+                campaignData.min_spend = campaignData.min_spend || 0;
+
                 const { error } = await supabase.from('campaigns').upsert(campaignData, { onConflict: 'reference_url' });
                 if (error) console.error(`      ❌ ${error.message}`);
                 else console.log(`      ✅ Saved`);

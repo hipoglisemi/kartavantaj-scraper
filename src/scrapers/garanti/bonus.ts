@@ -144,6 +144,8 @@ async function runGarantiScraper() {
                         }
                     }
 
+                    campaignData.min_spend = campaignData.min_spend || 0;
+
                     // Upsert
                     const { error } = await supabase
                         .from('campaigns')
