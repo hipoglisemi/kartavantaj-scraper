@@ -96,9 +96,16 @@ async function runWingsScraper() {
             // Title: h1.banner-title or similar.
             const title = $('h1.banner-title').text().trim() || item.title || 'Başlıksız';
 
-            // Image: usually a large banner image
-            const imagePath = $('.banner-image img').attr('src') || $('img.campaign-detail-image').attr('src');
-            const imageUrl = imagePath ? new URL(imagePath, CARD_CONFIG.baseUrl).toString() : null;
+            // Image: Wings doesn't use specific classes, but campaign images are in /api/uploads/
+            // Get first image that's from uploads (excluding logo.svg)
+            let imageUrl: string | null = null;
+            $('img').each((_, el) => {
+                const src = $(el).attr('src');
+                if (src && src.includes('/api/uploads/') && !src.includes('logo')) {
+                    imageUrl = new URL(src, CARD_CONFIG.baseUrl).toString();
+                    return false; // break
+                }
+            });
 
             let campaignData;
             if (isAIEnabled) {
