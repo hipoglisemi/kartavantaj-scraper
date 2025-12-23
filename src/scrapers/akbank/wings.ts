@@ -195,7 +195,14 @@ async function runWingsScraper() {
             }
             if (campaignData) {
                 campaignData.title = title;
-                campaignData.image = imageUrl;
+
+                // Image priority: AI > Scraper fallback > Placeholder
+                if (!campaignData.image && imageUrl) {
+                    campaignData.image = imageUrl;
+                } else if (!campaignData.image && !imageUrl) {
+                    console.log('      ⚠️  No image found, using placeholder');
+                }
+
                 campaignData.card_name = CARD_CONFIG.cardName;
                 campaignData.bank = normalizedBank;
                 campaignData.url = fullUrl;
