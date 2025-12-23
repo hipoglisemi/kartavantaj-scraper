@@ -9,7 +9,7 @@ const supabase = createClient(
 );
 
 async function recordDailyStats() {
-    console.log('🚀 Recording Daily Statistics...');
+    console.log('🚀 Recording Advanced Daily Statistics...');
 
     // 1. Fetch Stats
     const { count: totalCount } = await supabase.from('campaigns').select('id', { count: 'exact', head: true });
@@ -18,7 +18,7 @@ async function recordDailyStats() {
 
     const { data: allData, error: fetchError } = await supabase
         .from('campaigns')
-        .select('id, bank, brand, sector_slug, category, ai_parsing_incomplete');
+        .select('id, title, bank, brand, sector_slug, category, ai_parsing_incomplete, min_spend, earning, description');
 
     if (fetchError || !allData) {
         console.error('❌ Failed to fetch data:', fetchError?.message);
@@ -29,22 +29,56 @@ async function recordDailyStats() {
         noBrand: 0,
         noSector: 0,
         noCategory: 0,
-        aiIncomplete: 0
+        aiIncomplete: 0,
+        mathErrors: 0,
+        textMismatches: 0
     };
 
-    const banks: Record<string, { total: number, missingBrand: number, missingSector: number }> = {};
+    const banks: Record<string, { total: number, missingBrand: number, errors: number }> = {};
 
     allData.forEach(c => {
-        if (!c.brand || c.brand.trim() === '' || c.brand.toLowerCase().includes('genel')) stats.noBrand++;
-        if (!c.sector_slug || c.sector_slug === 'diger') stats.noSector++;
+        // Basic Metadata Checks
+        const isGenericBrand = !c.brand || c.brand.trim() === '' || c.brand.toLowerCase().includes('genel');
+        const isGenericSector = !c.sector_slug || c.sector_slug === 'diger';
+
+        if (isGenericBrand) stats.noBrand++;
+        if (isGenericSector) stats.noSector++;
         if (!c.category || c.category === 'Diğer') stats.noCategory++;
         if (c.ai_parsing_incomplete) stats.aiIncomplete++;
 
+        // --- Advanced Math Checks ---
+        const minSpend = parseFloat(c.min_spend) || 0;
+        const earning = parseFloat(c.earning) || 0;
+
+        // Error if earning > minSpend (usually impossible or a scale error like 500TL kazanmak vs 50TL harcamak)
+        // OR very suspicious earning to spend ratio (e.g. 1000TL spend for 1TL earn is okay, but 100TL earn for 10TL spend is wrong)
+        if (earning > 0 && minSpend > 0) {
+            if (earning >= minSpend && minSpend > 10) { // If you earn more than you spend, its likely an error
+                stats.mathErrors++;
+            }
+        }
+
+        // --- Text Mismatch Checks ---
+        const titleText = (c.title || '').toLowerCase();
+        const descText = (c.description || '').toLowerCase();
+
+        // Check if title mentions a number that is drastically different from earning field
+        // E.g. Title says "1000 TL Chip-Para" but earning field is 100
+        const numbersInTitle = titleText.match(/\d+/g) || [];
+        if (numbersInTitle.includes(earning.toString()) === false && earning > 0) {
+            // Suspicious, but we need more logic to be sure. 
+            // Let's check if high value numbers exist in title but earning is small.
+            const hasHighValueInTitle = numbersInTitle.some((n: string) => parseInt(n) >= 100);
+            if (hasHighValueInTitle && earning < 10 && earning > 0) {
+                stats.textMismatches++;
+            }
+        }
+
         // Bank breakdown
-        if (!banks[c.bank]) banks[c.bank] = { total: 0, missingBrand: 0, missingSector: 0 };
+        if (!banks[c.bank]) banks[c.bank] = { total: 0, missingBrand: 0, errors: 0 };
         banks[c.bank].total++;
-        if (!c.brand || c.brand.trim() === '' || c.brand.toLowerCase().includes('genel')) banks[c.bank].missingBrand++;
-        if (!c.sector_slug || c.sector_slug === 'diger') banks[c.bank].missingSector++;
+        if (isGenericBrand) banks[c.bank].missingBrand++;
+        if (c.ai_parsing_incomplete || (earning >= minSpend && minSpend > 10)) banks[c.bank].errors++;
     });
 
     // 2. Prepare Payload
@@ -56,9 +90,12 @@ async function recordDailyStats() {
         missing_sector_count: stats.noSector,
         missing_category_count: stats.noCategory,
         ai_incomplete_count: stats.aiIncomplete,
+        math_error_count: stats.mathErrors,
+        text_mismatch_count: stats.textMismatches,
         bank_breakdown: banks,
         metadata: {
-            run_date: new Date().toISOString()
+            run_date: new Date().toISOString(),
+            engine_version: "2.0.0"
         }
     };
 
@@ -69,9 +106,8 @@ async function recordDailyStats() {
 
     if (insertError) {
         console.error('❌ Failed to save statistics:', insertError.message);
-        console.log('💡 Note: Make sure the system_statistics table exists.');
     } else {
-        console.log('✅ Statistics saved successfully!');
+        console.log('✅ Advanced statistics saved successfully!');
     }
 }
 
