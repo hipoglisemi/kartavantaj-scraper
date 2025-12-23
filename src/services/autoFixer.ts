@@ -3,20 +3,12 @@
  * Automatically fixes campaign data issues
  */
 
-import { createClient } from '@supabase/supabase-js';
-import * as dotenv from 'dotenv';
-import { parseWithGemini } from './geminiParser';
+import { generateSectorSlug } from '../utils/slugify';
+import { supabase } from '../utils/supabase';
+import { syncEarningAndDiscount } from '../utils/dataFixer';
+import { parseWithGemini, parseSurgical } from './geminiParser';
 import { assignBadge } from './badgeAssigner';
 import { CampaignValidation } from './qualityChecker';
-import { generateSectorSlug } from '../utils/slugify';
-import { syncEarningAndDiscount } from '../utils/dataFixer';
-
-dotenv.config();
-
-const supabase = createClient(
-    process.env.SUPABASE_URL!,
-    process.env.SUPABASE_ANON_KEY!
-);
 
 export interface FixResult {
     campaignId: number;
@@ -170,11 +162,57 @@ async function aiReparse(campaign: any): Promise<FixResult> {
 
 async function aiCorrection(campaign: any, validation: CampaignValidation): Promise<FixResult> {
     try {
-        console.log('   Strategy: Smart AI Correction (Targeted)');
+        console.log('   Strategy: Smart AI Correction (Surgical)');
 
-        // For now, attempt re-parse if there are critical missing fields
-        // In future, we could do targeted field extraction
-        return await aiReparse(campaign);
+        const missingFields = validation.issues
+            .filter(i => i.severity === 'critical' || i.severity === 'warning')
+            .map(i => i.field);
+
+        // Fetch HTML
+        const targetUrl = campaign.url || campaign.reference_url;
+        if (!targetUrl) {
+            throw new Error('No URL found for campaign');
+        }
+
+        const response = await fetch(targetUrl);
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const html = await response.text();
+
+        // Surgical Parse
+        console.log(`   🤖 Surgical fix for: ${missingFields.join(', ')}`);
+        const surgicalResult = await parseSurgical(html, campaign, missingFields, targetUrl, campaign.bank);
+
+        // Assign badge (final check)
+        const badge = assignBadge(surgicalResult);
+
+        const updatedData = {
+            ...surgicalResult,
+            badge_text: badge.text,
+            badge_color: badge.color,
+            ai_enhanced: true
+        };
+
+        // Final sync check
+        syncEarningAndDiscount(updatedData);
+
+        const { error } = await supabase
+            .from('campaigns')
+            .update(updatedData)
+            .eq('id', campaign.id);
+
+        if (error) throw error;
+
+        console.log(`   ✅ Campaign surgically fixed`);
+
+        return {
+            campaignId: campaign.id,
+            success: true,
+            method: 'ai_correction',
+            message: `Successfully fixed missing fields: ${missingFields.join(', ')}`
+        };
 
     } catch (error: any) {
         console.error(`   ❌ AI correction failed: ${error.message}`);

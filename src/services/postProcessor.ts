@@ -4,7 +4,7 @@
  */
 
 export interface CleanupResult {
-    brand: string[];
+    brand: string;
     earning: string;
     changes: string[];
 }
@@ -114,7 +114,7 @@ export function postProcessCampaign(campaign: any): CleanupResult {
     }
 
     return {
-        brand: cleanedBrand,
+        brand: cleanedBrand.join(', '),
         earning: enhancedEarning,
         changes
     };

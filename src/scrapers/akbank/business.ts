@@ -12,18 +12,18 @@ dotenv.config();
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!);
 
 const CARD_CONFIG = {
-    name: 'Free',
-    cardName: 'Free',
+    name: 'Axess Business',
+    cardName: 'Axess Business',
     bankName: 'Akbank',
-    baseUrl: 'https://www.kartfree.com',
-    listApiUrl: 'https://www.kartfree.com/ajax/campaign-ajax-free.aspx',
-    refererUrl: 'https://www.kartfree.com/free/kampanya/8/395/kampanyalar',
-    apiParams: { 'checkBox': '[]', 'searchWord': '""' }
+    baseUrl: 'https://www.axess.com.tr',
+    listApiUrl: 'https://www.axess.com.tr/ajax/kampanya-ajax-ticari.aspx',
+    refererUrl: 'https://www.axess.com.tr/ticarikartlar/kampanya/8/451/axess-business-kampanyalari',
+    apiParams: { 'checkBox': '[0]', 'searchWord': '""' }
 };
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-async function runFreeScraper() {
+async function runBusinessScraper() {
     const normalizedBank = await normalizeBankName(CARD_CONFIG.bankName);
     console.log(`\n💳 ${CARD_CONFIG.name} (${normalizedBank})\n`);
     const isAIEnabled = process.argv.includes('--ai');
@@ -35,7 +35,11 @@ async function runFreeScraper() {
     while (allCampaigns.length < limit) {
         try {
             const response = await axios.get(CARD_CONFIG.listApiUrl, {
-                headers: { 'User-Agent': 'Mozilla/5.0', 'Referer': CARD_CONFIG.refererUrl, 'X-Requested-With': 'XMLHttpRequest' },
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'Referer': CARD_CONFIG.refererUrl,
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
                 params: { ...CARD_CONFIG.apiParams, 'page': page.toString() }
             });
             const html = response.data;
@@ -43,18 +47,24 @@ async function runFreeScraper() {
             const $ = cheerio.load(html);
             const links = $('.campaingBox a.dLink');
             if (links.length === 0) break;
-            let foundNew = false;
+
+            let newCount = 0;
             links.each((_: number, el: any) => {
                 const href = $(el).attr('href');
                 if (href && !allCampaigns.some((c: any) => c.href === href) && allCampaigns.length < limit) {
                     allCampaigns.push({ href });
-                    foundNew = true;
+                    newCount++;
                 }
             });
-            console.log(`   ✅ Page ${page}: ${links.length} campaigns. Total: ${allCampaigns.length}`);
-            if ((!foundNew && page > 1) || allCampaigns.length >= limit) break;
+            console.log(`   ✅ Page ${page}: ${links.length} campaigns (${newCount} new). Total: ${allCampaigns.length}`);
+
+            if (allCampaigns.length >= limit) break;
+
             page++;
             await sleep(1000);
+
+            // Limit pages to prevent infinite loops if something goes wrong, but usually it breaks on empty html or no links
+            if (page > 10) break;
         } catch (error: any) {
             console.error(`   ❌ ${error.message}`);
             break;
@@ -66,26 +76,38 @@ async function runFreeScraper() {
 
     for (const item of campaignsToProcess) {
         const fullUrl = new URL(item.href, CARD_CONFIG.baseUrl).toString();
-        console.log(`   🔍 ${fullUrl.substring(0, 50)}...`);
+        console.log(`   🔍 ${fullUrl}`);
         try {
-            const detailResponse = await axios.get(fullUrl, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+            const detailResponse = await axios.get(fullUrl, {
+                headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' }
+            });
             const html = detailResponse.data;
             const $ = cheerio.load(html);
-            const title = $('h2.pageTitle').text().trim() || 'Başlıksız';
+            const title = $('h2.pageTitle').text().trim() || $('.campaingDetail h3').first().text().trim() || 'Başlıksız';
 
             // Image Extraction
-            const imagePath = $('.campaingDetailImage img').attr('src');
+            const imagePath = $('.campaingDetailImage img').attr('src') || $('.campaingDetail img').first().attr('src');
             const imageUrl = imagePath ? new URL(imagePath, CARD_CONFIG.baseUrl).toString() : null;
 
             let campaignData;
             if (isAIEnabled) {
                 campaignData = await parseWithGemini(html, fullUrl, 'Akbank');
             } else {
-                campaignData = { title, description: title, category: 'Diğer', sector_slug: 'diger', card_name: CARD_CONFIG.cardName, bank: CARD_CONFIG.bankName, url: fullUrl, reference_url: fullUrl, is_active: true };
+                campaignData = {
+                    title,
+                    description: title,
+                    category: 'Diğer',
+                    sector_slug: 'diger',
+                    card_name: CARD_CONFIG.cardName,
+                    bank: normalizedBank,
+                    url: fullUrl,
+                    reference_url: fullUrl,
+                    is_active: true
+                };
             }
             if (campaignData) {
                 campaignData.title = title;
-                campaignData.image = imageUrl; // Add extracted image
+                campaignData.image = imageUrl;
                 campaignData.card_name = CARD_CONFIG.cardName;
                 campaignData.bank = normalizedBank;
                 campaignData.url = fullUrl;
@@ -95,7 +117,6 @@ async function runFreeScraper() {
                 syncEarningAndDiscount(campaignData);
                 campaignData.is_active = true;
 
-                // Filter out expired campaigns if end_date exists
                 if (campaignData.end_date) {
                     const today = new Date();
                     today.setHours(0, 0, 0, 0);
@@ -108,7 +129,10 @@ async function runFreeScraper() {
 
                 const { error } = await supabase.from('campaigns').upsert(campaignData, { onConflict: 'reference_url' });
                 if (error) console.error(`      ❌ ${error.message}`);
-                else console.log(`      ✅ Saved`);
+                else {
+                    console.log(`      🖼️  Image: ${imageUrl}`);
+                    console.log(`      ✅ Saved: ${title}`);
+                }
             }
         } catch (error: any) {
             console.error(`      ❌ ${error.message}`);
@@ -118,4 +142,4 @@ async function runFreeScraper() {
     console.log(`\n✅ Done!`);
 }
 
-runFreeScraper();
+runBusinessScraper();

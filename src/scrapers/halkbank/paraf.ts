@@ -22,6 +22,8 @@ const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 async function runParafScraper() {
     console.log('🚀 Starting Halkbank (Paraf) Scraper...');
     const isAIEnabled = process.argv.includes('--ai');
+    const limitArg = process.argv.find(arg => arg.startsWith('--limit='));
+    const limit = limitArg ? parseInt(limitArg.split('=')[1]) : Infinity;
 
     const browser = await puppeteer.launch({
         headless: true,
@@ -41,9 +43,20 @@ async function runParafScraper() {
         let buttonClickCount = 0;
         const MAX_CLICKS = 30; // Paraf uses many clicks
 
-        console.log('   🔄 Loading all campaigns (clicking "Daha Fazla Göster")...');
+        console.log('   🔄 Loading campaigns...');
 
         while (hasMore && buttonClickCount < MAX_CLICKS) {
+            // Check current campaign count
+            const currentCount = await page.evaluate(() => {
+                // @ts-ignore
+                return document.querySelectorAll('.cmp-list--campaigns .cmp-teaser__title a').length;
+            });
+
+            if (currentCount >= limit) {
+                console.log(`   ✅ Enough campaigns loaded (${currentCount} >= ${limit})`);
+                break;
+            }
+
             try {
                 // Selector based on Python script: ".button--more-campaign a"
                 const buttonFound = await page.evaluate(() => {
@@ -68,10 +81,10 @@ async function runParafScraper() {
                 hasMore = false;
             }
         }
-        console.log(`\n   ✅ Loaded full list after ${buttonClickCount} clicks.`);
+        console.log(`\n   ✅ Loaded list after ${buttonClickCount} clicks.`);
 
         // Extract Links
-        const campaignLinks = await page.evaluate(() => {
+        const allCampaignLinks = await page.evaluate(() => {
             const links: string[] = [];
             // @ts-ignore
             const elements = document.querySelectorAll('.cmp-list--campaigns .cmp-teaser__title a');
@@ -84,7 +97,8 @@ async function runParafScraper() {
             return [...new Set(links)];
         });
 
-        console.log(`   🎉 Found ${campaignLinks.length} campaigns. Processing details...`);
+        const campaignLinks = allCampaignLinks.slice(0, limit);
+        console.log(`   🎉 Found ${allCampaignLinks.length} campaigns. Processing first ${campaignLinks.length}...`);
 
         // Process Each Campaign
         for (const link of campaignLinks) {
@@ -202,6 +216,7 @@ async function runParafScraper() {
                     if (error) {
                         console.error(`      ❌ Supabase Error: ${error.message}`);
                     } else {
+                        console.log(`      🖼️  Image: ${campaignData.image}`);
                         console.log(`      ✅ Saved to DB: ${fallbackData.title}`);
                     }
                 }

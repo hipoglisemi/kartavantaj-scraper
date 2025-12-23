@@ -1,15 +1,9 @@
 import * as dotenv from 'dotenv';
-import { createClient } from '@supabase/supabase-js';
 import { generateSectorSlug } from '../utils/slugify';
 import { syncEarningAndDiscount } from '../utils/dataFixer';
-
-dotenv.config();
+import { supabase } from '../utils/supabase';
 
 const GEMINI_API_KEY = process.env.GOOGLE_GEMINI_KEY!;
-const supabase = createClient(
-    process.env.SUPABASE_URL!,
-    process.env.SUPABASE_ANON_KEY!
-);
 
 const CRITICAL_FIELDS = ['valid_until', 'eligible_customers', 'min_spend', 'category', 'bank', 'earning'];
 
@@ -151,6 +145,150 @@ function checkMissingFields(data: any): string[] {
     return missing;
 }
 
+/**
+ * Stage 3: Surgical Correction
+ * Focuses ONLY on specific missing fields to save tokens and improve accuracy.
+ */
+export async function parseSurgical(
+    html: string,
+    existingData: any,
+    missingFields: string[],
+    url: string,
+    sourceBank?: string
+): Promise<any> {
+    const text = html
+        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+        .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .substring(0, 15000);
+
+    const masterData = await fetchMasterData();
+
+    console.log(`   🤖 Surgical Parse: Filling ${missingFields.join(', ')}...`);
+
+    const surgicalPrompt = `
+You are a precision data extraction tool. We have an existing campaign entry, but it's missing specific info.
+DO NOT guess other fields. ONLY extract the fields requested.
+
+EXISTING DATA (for context):
+Title: ${existingData.title}
+Current Category: ${existingData.category}
+
+MISSING FIELDS TO EXTRACT:
+${missingFields.map(f => `- ${f}`).join('\n')}
+
+FIELD DEFINITIONS:
+- valid_until: YYYY-MM-DD
+- eligible_customers: Array of strings
+- min_spend: Number
+- earning: String (e.g. "500 TL Puan")
+- category: MUST be one of [${masterData.categories.join(', ')}]
+- bank: MUST be one of [${masterData.banks.join(', ')}]
+- brand: ARRAY of brand names mentioned. E.g. ["Burger King", "Migros"]. Match to: ${masterData.brands.slice(0, 100).join(', ')}
+
+TEXT TO SEARCH:
+"${text.replace(/"/g, '\\"')}"
+
+RETURN ONLY VALID JSON. NO MARKDOWN.
+`;
+
+    const surgicalData = await callGeminiAPI(surgicalPrompt);
+
+    // Merge and Clean
+    const result = { ...existingData, ...surgicalData };
+    const title = result.title || '';
+    const description = result.description || '';
+
+    // STAGE 3: Bank Service Detection & "Genel" logic
+    const isBankService = /ekstre|nakit avans|kredi kartı başvurusu|limit artış|borç transferi|vade farkı|faizsiz taksit|borç erteleme|sigorta|başvuru|otomatik ödeme/i.test(title + ' ' + description);
+
+    // STAGE 4: Historical Assignment Lookup
+    const { data: pastCampaign } = await supabase
+        .from('campaigns')
+        .select('brand, category')
+        .eq('title', title)
+        .not('brand', 'is', null)
+        .not('brand', 'eq', '')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+    // Strict Brand Cleanup
+    const brandCleaned = cleanupBrands(result.brand, masterData);
+    result.brand = brandCleaned.brand;
+    result.brand_suggestion = brandCleaned.suggestion;
+
+    if (isBankService) {
+        console.log(`   🏦 Bank service detected for "${title}", mapping to "Genel"`);
+        result.brand = 'Genel';
+        result.brand_suggestion = '';
+    } else if (pastCampaign) {
+        console.log(`   🧠 Learning: Previously mapped to brand "${pastCampaign.brand}" for "${title}"`);
+        result.brand = pastCampaign.brand;
+        result.brand_suggestion = '';
+        result.category = pastCampaign.category || result.category;
+    }
+
+    // Ensure category -> sector_slug consistency
+    if (result.category) {
+        result.sector_slug = generateSectorSlug(result.category);
+    }
+
+    return result;
+}
+
+/**
+ * Normalizes and cleans brand data to ensure it's a flat string and matches master data.
+ */
+function cleanupBrands(brandInput: any, masterData: MasterData): { brand: string, suggestion: string } {
+    let brands: string[] = [];
+
+    // 1. Normalize input to array
+    if (Array.isArray(brandInput)) {
+        brands = brandInput.map(b => String(b));
+    } else if (typeof brandInput === 'string') {
+        const cleaned = brandInput.replace(/[\[\]"]/g, '').trim();
+        if (cleaned.includes(',')) {
+            brands = cleaned.split(',').map(b => b.trim());
+        } else if (cleaned) {
+            brands = [cleaned];
+        }
+    }
+
+    if (brands.length === 0) return { brand: '', suggestion: '' };
+
+    const forbiddenTerms = [
+        'yapı kredi', 'world', 'worldcard', 'worldpuan', 'puan', 'taksit', 'indirim',
+        'kampanya', 'fırsat', 'troy', 'visa', 'mastercard', 'express', 'bonus', 'maximum',
+        'axess', 'bankkart', 'paraf', 'card', 'kredi kartı', 'nakit', 'chippin', 'adios', 'play',
+        ...masterData.banks.map(b => b.toLowerCase())
+    ];
+
+    const matched: string[] = [];
+    const unmatched: string[] = [];
+
+    for (const b of brands) {
+        const lower = b.trim().toLowerCase();
+        if (!lower || lower.length <= 1) continue;
+        if (lower === 'yok' || lower === 'null' || lower === 'genel') continue;
+        if (forbiddenTerms.some(term => lower === term || lower.startsWith(term + ' '))) continue;
+
+        const match = masterData.brands.find(mb => mb.toLowerCase() === lower);
+        if (match) {
+            matched.push(match);
+        } else {
+            unmatched.push(b.trim());
+        }
+    }
+
+    return {
+        brand: [...new Set(matched)].join(', '),
+        suggestion: matched.length === 0 ? [...new Set(unmatched)].join(', ') : ''
+    };
+}
+
 export async function parseWithGemini(html: string, url: string, sourceBank?: string): Promise<any> {
     const text = html
         .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
@@ -167,6 +305,7 @@ export async function parseWithGemini(html: string, url: string, sourceBank?: st
 Extract campaign data into JSON matching this EXACT schema:
 
 {
+  "title": "string (catchy campaign title)",
   "description": "string (2-3 sentences with emojis)",
   "category": "string (MUST be one of: ${masterData.categories.join(', ')})",
   "discount": "string (CONCISE summary, max 20 chars, e.g. '1000 TL İndirim')",
@@ -250,56 +389,54 @@ Return ONLY valid JSON with the missing fields, no markdown.
         ...stage2Data
     };
 
-    // Finalize brand format
-    // Finalize brand format
-    if (Array.isArray(finalData.brand)) {
-        // Cleaning and Deduplication
-        const forbiddenTerms = [
-            'yapı kredi', 'world', 'worldcard', 'worldpuan', 'puan', 'taksit', 'indirim',
-            'kampanya', 'fırsat', 'troy', 'visa', 'mastercard', 'express', 'bonus', 'maximum',
-            'axess', 'bankkart', 'paraf', 'card', 'kredi kartı', 'nakit', 'chippin', 'adios', 'play',
-            ...masterData.banks.map(b => b.toLowerCase())
-        ];
+    const title = finalData.title || '';
+    const description = finalData.description || '';
 
-        const cleanedBrands = finalData.brand
-            .filter((b: any) => b && typeof b === 'string')
-            .map((b: string) => b.trim())
-            .filter((b: string) => {
-                const lower = b.toLowerCase();
-                if (lower === 'yok' || lower === 'null') return false;
-                if (forbiddenTerms.some(term => lower === term || lower.includes(term + ' '))) return false; // Strict check
-                return true;
-            })
-            // Match with master data - STRICT
-            .map((b: string) => {
-                const lower = b.toLowerCase();
-                const matched = masterData.brands.find(mb => mb.toLowerCase() === lower);
-                return matched ? matched : null; // Only keep if matched
-            })
-            .filter((b: string | null) => b !== null); // Remove non-matches
+    // STAGE 3: Bank Service Detection & "Genel" logic
+    // Detect keywords for bank-only services (not related to a specific merchant brand)
+    const isBankService = /ekstre|nakit avans|kredi kartı başvurusu|limit artış|borç transferi|vade farkı|faizsiz taksit|borç erteleme|sigorta|başvuru|otomatik ödeme/i.test(title + ' ' + description);
 
-        const uniqueBrands = [...new Set(cleanedBrands)];
-        finalData.brand = uniqueBrands.join(', ');
-    } else if (typeof finalData.brand === 'string') {
-        // Strict check for single string too
-        const lower = finalData.brand.trim().toLowerCase();
-        const matched = masterData.brands.find(mb => mb.toLowerCase() === lower);
-        finalData.brand = matched ? matched : '';
-    } else {
-        finalData.brand = '';
+    // STAGE 4: Historical Assignment Lookup (Learning Mechanism)
+    // Check if this specific campaign was previously mapped to a brand by the user
+    const { data: pastCampaign } = await supabase
+        .from('campaigns')
+        .select('brand, category')
+        .eq('title', title)
+        .not('brand', 'is', null)
+        .not('brand', 'eq', '')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+    // Use unified brand cleanup
+    const masterDataForFinal = await fetchMasterData();
+    const brandCleaned = cleanupBrands(finalData.brand, masterDataForFinal);
+
+    finalData.brand = brandCleaned.brand;
+    finalData.brand_suggestion = brandCleaned.suggestion;
+
+    if (isBankService) {
+        console.log(`   🏦 Bank service detected for "${title}", mapping to "Genel"`);
+        finalData.brand = 'Genel';
+        finalData.brand_suggestion = ''; // Clear suggestion if it's a bank service
+    } else if (pastCampaign) {
+        console.log(`   🧠 Learning: Previously mapped to brand "${pastCampaign.brand}" for "${title}"`);
+        finalData.brand = pastCampaign.brand;
+        finalData.brand_suggestion = ''; // Use historical data, clear suggestion
+        finalData.category = pastCampaign.category || finalData.category;
     }
 
-    // 🔗 Generic Brand Fallback (Genel)
+    // 🔗 Generic Brand Fallback (Genel) if still empty
     if (!finalData.brand || finalData.brand === '') {
-        const titleLower = finalData.title?.toLowerCase() || '';
-        const descLower = finalData.description?.toLowerCase() || '';
+        const titleLower = title.toLowerCase();
+        const descLower = description.toLowerCase();
 
-        // Keywords that strongly hint at "Genel" (non-brand specific)
+        // Keywords that strongly hint at "Genel" (non-brand specific or loyalty points)
         const genericKeywords = [
             'marketlerde', 'akaryakıt istasyonlarında', 'giyim mağazalarında',
             'restoranlarda', 'kafe', 'tüm sektörler', 'seçili sektörl',
             'üye işyeri', 'pos', 'vade farksız', 'taksit', 'faizsiz', 'masrafsız',
-            'alışverişlerinizde', 'harcamanıza', 'ödemelerinize'
+            'alışverişlerinizde', 'harcamanıza', 'ödemelerinize', 'chip-para', 'puan'
         ];
 
         if (genericKeywords.some(kw => titleLower.includes(kw) || descLower.includes(kw))) {
@@ -307,11 +444,10 @@ Return ONLY valid JSON with the missing fields, no markdown.
         }
     }
 
-    // Generate sector_slug from category (for frontend URL routing)
+    // Generate sector_slug from category
     if (finalData.category) {
-        // Fallback for 'Diğer' or 'Genel' if title has strong keywords
         if (finalData.category === 'Diğer' || finalData.category === 'Genel') {
-            const titleLower = finalData.title?.toLowerCase() || '';
+            const titleLower = title.toLowerCase();
             if (titleLower.includes('market') || titleLower.includes('gıda')) finalData.category = 'Market';
             else if (titleLower.includes('giyim') || titleLower.includes('moda')) finalData.category = 'Giyim & Moda';
             else if (titleLower.includes('akaryakıt') || titleLower.includes('benzin') || titleLower.includes('otopet') || titleLower.includes('yakıt')) finalData.category = 'Yakıt';
@@ -319,25 +455,20 @@ Return ONLY valid JSON with the missing fields, no markdown.
             else if (titleLower.includes('seyahat') || titleLower.includes('tatil') || titleLower.includes('uçak') || titleLower.includes('otel')) finalData.category = 'Seyahat';
             else if (titleLower.includes('elektronik') || titleLower.includes('teknoloji')) finalData.category = 'Elektronik';
         }
-
         finalData.sector_slug = generateSectorSlug(finalData.category);
     } else {
         finalData.category = 'Diğer';
         finalData.sector_slug = 'diger';
     }
 
-    console.log('   ✅ Stage 2: Complete (missing fields filled)');
+    console.log('   ✅ Stage 2: Complete');
 
-    // SYNC EARNING AND DISCOUNT: Ensure consistency for UI cards and details
+    // SYNC EARNING AND DISCOUNT
     syncEarningAndDiscount(finalData);
 
-    // Final validation: Ensure critical fields are present
     const stillMissing = checkMissingFields(finalData);
     if (stillMissing.length > 0) {
-        console.warn(`   ⚠️  WARNING: Still missing critical fields after 2 stages: ${stillMissing.join(', ')}`);
-        console.warn(`   ⚠️  This campaign may have incomplete data. URL: ${url}`);
-
-        // Add a flag to indicate incomplete data
+        console.warn(`   ⚠️  WARNING: Still missing critical fields: ${stillMissing.join(', ')}`);
         finalData.ai_parsing_incomplete = true;
         finalData.missing_fields = stillMissing;
     }

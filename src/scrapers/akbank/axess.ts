@@ -18,7 +18,7 @@ const supabase = createClient(
 const CARD_CONFIG = {
     name: 'Axess',
     cardName: 'Axess',
-    bank: await normalizeBankName('Akbank'),
+    bankName: 'Akbank',
     baseUrl: 'https://www.axess.com.tr',
     listApiUrl: 'https://www.axess.com.tr/ajax/kampanya-ajax.aspx',
     refererUrl: 'https://www.axess.com.tr/kampanyalar',
@@ -29,16 +29,20 @@ const CARD_CONFIG = {
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 async function runAxessScraper() {
+    const normalizedBank = await normalizeBankName(CARD_CONFIG.bankName);
     console.log(`\n💳 Starting ${CARD_CONFIG.name} Card Scraper...`);
-    console.log(`   Bank: ${CARD_CONFIG.bank}`);
+    console.log(`   Bank: ${normalizedBank}`);
     console.log(`   Source: ${CARD_CONFIG.baseUrl}\n`);
 
     const isAIEnabled = process.argv.includes('--ai');
+    const limitArg = process.argv.find(arg => arg.startsWith('--limit='));
+    const limit = limitArg ? parseInt(limitArg.split('=')[1]) : Infinity;
+
     let page = 1;
     let allCampaigns: any[] = [];
 
     // 1. Fetch List from API
-    while (true) {
+    while (allCampaigns.length < limit) {
         try {
             console.log(`   📄 Fetching page ${page}...`);
             const response = await axios.get(CARD_CONFIG.listApiUrl, {
@@ -70,7 +74,7 @@ async function runAxessScraper() {
             let foundNew = false;
             links.each((_: number, el: any) => {
                 const href = $(el).attr('href');
-                if (href) {
+                if (href && allCampaigns.length < limit) {
                     const exists = allCampaigns.some((c: any) => c.href === href);
                     if (!exists) {
                         allCampaigns.push({ href });
@@ -79,12 +83,14 @@ async function runAxessScraper() {
                 }
             });
 
-            console.log(`   ✅ Found ${links.length} campaigns on page ${page}.`);
+            console.log(`   ✅ Found ${links.length} campaigns on page ${page}. Total so far: ${allCampaigns.length}`);
 
             if (!foundNew && page > 1) {
                 console.log('   ⚠️ No new campaigns. Stopping.');
                 break;
             }
+
+            if (allCampaigns.length >= limit) break;
 
             page++;
             await sleep(1000);
@@ -94,10 +100,11 @@ async function runAxessScraper() {
         }
     }
 
-    console.log(`\n🎉 Total ${allCampaigns.length} campaigns found. Processing details...\n`);
+    const campaignsToProcess = allCampaigns.slice(0, limit);
+    console.log(`\n🎉 Processing ${campaignsToProcess.length} campaigns details...\n`);
 
     // 2. Process Details
-    for (const item of allCampaigns) {
+    for (const item of campaignsToProcess) {
         const urlPart = item.href;
         if (!urlPart) continue;
 
@@ -130,7 +137,7 @@ async function runAxessScraper() {
                     category: 'Diğer',
                     sector_slug: 'diger',
                     card_name: CARD_CONFIG.cardName,
-                    bank: CARD_CONFIG.bank,
+                    bank: normalizedBank,
                     url: fullUrl,
                     reference_url: fullUrl,
                     is_active: true
@@ -142,7 +149,7 @@ async function runAxessScraper() {
                 campaignData.title = title;
                 campaignData.image = imageUrl; // Add extracted image
                 campaignData.card_name = CARD_CONFIG.cardName;
-                campaignData.bank = CARD_CONFIG.bank;
+                campaignData.bank = normalizedBank;
                 campaignData.url = fullUrl;
                 campaignData.reference_url = fullUrl;
                 campaignData.category = campaignData.category || 'Diğer';

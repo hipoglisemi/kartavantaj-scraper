@@ -14,76 +14,111 @@ const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_AN
 const CARD_CONFIG = {
     name: 'Wings',
     cardName: 'Wings',
-    bank: 'Akbank', // Will be normalized in the function
-    baseUrl: 'https://www.axess.com.tr',
-    listApiUrl: 'https://www.axess.com.tr/ajax/kampanya-ajax-ticari.aspx',
-    refererUrl: 'https://www.axess.com.tr/ticarikartlar/kampanya/8/450/kampanyalar',
-    apiParams: { 'checkBox': '[0]', 'searchWord': '""' }
+    bankName: 'Akbank',
+    baseUrl: 'https://www.wingscard.com.tr',
+    listApiUrl: 'https://www.wingscard.com.tr/api/campaign/list',
+    refererUrl: 'https://www.wingscard.com.tr/kampanyalar'
 };
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 async function runWingsScraper() {
-    const normalizedBank = await normalizeBankName('Akbank');
+    const normalizedBank = await normalizeBankName(CARD_CONFIG.bankName);
     console.log(`\n💳 ${CARD_CONFIG.name} (${normalizedBank})\n`);
     const isAIEnabled = process.argv.includes('--ai');
+    const limitArg = process.argv.find(arg => arg.startsWith('--limit='));
+    const limit = limitArg ? parseInt(limitArg.split('=')[1]) : Infinity;
+
     let page = 1, allCampaigns: any[] = [];
 
-    while (true) {
+    while (allCampaigns.length < limit) {
         try {
+            console.log(`   Fetching page ${page}...`);
             const response = await axios.get(CARD_CONFIG.listApiUrl, {
-                headers: { 'User-Agent': 'Mozilla/5.0', 'Referer': CARD_CONFIG.refererUrl, 'X-Requested-With': 'XMLHttpRequest' },
-                params: { ...CARD_CONFIG.apiParams, 'page': page.toString() }
-            });
-            const html = response.data;
-            if (!html || html.trim() === '') break;
-            const $ = cheerio.load(html);
-            const links = $('.campaingBox a.dLink');
-            if (links.length === 0) break;
-
-            let newCount = 0;
-            links.each((_: number, el: any) => {
-                const href = $(el).attr('href');
-                if (href && !allCampaigns.some((c: any) => c.href === href)) {
-                    allCampaigns.push({ href });
-                    newCount++;
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'Referer': CARD_CONFIG.refererUrl
+                },
+                params: {
+                    keyword: '',
+                    sector: '',
+                    category: '',
+                    page: page.toString()
                 }
             });
-            console.log(`   ✅ Page ${page}: ${links.length} campaigns (${newCount} new, ${links.length - newCount} duplicates)`);
 
-            // Continue to next page regardless of duplicates
+            const data = response.data;
+            if (!data || !data.status || !data.data || !data.data.list || data.data.list.length === 0) {
+                console.log('   No more campaigns found.');
+                break;
+            }
+
+            const campaigns = data.data.list;
+            let newCount = 0;
+            for (const campaign of campaigns) {
+                if (allCampaigns.length >= limit) break;
+                // The API likely returns a slug or ID. Wings detail pages use slugs. 
+                // Let's assume the API returns 'url' or 'slug'.
+                // If it's like Axess, it might be /kampanyalar/kampanya-detay/abc
+                const detailPath = campaign.url || `/kampanyalar/kampanya-detay/${campaign.slug}`;
+                if (!allCampaigns.some(c => c.href === detailPath)) {
+                    allCampaigns.push({ href: detailPath, title: campaign.title });
+                    newCount++;
+                }
+            }
+            console.log(`   ✅ Page ${page}: ${campaigns.length} campaigns (${newCount} new). Total: ${allCampaigns.length}`);
+
+            if (allCampaigns.length >= data.data.totalCount || allCampaigns.length >= limit) break;
+
             page++;
             await sleep(1000);
+            if (page > 20) break; // Safety limit
         } catch (error: any) {
-            console.error(`   ❌ ${error.message}`);
+            console.error(`   ❌ Error fetching list: ${error.message}`);
             break;
         }
     }
 
-    console.log(`\n🎉 ${allCampaigns.length} campaigns. Processing...\n`);
+    const campaignsToProcess = allCampaigns.slice(0, limit);
+    console.log(`\n🎉 ${campaignsToProcess.length} campaigns. Processing...\n`);
 
-    for (const item of allCampaigns) {
+    for (const item of campaignsToProcess) {
         const fullUrl = new URL(item.href, CARD_CONFIG.baseUrl).toString();
-        console.log(`   🔍 ${fullUrl.substring(0, 50)}...`);
+        console.log(`   🔍 ${fullUrl}`);
         try {
-            const detailResponse = await axios.get(fullUrl, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+            const detailResponse = await axios.get(fullUrl, {
+                headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' }
+            });
             const html = detailResponse.data;
             const $ = cheerio.load(html);
-            const title = $('h2.pageTitle').text().trim() || 'Başlıksız';
 
-            // Image Extraction
-            const imagePath = $('.campaingDetailImage img').attr('src');
+            // Wings detail page structure analysis from research:
+            // Title: h1.banner-title or similar.
+            const title = $('h1.banner-title').text().trim() || item.title || 'Başlıksız';
+
+            // Image: usually a large banner image
+            const imagePath = $('.banner-image img').attr('src') || $('img.campaign-detail-image').attr('src');
             const imageUrl = imagePath ? new URL(imagePath, CARD_CONFIG.baseUrl).toString() : null;
 
             let campaignData;
             if (isAIEnabled) {
                 campaignData = await parseWithGemini(html, fullUrl, 'Akbank');
             } else {
-                campaignData = { title, description: title, category: 'Diğer', sector_slug: 'diger', card_name: CARD_CONFIG.cardName, bank: normalizedBank, url: fullUrl, reference_url: fullUrl, is_active: true };
+                campaignData = {
+                    title,
+                    description: title,
+                    category: 'Diğer',
+                    sector_slug: 'diger',
+                    card_name: CARD_CONFIG.cardName,
+                    bank: normalizedBank,
+                    url: fullUrl,
+                    reference_url: fullUrl,
+                    is_active: true
+                };
             }
             if (campaignData) {
                 campaignData.title = title;
-                campaignData.image = imageUrl; // Add extracted image
+                campaignData.image = imageUrl;
                 campaignData.card_name = CARD_CONFIG.cardName;
                 campaignData.bank = normalizedBank;
                 campaignData.url = fullUrl;
@@ -93,7 +128,6 @@ async function runWingsScraper() {
                 syncEarningAndDiscount(campaignData);
                 campaignData.is_active = true;
 
-                // Filter out expired campaigns if end_date exists
                 if (campaignData.end_date) {
                     const today = new Date();
                     today.setHours(0, 0, 0, 0);
@@ -106,7 +140,10 @@ async function runWingsScraper() {
 
                 const { error } = await supabase.from('campaigns').upsert(campaignData, { onConflict: 'reference_url' });
                 if (error) console.error(`      ❌ ${error.message}`);
-                else console.log(`      ✅ Saved`);
+                else {
+                    console.log(`      🖼️  Image: ${imageUrl}`);
+                    console.log(`      ✅ Saved: ${title}`);
+                }
             }
         } catch (error: any) {
             console.error(`      ❌ ${error.message}`);

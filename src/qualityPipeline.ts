@@ -37,7 +37,6 @@ async function runQualityPipeline(options: PipelineOptions = {}) {
     const { data: campaigns, error } = await supabase
         .from('campaigns')
         .select('*')
-        .eq('provider', 'World Card (Yapı Kredi)')
         .order('created_at', { ascending: false })
         .limit(testMode ? 20 : 1000);
 
