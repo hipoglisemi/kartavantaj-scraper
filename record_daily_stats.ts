@@ -18,7 +18,7 @@ async function recordDailyStats() {
 
     const { data: allData, error: fetchError } = await supabase
         .from('campaigns')
-        .select('id, title, bank, brand, sector_slug, category, ai_parsing_incomplete, min_spend, earning, description');
+        .select('id, title, bank, brand, sector_slug, category, image, valid_until, ai_parsing_incomplete, min_spend, earning, description');
 
     if (fetchError || !allData) {
         console.error('❌ Failed to fetch data:', fetchError?.message);
@@ -29,12 +29,14 @@ async function recordDailyStats() {
         noBrand: 0,
         noSector: 0,
         noCategory: 0,
+        noImage: 0,
+        noValidUntil: 0,
         aiIncomplete: 0,
         mathErrors: 0,
         textMismatches: 0
     };
 
-    const banks: Record<string, { total: number, missingBrand: number, errors: number }> = {};
+    const banks: Record<string, { total: number, missingBrand: number, missingSector: number, errors: number }> = {};
 
     allData.forEach(c => {
         // Basic Metadata Checks
@@ -44,6 +46,8 @@ async function recordDailyStats() {
         if (isGenericBrand) stats.noBrand++;
         if (isGenericSector) stats.noSector++;
         if (!c.category || c.category === 'Diğer') stats.noCategory++;
+        if (!c.image || c.image === '') stats.noImage++;
+        if (!c.valid_until) stats.noValidUntil++;
         if (c.ai_parsing_incomplete) stats.aiIncomplete++;
 
         // --- Advanced Math Checks ---
@@ -75,9 +79,10 @@ async function recordDailyStats() {
         }
 
         // Bank breakdown
-        if (!banks[c.bank]) banks[c.bank] = { total: 0, missingBrand: 0, errors: 0 };
+        if (!banks[c.bank]) banks[c.bank] = { total: 0, missingBrand: 0, missingSector: 0, errors: 0 };
         banks[c.bank].total++;
         if (isGenericBrand) banks[c.bank].missingBrand++;
+        if (isGenericSector) banks[c.bank].missingSector++;
         if (c.ai_parsing_incomplete || (earning >= minSpend && minSpend > 10)) banks[c.bank].errors++;
     });
 
@@ -89,6 +94,8 @@ async function recordDailyStats() {
         missing_brand_count: stats.noBrand,
         missing_sector_count: stats.noSector,
         missing_category_count: stats.noCategory,
+        missing_image_count: stats.noImage,
+        missing_date_count: stats.noValidUntil,
         ai_incomplete_count: stats.aiIncomplete,
         math_error_count: stats.mathErrors,
         text_mismatch_count: stats.textMismatches,
