@@ -90,7 +90,7 @@ async function runWingsScraper() {
 
     const { data: existingCampaigns } = await supabase
         .from('campaigns')
-        .select('reference_url')
+        .select('reference_url, image, description, earning, sector_slug, brand')
         .eq('card_name', CARD_CONFIG.cardName)
         .in('reference_url', fullUrls);
 
@@ -98,17 +98,61 @@ async function runWingsScraper() {
         existingCampaigns?.map(c => c.reference_url) || []
     );
 
-    // Filter to only new campaigns
-    const newCampaigns = campaignsToProcess.filter(item => {
+    // Helper function to check if campaign has incomplete data
+    function hasIncompleteData(campaign: any): boolean {
+        const issues = [];
+
+        // 1. Image missing or is logo
+        if (!campaign.image) {
+            issues.push('image_missing');
+        } else if (campaign.image.includes('logo')) {
+            issues.push('image_is_logo');
+        }
+
+        // 2. Description missing or too short
+        if (!campaign.description || campaign.description.length < 10) {
+            issues.push('description_short');
+        }
+
+        // 3. Earning missing
+        if (!campaign.earning || campaign.earning === '0') {
+            issues.push('earning_missing');
+        }
+
+        // 4. Sector is default
+        if (campaign.sector_slug === 'diger') {
+            issues.push('sector_default');
+        }
+
+        // 5. Brand missing
+        if (!campaign.brand) {
+            issues.push('brand_missing');
+        }
+
+        if (issues.length > 0) {
+            console.log(`      ⚠️  Incomplete (${issues.join(', ')}): ${campaign.reference_url}`);
+            return true;
+        }
+
+        return false;
+    }
+
+    // Find campaigns with incomplete data
+    const incompleteCampaigns = existingCampaigns?.filter(c => hasIncompleteData(c)) || [];
+    const incompleteUrls = new Set(incompleteCampaigns.map(c => c.reference_url));
+
+    // Filter campaigns to process: new + incomplete
+    const campaignsToScrape = campaignsToProcess.filter(item => {
         const fullUrl = new URL(item.href, CARD_CONFIG.baseUrl).toString();
-        return !existingUrls.has(fullUrl);
+        return !existingUrls.has(fullUrl) || incompleteUrls.has(fullUrl);
     });
 
-    console.log(`   📊 Total: ${campaignsToProcess.length}, Existing: ${existingUrls.size}, New: ${newCampaigns.length}`);
-    console.log(`   ⚡ Skipping ${existingUrls.size} existing campaigns, processing ${newCampaigns.length} new ones...\n`);
+    const completeCount = existingUrls.size - incompleteUrls.size;
+    console.log(`   📊 Total: ${campaignsToProcess.length}, New: ${campaignsToProcess.length - existingUrls.size}, Incomplete: ${incompleteUrls.size}, Complete: ${completeCount}`);
+    console.log(`   ⚡ Skipping ${completeCount} complete campaigns, processing ${campaignsToScrape.length} (${campaignsToProcess.length - existingUrls.size} new + ${incompleteUrls.size} incomplete)...\n`);
 
-    // Process Only New Campaigns
-    for (const item of newCampaigns) {
+    // Process New + Incomplete Campaigns
+    for (const item of campaignsToScrape) {
         const fullUrl = new URL(item.href, CARD_CONFIG.baseUrl).toString();
         console.log(`   🔍 ${fullUrl}`);
         try {
