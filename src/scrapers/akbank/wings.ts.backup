@@ -152,128 +152,89 @@ async function runWingsScraper() {
     console.log(`   📊 Total: ${campaignsToProcess.length}, New: ${campaignsToProcess.length - existingUrls.size}, Incomplete: ${incompleteUrls.size}, Complete: ${completeCount}`);
     console.log(`   ⚡ Skipping ${completeCount} complete campaigns, processing ${campaignsToScrape.length} (${campaignsToProcess.length - existingUrls.size} new + ${incompleteUrls.size} incomplete)...\n`);
 
-    // Launch Puppeteer browser for JavaScript rendering
-    const browser = await puppeteer.launch({
-        headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-blink-features=AutomationControlled']
-    });
-    const browserPage = await browser.newPage();
-    await browserPage.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
-
-    // Bot detection bypass
-    await browserPage.evaluateOnNewDocument(() => {
-        // @ts-ignore - Browser context
-        Object.defineProperty(navigator, 'webdriver', { get: () => false });
-        // @ts-ignore - Browser context
-        window.chrome = { runtime: {} };
-    });
-
     // Process New + Incomplete Campaigns
     for (const item of campaignsToScrape) {
         const fullUrl = new URL(item.href, CARD_CONFIG.baseUrl).toString();
         console.log(`   🔍 ${fullUrl}`);
+        try {
+            const detailResponse = await axios.get(fullUrl, {
+                headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' }
+            });
+            const html = detailResponse.data;
+            const $ = cheerio.load(html);
 
-        let retries = 3;
-        let success = false;
+            // Wings detail page structure analysis from research:
+            // Title: h1.banner-title or similar.
+            const title = $('h1.banner-title').text().trim() || item.title || 'Başlıksız';
 
-        while (retries > 0 && !success) {
-            try {
-                // Use Puppeteer to render JavaScript with retry
-                await browserPage.goto(fullUrl, {
-                    waitUntil: 'networkidle2',  // Wait for network to be idle (images loaded)
-                    timeout: 45000
-                });
-
-                // Wait specifically for campaign images to load
-                await sleep(2000);  // Extra wait for images
-                await browserPage.waitForSelector('img[src*="/api/uploads/"]', { timeout: 10000 }).catch(() => { });
-                success = true;
-
-                const html = await browserPage.content();
-                const $ = cheerio.load(html);
-
-                // Extract title
-                const title = $('h1.banner-title').text().trim() || item.title || 'Başlıksız';
-
-                // Extract image using page.evaluate (more reliable for JS-rendered content)
-                const imageUrl = await browserPage.evaluate(() => {
-                    // @ts-ignore - Browser context
-                    const imgs = Array.from(document.querySelectorAll('img'));
-                    const campaignImg = imgs.find((img: any) =>
-                        img.src && img.src.includes('/api/uploads/') && !img.src.includes('logo')
-                    );
-                    return (campaignImg as any)?.src || null;
-                });
-
-                let campaignData;
-                if (isAIEnabled) {
-                    campaignData = await parseWithGemini(html, fullUrl, 'Akbank');
-                } else {
-                    campaignData = {
-                        title,
-                        description: title,
-                        category: 'Diğer',
-                        sector_slug: 'diger',
-                        card_name: CARD_CONFIG.cardName,
-                        bank: normalizedBank,
-                        url: fullUrl,
-                        reference_url: fullUrl,
-                        is_active: true
-                    };
+            // Image: Wings doesn't use specific classes, but campaign images are in /api/uploads/
+            // Get first image that's from uploads (excluding logo.svg)
+            let imageUrl: string | null = null;
+            $('img').each((_, el) => {
+                const src = $(el).attr('src');
+                if (src && src.includes('/api/uploads/') && !src.includes('logo')) {
+                    imageUrl = new URL(src, CARD_CONFIG.baseUrl).toString();
+                    return false; // break
                 }
-                if (campaignData) {
-                    campaignData.title = title;
+            });
 
-                    // Image priority: AI > Scraper fallback > Placeholder
-                    if (!campaignData.image && imageUrl) {
-                        campaignData.image = imageUrl;
-                        console.log(`      🔧 Using Puppeteer image (AI didn't find one)`);
-                    } else if (campaignData.image) {
-                        console.log(`      🤖 Using AI image`);
-                    } else if (!campaignData.image && !imageUrl) {
-                        console.log('      ⚠️  No image found (neither AI nor Puppeteer)');
-                    }
+            let campaignData;
+            if (isAIEnabled) {
+                campaignData = await parseWithGemini(html, fullUrl, 'Akbank');
+            } else {
+                campaignData = {
+                    title,
+                    description: title,
+                    category: 'Diğer',
+                    sector_slug: 'diger',
+                    card_name: CARD_CONFIG.cardName,
+                    bank: normalizedBank,
+                    url: fullUrl,
+                    reference_url: fullUrl,
+                    is_active: true
+                };
+            }
+            if (campaignData) {
+                campaignData.title = title;
 
-                    campaignData.card_name = CARD_CONFIG.cardName;
-                    campaignData.bank = normalizedBank;
-                    campaignData.url = fullUrl;
-                    campaignData.reference_url = fullUrl;
-                    campaignData.category = campaignData.category || 'Diğer';
-                    campaignData.sector_slug = generateSectorSlug(campaignData.category);
-                    syncEarningAndDiscount(campaignData);
-                    campaignData.is_active = true;
+                // Image priority: AI > Scraper fallback > Placeholder
+                if (!campaignData.image && imageUrl) {
+                    campaignData.image = imageUrl;
+                } else if (!campaignData.image && !imageUrl) {
+                    console.log('      ⚠️  No image found, using placeholder');
+                }
 
-                    if (campaignData.end_date) {
-                        const today = new Date();
-                        today.setHours(0, 0, 0, 0);
-                        const endDate = new Date(campaignData.end_date);
-                        if (endDate < today) {
-                            console.log(`      ⚠️  Expired (${campaignData.end_date}), skipping...`);
-                            continue;
-                        }
-                    }
+                campaignData.card_name = CARD_CONFIG.cardName;
+                campaignData.bank = normalizedBank;
+                campaignData.url = fullUrl;
+                campaignData.reference_url = fullUrl;
+                campaignData.category = campaignData.category || 'Diğer';
+                campaignData.sector_slug = generateSectorSlug(campaignData.category);
+                syncEarningAndDiscount(campaignData);
+                campaignData.is_active = true;
 
-                    const { error } = await supabase.from('campaigns').upsert(campaignData, { onConflict: 'reference_url' });
-                    if (error) console.error(`      ❌ ${error.message}`);
-                    else {
-                        console.log(`      🖼️  Puppeteer found: ${imageUrl || 'none'}`);
-                        console.log(`      💾 Saved image: ${campaignData.image || 'none'}`);
-                        console.log(`      ✅ Saved: ${title}`);
+                if (campaignData.end_date) {
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    const endDate = new Date(campaignData.end_date);
+                    if (endDate < today) {
+                        console.log(`      ⚠️  Expired (${campaignData.end_date}), skipping...`);
+                        continue;
                     }
                 }
-            } catch (error: any) {
-                retries--;
-                if (retries > 0) {
-                    console.log(`      ⚠️  Connection error, retrying... (${retries} attempts left)`);
-                    await sleep(3000 * (4 - retries)); // Exponential backoff
-                } else {
-                    console.error(`      ❌ ${error.message}`);
+
+                const { error } = await supabase.from('campaigns').upsert(campaignData, { onConflict: 'reference_url' });
+                if (error) console.error(`      ❌ ${error.message}`);
+                else {
+                    console.log(`      🖼️  Image: ${imageUrl}`);
+                    console.log(`      ✅ Saved: ${title}`);
                 }
             }
+        } catch (error: any) {
+            console.error(`      ❌ ${error.message}`);
         }
-        await sleep(2000);
+        await sleep(1500);
     }
-    await browser.close();
     console.log(`\n✅ Done!`);
 }
 
