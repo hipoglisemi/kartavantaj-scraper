@@ -1,4 +1,3 @@
-
 import puppeteer from 'puppeteer';
 import { createClient } from '@supabase/supabase-js';
 import * as dotenv from 'dotenv';
@@ -6,6 +5,7 @@ import { parseWithGemini } from '../../services/geminiParser';
 import { generateSectorSlug } from '../../utils/slugify';
 import { syncEarningAndDiscount } from '../../utils/dataFixer';
 import { normalizeBankName } from '../../utils/bankMapper';
+import { optimizeCampaigns } from '../../utils/campaignOptimizer';
 
 dotenv.config();
 
@@ -102,12 +102,21 @@ async function runScraperLogic(isAIEnabled: boolean) {
             return [...new Set(links)]; // Unique links
         });
 
-        console.log(`   🎉 Found ${campaignLinks.length} campaigns. Processing details...`);
+
+        console.log(`   🎉 Found ${campaignLinks.length} campaigns via scraping.`);
+
+        // Normalize to Full URLs for DB check
+        const fullUrls = campaignLinks.map(link => link.startsWith('http') ? link : `${BASE_URL}${link}`);
+
+        // Optimize
+        console.log(`   🔍 Optimizing campaign list via database check...`);
+        const { urlsToProcess } = await optimizeCampaigns(fullUrls, 'Maximum');
+
+        console.log(`   🚀 Processing details for ${urlsToProcess.length} campaigns (skipping ${fullUrls.length - urlsToProcess.length} complete/existing)...\n`);
 
         // Process Each Campaign
-        for (const link of campaignLinks) {
-            const fullUrl = link.startsWith('http') ? link : `${BASE_URL}${link}`;
-
+        for (const fullUrl of urlsToProcess) {
+            // fullUrl is already absolute here
             console.log(`\n   🔍 Processing: ${fullUrl}`);
 
             try {

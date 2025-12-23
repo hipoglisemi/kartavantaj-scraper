@@ -7,6 +7,7 @@ import { parseWithGemini } from '../../services/geminiParser';
 import { generateSectorSlug } from '../../utils/slugify';
 import { syncEarningAndDiscount } from '../../utils/dataFixer';
 import { normalizeBankName } from '../../utils/bankMapper';
+import { optimizeCampaigns } from '../../utils/campaignOptimizer';
 
 dotenv.config();
 
@@ -60,10 +61,16 @@ async function runGarantiScraper() {
             }
         });
 
-        console.log(`   🎉 Found ${campaignLinks.length} campaigns. Processing details...`);
+        console.log(`\n   🎉 Found ${campaignLinks.length} campaigns via scraping.`);
 
-        // 2. Process Details
-        for (const fullUrl of campaignLinks) {
+        // 2. Optimize
+        console.log(`   🔍 Optimizing campaign list via database check...`);
+        const { urlsToProcess } = await optimizeCampaigns(campaignLinks, 'Bonus');
+
+        console.log(`   🚀 Processing details for ${urlsToProcess.length} campaigns (skipping ${campaignLinks.length - urlsToProcess.length} complete/existing)...\n`);
+
+        // 3. Process Details
+        for (const fullUrl of urlsToProcess) {
             console.log(`\n   🔍 Processing: ${fullUrl}`);
 
             try {

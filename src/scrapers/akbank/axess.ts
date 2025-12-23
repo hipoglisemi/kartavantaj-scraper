@@ -7,6 +7,7 @@ import { parseWithGemini } from '../../services/geminiParser';
 import { generateSectorSlug } from '../../utils/slugify';
 import { syncEarningAndDiscount } from '../../utils/dataFixer';
 import { normalizeBankName } from '../../utils/bankMapper';
+import { optimizeCampaigns } from '../../utils/campaignOptimizer';
 
 dotenv.config();
 
@@ -101,10 +102,24 @@ async function runAxessScraper() {
     }
 
     const campaignsToProcess = allCampaigns.slice(0, limit);
-    console.log(`\n🎉 Processing ${campaignsToProcess.length} campaigns details...\n`);
+    console.log(`\n🎉 Found ${campaignsToProcess.length} campaigns via scraping.`);
+
+    // 2. Optimize
+    const allUrls = campaignsToProcess.map(c => new URL(c.href, CARD_CONFIG.baseUrl).toString());
+
+    console.log(`   🔍 Optimizing campaign list via database check...`);
+    const { urlsToProcess } = await optimizeCampaigns(allUrls, CARD_CONFIG.cardName);
+
+    // Filter original objects based on optimization
+    const finalItems = campaignsToProcess.filter(c => {
+        const fullUrl = new URL(c.href, CARD_CONFIG.baseUrl).toString();
+        return urlsToProcess.includes(fullUrl);
+    });
+
+    console.log(`   🚀 Processing details for ${finalItems.length} campaigns (skipping ${campaignsToProcess.length - finalItems.length} complete/existing)...\n`);
 
     // 2. Process Details
-    for (const item of campaignsToProcess) {
+    for (const item of finalItems) {
         const urlPart = item.href;
         if (!urlPart) continue;
 

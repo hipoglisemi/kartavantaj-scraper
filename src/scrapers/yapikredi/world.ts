@@ -7,6 +7,7 @@ import { parseWithGemini } from '../../services/geminiParser';
 import { generateSectorSlug } from '../../utils/slugify';
 import { syncEarningAndDiscount } from '../../utils/dataFixer';
 import { normalizeBankName } from '../../utils/bankMapper';
+import { optimizeCampaigns } from '../../utils/campaignOptimizer';
 
 dotenv.config();
 
@@ -99,10 +100,26 @@ async function runWorldScraper() {
         if (page === -1) break; // Break outer loop
     }
 
-    console.log(`\n🎉 Total ${allCampaigns.length} campaigns collected.\n`);
+    console.log(`\n🎉 Total ${allCampaigns.length} active campaigns collected.`);
 
-    // 2. Process Details
-    for (const item of allCampaigns) {
+    // 2. Optimize: Check what needs processing
+    console.log(`\n   🔍 Optimizing campaign list via database check...`);
+    const allUrls = allCampaigns
+        .map(item => item.Url ? new URL(item.Url, CARD_CONFIG.baseUrl).toString() : null)
+        .filter(url => url !== null) as string[];
+
+    const { urlsToProcess } = await optimizeCampaigns(allUrls, CARD_CONFIG.cardName);
+
+    // Filter campaigns based on optimization result
+    const campaignMap = new Map(allCampaigns.map(c => [new URL(c.Url, CARD_CONFIG.baseUrl).toString(), c]));
+    const campaignsToProcess = urlsToProcess
+        .map(url => campaignMap.get(url))
+        .filter(Boolean);
+
+    console.log(`   🚀 Processing details for ${campaignsToProcess.length} campaigns (skipping ${allCampaigns.length - campaignsToProcess.length} complete/existing)...\n`);
+
+    // 3. Process Details
+    for (const item of campaignsToProcess) {
         const urlPart = item.Url;
         if (!urlPart) continue;
 
