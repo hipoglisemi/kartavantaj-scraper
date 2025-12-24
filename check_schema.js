@@ -1,0 +1,1 @@
+const { createClient } = require('@supabase/supabase-js'); require('dotenv').config(); const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY); (async () => { const { data, error } = await supabase.from('campaigns').select('conditions').limit(1); if(error) console.log('Error:', error); else console.log('Column exists if no error.'); })();

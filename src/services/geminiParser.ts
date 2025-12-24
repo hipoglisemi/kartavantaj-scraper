@@ -378,7 +378,8 @@ Extract campaign data into JSON matching this EXACT schema:
 
 {
   "title": "string (catchy campaign title, clear and concise)",
-  "description": "string (2-3 sentences max, include 1-2 relevant emojis, focus on value proposition)",
+  "description": "string (Rich marketing text. Focus on benefits. Max 4-5 sentences. Do NOT include boring legal terms here.)",
+  "conditions": ["string (List of important campaign terms, limits, and exclusions. Extract key rules as separate items.)"],
   "category": "string (MUST be one of: ${masterData.categories.join(', ')})",
   "discount": "string (Use ONLY for installment info, e.g. '9 Taksit', '+3 Taksit'. FORMAT: '{Number} Taksit'. NEVER mention fees/interest.)",
   "earning": "string (Use ONLY for points/cashback. FORMAT: '{Amount} TL Puan' or '{Amount} TL İndirim' or '%{X} İndirim'. MAX 20 chars.)",
