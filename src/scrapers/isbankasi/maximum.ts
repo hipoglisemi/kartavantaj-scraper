@@ -19,7 +19,7 @@ const CAMPAIGNS_URL = 'https://www.maximum.com.tr/kampanyalar';
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-async function runScraperLogic(isAIEnabled: boolean) {
+async function runScraperLogic(isAIEnabled: boolean, limit: number = 9999) {
     const browser = await puppeteer.launch({
         headless: true,
         args: [
@@ -53,9 +53,10 @@ async function runScraperLogic(isAIEnabled: boolean) {
         // Handle "Daha Fazla" (Load More) button logic
         let hasMore = true;
         let buttonClickCount = 0;
-        const MAX_CLICKS = 20; // Safety limit
+        // If limit is small (e.g. 5), we don't need to load everything
+        const MAX_CLICKS = limit < 20 ? 0 : 20;
 
-        console.log('   🔄 Loading all campaigns (clicking "Daha Fazla")...');
+        console.log(`   🔄 Loading campaigns (Limit: ${limit})...`);
 
         while (hasMore && buttonClickCount < MAX_CLICKS) {
             try {
@@ -83,7 +84,7 @@ async function runScraperLogic(isAIEnabled: boolean) {
                 hasMore = false;
             }
         }
-        console.log(`\n   ✅ Loaded full list after ${buttonClickCount} clicks.`);
+        console.log(`\n   ✅ Loaded list after ${buttonClickCount} clicks.`);
 
         // Extract Links
         const campaignLinks = await page.evaluate(() => {
@@ -116,10 +117,13 @@ async function runScraperLogic(isAIEnabled: boolean) {
         console.log(`   🔍 Optimizing campaign list via database check...`);
         const { urlsToProcess } = await optimizeCampaigns(fullUrls, normalizedCard);
 
-        console.log(`   🚀 Processing details for ${urlsToProcess.length} campaigns (skipping ${fullUrls.length - urlsToProcess.length} complete/existing)...\n`);
+        // Apply Limit
+        const limitedUrls = urlsToProcess.slice(0, limit);
+
+        console.log(`   🚀 Processing details for ${limitedUrls.length} campaigns (Limit applied: ${limit})...\n`);
 
         // Process Each Campaign
-        for (const fullUrl of urlsToProcess) {
+        for (const fullUrl of limitedUrls) {
             // fullUrl is already absolute here
             console.log(`\n   🔍 Processing: ${fullUrl}`);
 
@@ -248,13 +252,17 @@ async function runMaximumScraper() {
     console.log('🚀 Starting İş Bankası (Maximum) Scraper...');
     const isAIEnabled = process.argv.includes('--ai');
 
+    // Parse limit argument
+    const limitArg = process.argv.find(arg => arg.startsWith('--limit='));
+    const limit = limitArg ? parseInt(limitArg.split('=')[1]) : 9999;
+
     const MAX_RETRIES = 3;
     const RETRY_DELAY = 5000; // 5 seconds
 
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
         try {
             console.log(`\n   🔄 Attempt ${attempt}/${MAX_RETRIES}...`);
-            await runScraperLogic(isAIEnabled);
+            await runScraperLogic(isAIEnabled, limit);
             console.log('\n✅ İş Bankası scraper completed successfully!');
             return; // Success, exit
         } catch (error: any) {
