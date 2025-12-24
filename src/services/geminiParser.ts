@@ -27,9 +27,10 @@ async function fetchMasterData(): Promise<MasterData> {
 
     // Use master_sectors (same as frontend) instead of master_categories
     const categories = sectorsRes.data?.map(c => c.name) || [
-        'Market', 'Yakıt', 'Restoran & Kafe', 'Elektronik', 'Giyim & Moda',
-        'Ev & Yaşam', 'Online Alışveriş', 'Seyahat', 'Eğlence', 'Sağlık & Güzellik',
-        'Spor & Outdoor', 'Kitap & Kırtasiye', 'Diğer'
+        'Market & Gıda', 'Akaryakıt', 'Giyim & Aksesuar', 'Restoran & Kafe',
+        'Elektronik', 'Mobilya & Dekorasyon', 'Kozmetik & Sağlık', 'E-Ticaret',
+        'Ulaşım', 'Dijital Platform', 'Kültür & Sanat', 'Eğitim',
+        'Sigorta', 'Otomotiv', 'Vergi & Kamu', 'Turizm & Konaklama', 'Diğer'
     ];
 
     const brands = brandsRes.data?.map(b => b.name) || [];
