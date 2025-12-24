@@ -9,9 +9,9 @@ const supabase = createClient(
 );
 
 async function recordDailyStats() {
-    console.log('🚀 Recording Advanced Daily Statistics...');
+    console.log('🚀 Gelişmiş Günlük İstatistikler Kaydediliyor...');
 
-    // 1. Fetch Stats
+    // 1. İstatistikleri Çek
     const { count: totalCount } = await supabase.from('campaigns').select('id', { count: 'exact', head: true });
     const { count: activeCount } = await supabase.from('campaigns').select('id', { count: 'exact', head: true }).eq('is_active', true);
     const { count: approvedCount } = await supabase.from('campaigns').select('id', { count: 'exact', head: true }).eq('is_approved', true);
@@ -21,7 +21,7 @@ async function recordDailyStats() {
         .select('id, title, bank, brand, sector_slug, category, image, valid_until, ai_parsing_incomplete, min_spend, earning, description');
 
     if (fetchError || !allData) {
-        console.error('❌ Failed to fetch data:', fetchError?.message);
+        console.error('❌ Veriler çekilemedi:', fetchError?.message);
         return;
     }
 
@@ -39,7 +39,7 @@ async function recordDailyStats() {
     const banks: Record<string, { total: number, missingBrand: number, missingSector: number, errors: number }> = {};
 
     allData.forEach(c => {
-        // Basic Metadata Checks
+        // Temel Metaveri Kontrolleri
         const isGenericBrand = !c.brand || c.brand.trim() === '' || c.brand.toLowerCase().includes('genel');
         const isGenericSector = !c.sector_slug || c.sector_slug === 'diger';
 
@@ -50,35 +50,31 @@ async function recordDailyStats() {
         if (!c.valid_until) stats.noValidUntil++;
         if (c.ai_parsing_incomplete) stats.aiIncomplete++;
 
-        // --- Advanced Math Checks ---
+        // --- Gelişmiş Matematiksel Kontroller ---
         const minSpend = parseFloat(c.min_spend) || 0;
         const earning = parseFloat(c.earning) || 0;
 
-        // Error if earning > minSpend (usually impossible or a scale error like 500TL kazanmak vs 50TL harcamak)
-        // OR very suspicious earning to spend ratio (e.g. 1000TL spend for 1TL earn is okay, but 100TL earn for 10TL spend is wrong)
+        // Kazanım > Harcama durumu hata olarak işaretlenir (Örn: 50TL harcamaya 500TL puan)
         if (earning > 0 && minSpend > 0) {
-            if (earning >= minSpend && minSpend > 10) { // If you earn more than you spend, its likely an error
+            if (earning >= minSpend && minSpend > 10) {
                 stats.mathErrors++;
             }
         }
 
-        // --- Text Mismatch Checks ---
+        // --- Metin Uyuşmazlığı Kontrolleri ---
         const titleText = (c.title || '').toLowerCase();
         const descText = (c.description || '').toLowerCase();
 
-        // Check if title mentions a number that is drastically different from earning field
-        // E.g. Title says "1000 TL Chip-Para" but earning field is 100
+        // Başlıktaki rakam ile earning alanı arasındaki büyük farkları kontrol et
         const numbersInTitle = titleText.match(/\d+/g) || [];
         if (numbersInTitle.includes(earning.toString()) === false && earning > 0) {
-            // Suspicious, but we need more logic to be sure. 
-            // Let's check if high value numbers exist in title but earning is small.
             const hasHighValueInTitle = numbersInTitle.some((n: string) => parseInt(n) >= 100);
             if (hasHighValueInTitle && earning < 10 && earning > 0) {
                 stats.textMismatches++;
             }
         }
 
-        // Bank breakdown
+        // Banka bazlı kırılım
         if (!banks[c.bank]) banks[c.bank] = { total: 0, missingBrand: 0, missingSector: 0, errors: 0 };
         banks[c.bank].total++;
         if (isGenericBrand) banks[c.bank].missingBrand++;
@@ -86,7 +82,7 @@ async function recordDailyStats() {
         if (c.ai_parsing_incomplete || (earning >= minSpend && minSpend > 10)) banks[c.bank].errors++;
     });
 
-    // 2. Prepare Payload
+    // 2. Yükü Hazırla
     const payload = {
         total_campaigns: totalCount || 0,
         active_campaigns: activeCount || 0,
@@ -106,16 +102,16 @@ async function recordDailyStats() {
         }
     };
 
-    // 3. Insert into DB
+    // 3. Veritabanına Ekle
     const { error: insertError } = await supabase
         .from('system_statistics')
         .insert([payload]);
 
     if (insertError) {
-        console.error('❌ Failed to save statistics:', insertError.message);
+        console.error('❌ İstatistikler kaydedilemedi:', insertError.message);
     } else {
-        console.log('✅ Advanced statistics saved successfully!');
+        console.log('✅ Gelişmiş istatistikler başarıyla kaydedildi!');
     }
 }
 
-recordDailyStats().catch(err => console.error('❌ Execution Error:', err));
+recordDailyStats().catch(err => console.error('❌ Uygulama Hatası:', err));

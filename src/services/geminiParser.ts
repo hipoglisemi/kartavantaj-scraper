@@ -18,7 +18,7 @@ let cachedMasterData: MasterData | null = null;
 async function fetchMasterData(): Promise<MasterData> {
     if (cachedMasterData) return cachedMasterData;
 
-    console.log('📚 Fetching master data from Supabase...');
+    console.log('📚 Supabase\'den ana veriler çekiliyor...');
 
     const [sectorsRes, brandsRes] = await Promise.all([
         supabase.from('master_sectors').select('name'),
@@ -50,7 +50,7 @@ async function fetchMasterData(): Promise<MasterData> {
     ];
 
     cachedMasterData = { categories, brands, banks };
-    console.log(`✅ Loaded: ${categories.length} categories, ${brands.length} brands, ${banks.length} banks`);
+    console.log(`✅ Veriler Yüklendi: ${categories.length} kategori, ${brands.length} marka, ${banks.length} banka`);
 
     return cachedMasterData;
 }
@@ -72,7 +72,7 @@ async function callGeminiAPI(prompt: string, retryCount = 0): Promise<any> {
         const timeSinceLastRequest = now - lastRequestTime;
         if (timeSinceLastRequest < MIN_REQUEST_INTERVAL_MS) {
             const waitTime = MIN_REQUEST_INTERVAL_MS - timeSinceLastRequest;
-            console.log(`   ⏳ Rate limiting: waiting ${waitTime}ms...`);
+            console.log(`   ⏳ Hız sınırlama: ${waitTime}ms bekleniyor...`);
             await sleep(waitTime);
         }
         lastRequestTime = Date.now();
@@ -95,7 +95,7 @@ async function callGeminiAPI(prompt: string, retryCount = 0): Promise<any> {
             }
 
             const retryDelay = BASE_DELAY_MS * Math.pow(2, retryCount); // Exponential: 2s, 4s, 8s
-            console.log(`   ⚠️  Rate limit hit (429). Retry ${retryCount + 1}/${MAX_RETRIES} after ${retryDelay}ms...`);
+            console.log(`   ⚠️  Hız limitine takıldı (429). Deneme ${retryCount + 1}/${MAX_RETRIES}, ${retryDelay}ms sonra...`);
             await sleep(retryDelay);
             return callGeminiAPI(prompt, retryCount + 1);
         }

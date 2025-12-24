@@ -9,76 +9,75 @@ const supabaseKey = process.env.SUPABASE_ANON_KEY || ''; // Using service role k
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 async function autoCorrect() {
-    console.log('🚀 Starting Auto-Correction Cycle...');
+    console.log('🚀 Otomatik Düzeltme Döngüsü Başlatılıyor...');
 
-    // 1. Fetch campaigns that need attention
-    // - ai_parsing_incomplete is true
-    // - math errors (min_spend > 0 and earning >= min_spend and min_spend > 10)
+    // 1. İnceleme gerektiren kampanyaları getir
+    // - ai_parsing_incomplete true olanlar
+    // - Matematik hataları (min_spend > 0 ve earning >= min_spend ve min_spend > 10)
 
-    // We fetch all and filter in TS for complex logic
+    // Karmaşık mantık için tümünü çekip TS tarafında filtreliyoruz
     const { data: campaigns, error } = await supabase
         .from('campaigns')
         .select('*')
         .or('ai_parsing_incomplete.eq.true,quality_score.lt.70')
-        .limit(50); // Process in batches to avoid rate limits
+        .limit(50); // Rate limitlere takılmamak için toplu işleme
 
     if (error) {
-        console.error('Error fetching campaigns:', error);
+        console.error('Kampanyalar çekilirken hata oluştu:', error);
         return;
     }
 
-    console.log(`Found ${campaigns?.length || 0} campaigns requiring attention.`);
+    console.log(`İncelenmesi gereken ${campaigns?.length || 0} kampanya bulundu.`);
 
     for (const campaign of campaigns || []) {
-        console.log(`\n🧐 Inspecting campaign [${campaign.id}]: ${campaign.title}`);
+        console.log(`\n🧐 Kampanya inceleniyor [${campaign.id}]: ${campaign.title}`);
 
-        // Complex Quality Check
+        // Karmaşık Kalite Kontrolü
         const minSpend = parseFloat(campaign.min_spend) || 0;
         const earningValue = parseFloat(campaign.earning) || 0;
         const hasMathError = earningValue >= minSpend && minSpend > 10;
         const isIncomplete = campaign.ai_parsing_incomplete;
 
         if (hasMathError || isIncomplete || !campaign.slug) {
-            console.log(`   🛠  Issue detected (Math: ${hasMathError}, Incomplete: ${isIncomplete}). Re-processing...`);
+            console.log(`   🛠  Hata saptandı (Matematik: ${hasMathError}, Eksik: ${isIncomplete}). Yeniden işleniyor...`);
 
             try {
-                // Re-parse with enhanced Gemini prompts
-                // We use title + description as base text if raw_content is missing
+                // Gelişmiş Gemini promptları ile yeniden analiz
                 const baseText = campaign.raw_content || `${campaign.title} ${campaign.description}`;
                 const result = await parseWithGemini(baseText, campaign.url || '', campaign.bank);
 
                 if (result) {
-                    // Update the row
+                    // Satırı güncelle
                     const { error: updateError } = await supabase
                         .from('campaigns')
                         .update({
                             ...result,
                             ai_parsing_incomplete: false,
                             auto_corrected: true,
-                            quality_score: 100 // Reset quality score once AI fixes it
+                            quality_score: 100 // AI düzelttiğinde kalite skorunu sıfırla
                         })
                         .eq('id', campaign.id);
 
                     if (updateError) {
-                        console.error(`   ❌ Failed to update [${campaign.id}]:`, updateError.message);
+                        console.error(`   ❌ Güncelleme başarısız [${campaign.id}]:`, updateError.message);
                     } else {
-                        console.log(`   ✅ Successfully corrected [${campaign.id}]`);
+                        console.log(`   ✅ Başarıyla düzeltildi [${campaign.id}]`);
                     }
                 }
             } catch (err) {
-                console.error(`   ❌ Error re-processing [${campaign.id}]:`, err);
+                console.error(`   ❌ Yeniden işleme sırasında hata [${campaign.id}]:`, err);
             }
 
-            // Wait to avoid rate limits
+            // Rate limitlerden kaçınmak için bekle
             await new Promise(resolve => setTimeout(resolve, 2000));
         } else {
-            console.log(`   ✨ Quality OK.`);
-            // Update quality score if it was low but passed our manual check
+            console.log(`   ✨ Kalite standartlara uygun.`);
+            // Manuel kontrolden geçtiyse kalite skorunu güncelle
             await supabase.from('campaigns').update({ quality_score: 90 }).eq('id', campaign.id);
         }
     }
 
-    console.log('\n🏁 Auto-Correction Cycle Finished.');
+    console.log('\n🏁 Otomatik Düzeltme Döngüsü Tamamlandı.');
 }
 
 autoCorrect();
