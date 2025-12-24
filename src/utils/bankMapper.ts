@@ -65,19 +65,22 @@ async function fetchMasterBanks(): Promise<MasterBank[]> {
 export async function normalizeBankName(inputName: string): Promise<string> {
     if (!inputName) return '';
 
+    // Normalize whitespace (trim and collapse multiple spaces)
+    const normalizedInput = inputName.trim().replace(/\s+/g, ' ');
+
     const banks = await fetchMasterBanks();
 
     // Try exact match
-    const exactMatch = banks.find(b => b.name === inputName);
+    const exactMatch = banks.find(b => b.name === normalizedInput);
     if (exactMatch) return exactMatch.name;
 
     // Try case-insensitive match
-    const caseMatch = banks.find(b => b.name.toLowerCase() === inputName.toLowerCase());
+    const caseMatch = banks.find(b => b.name.toLowerCase() === normalizedInput.toLowerCase());
     if (caseMatch) return caseMatch.name;
 
     // Try aliases
     const aliasMatch = banks.find(b =>
-        b.aliases && b.aliases.some(alias => alias.toLowerCase() === inputName.toLowerCase())
+        b.aliases && b.aliases.some(alias => alias.toLowerCase() === normalizedInput.toLowerCase())
     );
     if (aliasMatch) return aliasMatch.name;
 
@@ -116,22 +119,25 @@ function getStaticBankList(): MasterBank[] {
 export function normalizeBankNameSync(inputName: string): string {
     if (!inputName) return '';
 
+    // Normalize whitespace (trim and collapse multiple spaces)
+    const normalizedInput = inputName.trim().replace(/\s+/g, ' ');
+
     // Use cached data
     if (cachedBanks.length === 0) {
         // No cache, use static fallback
         cachedBanks = getStaticBankList();
     }
 
-    const exactMatch = cachedBanks.find(b => b.name === inputName);
+    const exactMatch = cachedBanks.find(b => b.name === normalizedInput);
     if (exactMatch) return exactMatch.name;
 
-    const caseMatch = cachedBanks.find(b => b.name.toLowerCase() === inputName.toLowerCase());
+    const caseMatch = cachedBanks.find(b => b.name.toLowerCase() === normalizedInput.toLowerCase());
     if (caseMatch) return caseMatch.name;
 
     const aliasMatch = cachedBanks.find(b =>
-        b.aliases && b.aliases.some(alias => alias.toLowerCase() === inputName.toLowerCase())
+        b.aliases && b.aliases.some(alias => alias.toLowerCase() === normalizedInput.toLowerCase())
     );
     if (aliasMatch) return aliasMatch.name;
 
-    return inputName;
+    return normalizedInput;
 }
