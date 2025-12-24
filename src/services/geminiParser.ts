@@ -370,7 +370,10 @@ export async function parseWithGemini(html: string, url: string, sourceBank?: st
     const masterData = await fetchMasterData();
 
     // STAGE 1: Full Parse
+    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
     const stage1Prompt = `
+CONTEXT: Today is ${today}. Use this date to resolve relative dates like "31 Aralık" to the correct year (${today.split('-')[0]}).
+
 Extract campaign data into JSON matching this EXACT schema:
 
 {
