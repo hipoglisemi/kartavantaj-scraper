@@ -13,6 +13,12 @@ const supabase = createClient(
     process.env.SUPABASE_ANON_KEY!
 );
 
+interface MasterCard {
+    id: string;
+    name: string;
+    logo?: string;
+}
+
 interface MasterBank {
     id: number;
     name: string;
@@ -20,6 +26,7 @@ interface MasterBank {
     aliases: string[];
     logo_url?: string;
     is_active: boolean;
+    cards: MasterCard[];
 }
 
 let cachedBanks: MasterBank[] = [];
@@ -39,22 +46,30 @@ async function fetchMasterBanks(): Promise<MasterBank[]> {
 
     try {
         const { data, error } = await supabase
-            .from('master_banks')
-            .select('*')
-            .eq('is_active', true)
-            .order('sort_order');
+            .from('bank_configs')
+            .select('bank_id, bank_name, aliases, logo, cards')
+            .order('bank_name');
 
         if (error) {
-            console.error('❌ Error fetching master_banks:', error.message);
+            console.error('❌ Error fetching bank_configs:', error.message);
             // Fallback to static list if DB fails
             return getStaticBankList();
         }
 
-        cachedBanks = data || [];
+        cachedBanks = data.map(b => ({
+            id: 0,
+            name: b.bank_name,
+            slug: b.bank_id,
+            aliases: b.aliases || [],
+            logo_url: b.logo,
+            cards: b.cards || [],
+            is_active: true
+        })) || [];
+
         lastFetch = now;
         return cachedBanks;
     } catch (err) {
-        console.error('❌ Exception fetching master_banks:', err);
+        console.error('❌ Exception fetching bank_configs:', err);
         return getStaticBankList();
     }
 }
@@ -85,8 +100,37 @@ export async function normalizeBankName(inputName: string): Promise<string> {
     if (aliasMatch) return aliasMatch.name;
 
     // No match found, return original (will be caught in data quality checks)
-    console.warn(`⚠️  Unknown bank name: "${inputName}" - please add to master_banks`);
+    console.warn(`⚠️  Unknown bank name: "${inputName}" - please add to bank_configs`);
     return inputName;
+}
+
+/**
+ * Normalize card name for a specific bank
+ */
+export async function normalizeCardName(bankName: string, inputCardName: string): Promise<string> {
+    if (!inputCardName) return '';
+
+    const normalizedInput = inputCardName.trim().replace(/\s+/g, ' ');
+    const banks = await fetchMasterBanks();
+
+    // Find the bank first
+    const bank = banks.find(b =>
+        b.name.toLowerCase() === bankName.toLowerCase() ||
+        (b.aliases && b.aliases.some(alias => alias.toLowerCase() === bankName.toLowerCase()))
+    );
+
+    if (!bank) return normalizedInput;
+
+    // Try exact card match
+    const exactMatch = bank.cards.find(c => c.name === normalizedInput);
+    if (exactMatch) return exactMatch.name;
+
+    // Try case-insensitive card match
+    const caseMatch = bank.cards.find(c => c.name.toLowerCase() === normalizedInput.toLowerCase());
+    if (caseMatch) return caseMatch.name;
+
+    // No match, return original
+    return normalizedInput;
 }
 
 /**
@@ -102,13 +146,13 @@ export async function getOfficialBankNames(): Promise<string[]> {
  */
 function getStaticBankList(): MasterBank[] {
     return [
-        { id: 1, name: 'Garanti BBVA', slug: 'garanti-bbva', aliases: ['Garanti', 'BBVA'], is_active: true },
-        { id: 2, name: 'Akbank', slug: 'akbank', aliases: ['Akbank'], is_active: true },
-        { id: 3, name: 'İş Bankası', slug: 'is-bankasi', aliases: ['Is Bankasi', 'Isbank'], is_active: true },
-        { id: 4, name: 'Yapı Kredi', slug: 'yapi-kredi', aliases: ['Yapı Kredi', 'Yapi Kredi', 'YKB'], is_active: true },
-        { id: 5, name: 'Ziraat', slug: 'ziraat-bankasi', aliases: ['Ziraat Bankası', 'Ziraat Bankasi'], is_active: true },
-        { id: 6, name: 'Halkbank', slug: 'halkbank', aliases: ['Halk Bankası'], is_active: true },
-        { id: 7, name: 'Vakıfbank', slug: 'vakifbank', aliases: ['Vakifbank', 'VakıfBank'], is_active: true },
+        { id: 1, name: 'Garanti BBVA', slug: 'garanti-bbva', aliases: ['Garanti', 'BBVA'], is_active: true, cards: [{ id: 'bonus', name: 'Bonus' }] },
+        { id: 2, name: 'Akbank', slug: 'akbank', aliases: ['Akbank'], is_active: true, cards: [{ id: 'axess', name: 'Axess' }, { id: 'wings', name: 'Wings' }] },
+        { id: 3, name: 'İş Bankası', slug: 'is-bankasi', aliases: ['Is Bankasi', 'Isbank'], is_active: true, cards: [{ id: 'maximum', name: 'Maximum' }] },
+        { id: 4, name: 'Yapı Kredi', slug: 'yapi-kredi', aliases: ['Yapı Kredi', 'Yapi Kredi', 'YKB'], is_active: true, cards: [{ id: 'world', name: 'World' }] },
+        { id: 5, name: 'Ziraat', slug: 'ziraat-bankasi', aliases: ['Ziraat Bankası', 'Ziraat Bankasi'], is_active: true, cards: [{ id: 'bankkart', name: 'Bankkart' }] },
+        { id: 6, name: 'Halkbank', slug: 'halkbank', aliases: ['Halk Bankası'], is_active: true, cards: [{ id: 'paraf', name: 'Paraf' }] },
+        { id: 7, name: 'Vakıfbank', slug: 'vakifbank', aliases: ['Vakifbank', 'VakıfBank'], is_active: true, cards: [{ id: 'world', name: 'World' }] },
     ];
 }
 

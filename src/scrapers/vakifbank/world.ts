@@ -5,7 +5,7 @@ import * as dotenv from 'dotenv';
 import { parseWithGemini } from '../../services/geminiParser';
 import { generateSectorSlug } from '../../utils/slugify';
 import { syncEarningAndDiscount } from '../../utils/dataFixer';
-import { normalizeBankName } from '../../utils/bankMapper';
+import { normalizeBankName, normalizeCardName } from '../../utils/bankMapper';
 
 dotenv.config();
 
@@ -21,6 +21,9 @@ const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 async function runVakifbankWorldScraper() {
     console.log('🚀 Starting VakıfBank Scraper...');
+    const normalizedBank = await normalizeBankName('Vakıfbank');
+    const normalizedCard = await normalizeCardName(normalizedBank, 'World');
+    console.log(`   Bank: ${normalizedBank}, Card: ${normalizedCard}`);
     const isAIEnabled = process.argv.includes('--ai');
 
     const browser = await puppeteer.launch({
@@ -133,8 +136,8 @@ async function runVakifbankWorldScraper() {
                 if (campaignData) {
                     // Force fields
                     campaignData.title = fallbackData.title; // Strict Assignment
-                    campaignData.card_name = 'Vakıfbank World'; // Match admin panel exactly
-                    campaignData.bank = await normalizeBankName('Vakıfbank'); // Dynamic mapping from master_banks
+                    campaignData.card_name = normalizedCard; // Match admin panel exactly
+                    campaignData.bank = normalizedBank; // Dynamic mapping from bank_configs
 
                     // MAP FIELDS TO DB SCHEMA
                     campaignData.url = fullUrl;

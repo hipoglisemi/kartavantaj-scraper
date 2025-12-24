@@ -6,7 +6,7 @@ import * as dotenv from 'dotenv';
 import { parseWithGemini } from '../../services/geminiParser';
 import { generateSectorSlug } from '../../utils/slugify';
 import { syncEarningAndDiscount } from '../../utils/dataFixer';
-import { normalizeBankName } from '../../utils/bankMapper';
+import { normalizeBankName, normalizeCardName } from '../../utils/bankMapper';
 import { optimizeCampaigns } from '../../utils/campaignOptimizer';
 
 dotenv.config();
@@ -28,8 +28,10 @@ const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 export async function runWorldScraper() {
     const normalizedBank = await normalizeBankName(CARD_CONFIG.bankName);
+    const normalizedCard = await normalizeCardName(normalizedBank, CARD_CONFIG.cardName);
     console.log(`\n💳 Starting ${CARD_CONFIG.name} Card Scraper...`);
     console.log(`   Bank: ${normalizedBank}`);
+    console.log(`   Card: ${normalizedCard}`);
     console.log(`   Source: ${CARD_CONFIG.baseUrl}\n`);
 
     const isAIEnabled = process.argv.includes('--ai');
@@ -109,7 +111,7 @@ export async function runWorldScraper() {
         .map(item => item.Url ? new URL(item.Url, CARD_CONFIG.baseUrl).toString() : null)
         .filter(url => url !== null) as string[];
 
-    const { urlsToProcess } = await optimizeCampaigns(allUrls, CARD_CONFIG.cardName);
+    const { urlsToProcess } = await optimizeCampaigns(allUrls, normalizedCard);
 
     // Filter campaigns based on optimization result
     const campaignMap = new Map(allCampaigns.map(c => [new URL(c.Url, CARD_CONFIG.baseUrl).toString(), c]));
@@ -160,7 +162,7 @@ export async function runWorldScraper() {
             if (campaignData) {
                 // STRICT ASSIGNMENT - Prevent AI misclassification
                 campaignData.title = title;
-                campaignData.card_name = CARD_CONFIG.cardName;
+                campaignData.card_name = normalizedCard;
                 campaignData.bank = normalizedBank;
                 campaignData.url = fullUrl;
                 campaignData.reference_url = fullUrl;

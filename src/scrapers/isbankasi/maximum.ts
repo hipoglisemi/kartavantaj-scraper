@@ -4,7 +4,7 @@ import * as dotenv from 'dotenv';
 import { parseWithGemini } from '../../services/geminiParser';
 import { generateSectorSlug } from '../../utils/slugify';
 import { syncEarningAndDiscount } from '../../utils/dataFixer';
-import { normalizeBankName } from '../../utils/bankMapper';
+import { normalizeBankName, normalizeCardName } from '../../utils/bankMapper';
 import { optimizeCampaigns } from '../../utils/campaignOptimizer';
 
 dotenv.config();
@@ -108,9 +108,13 @@ async function runScraperLogic(isAIEnabled: boolean) {
         // Normalize to Full URLs for DB check
         const fullUrls = campaignLinks.map(link => link.startsWith('http') ? link : `${BASE_URL}${link}`);
 
+        // Normalize Bank and Card
+        const normalizedBank = await normalizeBankName('İş Bankası');
+        const normalizedCard = await normalizeCardName(normalizedBank, 'Maximum');
+
         // Optimize
         console.log(`   🔍 Optimizing campaign list via database check...`);
-        const { urlsToProcess } = await optimizeCampaigns(fullUrls, 'Maximum');
+        const { urlsToProcess } = await optimizeCampaigns(fullUrls, normalizedCard);
 
         console.log(`   🚀 Processing details for ${urlsToProcess.length} campaigns (skipping ${fullUrls.length - urlsToProcess.length} complete/existing)...\n`);
 
@@ -151,12 +155,13 @@ async function runScraperLogic(isAIEnabled: boolean) {
                 // AI Parsing
                 let campaignData;
                 if (isAIEnabled) {
-                    campaignData = await parseWithGemini(html, fullUrl, 'İş Bankası');
+                    campaignData = await parseWithGemini(html, fullUrl, normalizedBank);
                 } else {
                     campaignData = {
                         title: title,
                         description: title,
-                        card_name: 'Maximum',
+                        card_name: normalizedCard,
+                        bank: normalizedBank,
                         url: fullUrl,
                         reference_url: fullUrl,
                         image: fullImageUrl,
@@ -169,8 +174,8 @@ async function runScraperLogic(isAIEnabled: boolean) {
                 if (campaignData) {
                     // Force fields
                     campaignData.title = title; // Strict Assignment
-                    campaignData.card_name = 'Maximum';
-                    campaignData.bank = await normalizeBankName('İş Bankası'); // Enforce strict bank assignment
+                    campaignData.card_name = normalizedCard;
+                    campaignData.bank = normalizedBank; // Enforce strict bank assignment
 
                     // MAP FIELDS TO DB SCHEMA
                     campaignData.url = fullUrl;

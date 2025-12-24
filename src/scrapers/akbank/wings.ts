@@ -6,7 +6,7 @@ import * as dotenv from 'dotenv';
 import { parseWithGemini } from '../../services/geminiParser';
 import { generateSectorSlug } from '../../utils/slugify';
 import { syncEarningAndDiscount } from '../../utils/dataFixer';
-import { normalizeBankName } from '../../utils/bankMapper';
+import { normalizeBankName, normalizeCardName } from '../../utils/bankMapper';
 
 dotenv.config();
 
@@ -25,7 +25,8 @@ const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 async function runWingsScraper() {
     const normalizedBank = await normalizeBankName(CARD_CONFIG.bankName);
-    console.log(`\n💳 ${CARD_CONFIG.name} (${normalizedBank})\n`);
+    const normalizedCard = await normalizeCardName(normalizedBank, CARD_CONFIG.cardName);
+    console.log(`\n💳 ${CARD_CONFIG.name} (${normalizedBank} - ${normalizedCard})\n`);
     const isAIEnabled = process.argv.includes('--ai');
     const limitArg = process.argv.find(arg => arg.startsWith('--limit='));
     const limit = limitArg ? parseInt(limitArg.split('=')[1]) : Infinity;
@@ -92,7 +93,7 @@ async function runWingsScraper() {
     const { data: existingCampaigns } = await supabase
         .from('campaigns')
         .select('reference_url, image, description, earning, sector_slug, brand')
-        .eq('card_name', CARD_CONFIG.cardName)
+        .eq('card_name', normalizedCard)
         .in('reference_url', fullUrls);
 
     const existingUrls = new Set(
@@ -266,14 +267,14 @@ async function runWingsScraper() {
 
         let campaignData;
         if (isAIEnabled) {
-            campaignData = await parseWithGemini(html, fullUrl, 'Akbank');
+            campaignData = await parseWithGemini(html, fullUrl, normalizedBank);
         } else {
             campaignData = {
                 title,
                 description: title,
                 category: 'Diğer',
                 sector_slug: 'diger',
-                card_name: CARD_CONFIG.cardName,
+                card_name: normalizedCard,
                 bank: normalizedBank,
                 url: fullUrl,
                 reference_url: fullUrl,
@@ -302,7 +303,7 @@ async function runWingsScraper() {
                 console.log('      ⚠️  No image found');
             }
 
-            campaignData.card_name = CARD_CONFIG.cardName;
+            campaignData.card_name = normalizedCard;
             campaignData.bank = normalizedBank;
             campaignData.url = fullUrl;
             campaignData.reference_url = fullUrl;

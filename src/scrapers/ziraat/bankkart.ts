@@ -5,7 +5,7 @@ import * as dotenv from 'dotenv';
 import { parseWithGemini } from '../../services/geminiParser';
 import { generateSectorSlug } from '../../utils/slugify';
 import { syncEarningAndDiscount } from '../../utils/dataFixer';
-import { normalizeBankName } from '../../utils/bankMapper';
+import { normalizeBankName, normalizeCardName } from '../../utils/bankMapper';
 
 dotenv.config();
 
@@ -21,6 +21,9 @@ const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 async function runBankkartScraper() {
     console.log('🚀 Starting Ziraat Bankkart Scraper...');
+    const normalizedBank = await normalizeBankName('Ziraat');
+    const normalizedCard = await normalizeCardName(normalizedBank, 'Bankkart');
+    console.log(`   Bank: ${normalizedBank}, Card: ${normalizedCard}`);
     const isAIEnabled = process.argv.includes('--ai');
 
     const browser = await puppeteer.launch({
@@ -117,12 +120,12 @@ async function runBankkartScraper() {
                 // AI Parsing
                 let campaignData;
                 if (isAIEnabled) {
-                    campaignData = await parseWithGemini(html, fullUrl, 'Ziraat Bankası');
+                    campaignData = await parseWithGemini(html, fullUrl, normalizedBank);
                 } else {
                     campaignData = {
                         title: fallbackData.title,
                         description: fallbackData.title,
-                        card_name: 'Bankkart',
+                        card_name: normalizedCard,
                         url: fullUrl,
                         reference_url: fullUrl,
                         image: fallbackData.image || '',
@@ -135,8 +138,8 @@ async function runBankkartScraper() {
                 if (campaignData) {
                     // Force fields
                     campaignData.title = fallbackData.title; // Strict Assignment
-                    campaignData.card_name = 'Bankkart';
-                    campaignData.bank = await normalizeBankName('Ziraat Bankası'); // Enforce strict bank assignment
+                    campaignData.card_name = normalizedCard;
+                    campaignData.bank = normalizedBank; // Enforce strict bank assignment
 
                     // MAP FIELDS TO DB SCHEMA
                     campaignData.url = fullUrl;

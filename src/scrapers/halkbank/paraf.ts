@@ -6,7 +6,7 @@ import { parseWithGemini } from '../../services/geminiParser';
 import { generateSectorSlug } from '../../utils/slugify';
 import { syncEarningAndDiscount } from '../../utils/dataFixer';
 import { optimizeCampaigns } from '../../utils/campaignOptimizer';
-import { normalizeBankName } from '../../utils/bankMapper';
+import { normalizeBankName, normalizeCardName } from '../../utils/bankMapper';
 
 dotenv.config();
 
@@ -22,6 +22,9 @@ const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 async function runParafScraper() {
     console.log('\n💳 Paraf (Halkbank)');
+    const normalizedBank = await normalizeBankName('Halkbank');
+    const normalizedCard = await normalizeCardName(normalizedBank, 'Paraf');
+    console.log(`   Bank: ${normalizedBank}, Card: ${normalizedCard}`);
 
     const args = process.argv.slice(2);
     const limitArgIndex = args.indexOf('--limit');
@@ -90,7 +93,7 @@ async function runParafScraper() {
             link.startsWith('http') ? link : `${BASE_URL}${link}`
         );
 
-        const { urlsToProcess } = await optimizeCampaigns(fullUrls, 'Paraf');
+        const { urlsToProcess } = await optimizeCampaigns(fullUrls, normalizedCard);
 
         // Process New + Incomplete Campaigns
         for (const fullUrl of urlsToProcess) {
@@ -142,10 +145,9 @@ async function runParafScraper() {
                 }, BASE_URL);
 
                 let campaignData;
-                const normalizedBank = await normalizeBankName('Halkbank');
 
                 if (isAIEnabled) {
-                    campaignData = await parseWithGemini(html, fullUrl, 'Paraf');
+                    campaignData = await parseWithGemini(html, fullUrl, normalizedBank);
 
                     // Merge fallback image if AI missed it
                     if (!campaignData.image && fallbackData.image) {
@@ -159,7 +161,7 @@ async function runParafScraper() {
                         image: fallbackData.image,
                         category: 'Diğer',
                         sector_slug: 'genel',
-                        card_name: 'Paraf',
+                        card_name: normalizedCard,
                         bank: normalizedBank,
                         url: fullUrl,
                         reference_url: fullUrl,
@@ -171,7 +173,7 @@ async function runParafScraper() {
 
                 if (campaignData) {
                     // Ensure critical fields
-                    campaignData.card_name = 'Paraf';
+                    campaignData.card_name = normalizedCard;
                     campaignData.bank = normalizedBank;
                     campaignData.url = fullUrl;
                     campaignData.reference_url = fullUrl;

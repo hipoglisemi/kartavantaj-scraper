@@ -6,7 +6,7 @@ import * as dotenv from 'dotenv';
 import { parseWithGemini } from '../../services/geminiParser';
 import { generateSectorSlug } from '../../utils/slugify';
 import { syncEarningAndDiscount } from '../../utils/dataFixer';
-import { normalizeBankName } from '../../utils/bankMapper';
+import { normalizeBankName, normalizeCardName } from '../../utils/bankMapper';
 import { optimizeCampaigns } from '../../utils/campaignOptimizer';
 
 dotenv.config();
@@ -31,8 +31,10 @@ const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 async function runAxessScraper() {
     const normalizedBank = await normalizeBankName(CARD_CONFIG.bankName);
+    const normalizedCard = await normalizeCardName(normalizedBank, CARD_CONFIG.cardName);
     console.log(`\n💳 Starting ${CARD_CONFIG.name} Card Scraper...`);
     console.log(`   Bank: ${normalizedBank}`);
+    console.log(`   Card: ${normalizedCard}`);
     console.log(`   Source: ${CARD_CONFIG.baseUrl}\n`);
 
     const isAIEnabled = process.argv.includes('--ai');
@@ -108,7 +110,7 @@ async function runAxessScraper() {
     const allUrls = campaignsToProcess.map(c => new URL(c.href, CARD_CONFIG.baseUrl).toString());
 
     console.log(`   🔍 Optimizing campaign list via database check...`);
-    const { urlsToProcess } = await optimizeCampaigns(allUrls, CARD_CONFIG.cardName);
+    const { urlsToProcess } = await optimizeCampaigns(allUrls, normalizedCard);
 
     // Filter original objects based on optimization
     const finalItems = campaignsToProcess.filter(c => {
@@ -144,14 +146,14 @@ async function runAxessScraper() {
             // AI Parsing
             let campaignData;
             if (isAIEnabled) {
-                campaignData = await parseWithGemini(html, fullUrl, 'Akbank');
+                campaignData = await parseWithGemini(html, fullUrl, normalizedBank);
             } else {
                 campaignData = {
                     title: title,
                     description: title,
                     category: 'Diğer',
                     sector_slug: 'diger',
-                    card_name: CARD_CONFIG.cardName,
+                    card_name: normalizedCard,
                     bank: normalizedBank,
                     url: fullUrl,
                     reference_url: fullUrl,
@@ -163,7 +165,7 @@ async function runAxessScraper() {
                 // STRICT ASSIGNMENT
                 campaignData.title = title;
                 campaignData.image = imageUrl; // Add extracted image
-                campaignData.card_name = CARD_CONFIG.cardName;
+                campaignData.card_name = normalizedCard;
                 campaignData.bank = normalizedBank;
                 campaignData.url = fullUrl;
                 campaignData.reference_url = fullUrl;

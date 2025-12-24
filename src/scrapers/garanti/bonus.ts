@@ -6,7 +6,7 @@ import * as dotenv from 'dotenv';
 import { parseWithGemini } from '../../services/geminiParser';
 import { generateSectorSlug } from '../../utils/slugify';
 import { syncEarningAndDiscount } from '../../utils/dataFixer';
-import { normalizeBankName } from '../../utils/bankMapper';
+import { normalizeBankName, normalizeCardName } from '../../utils/bankMapper';
 import { optimizeCampaigns } from '../../utils/campaignOptimizer';
 
 dotenv.config();
@@ -23,6 +23,9 @@ const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 async function runGarantiScraper() {
     console.log('🚀 Starting Garanti BBVA (Bonus) Scraper...');
+    const normalizedBank = await normalizeBankName('Garanti BBVA');
+    const normalizedCard = await normalizeCardName(normalizedBank, 'Bonus');
+    console.log(`   Bank: ${normalizedBank}, Card: ${normalizedCard}`);
     const isAIEnabled = process.argv.includes('--ai');
 
     try {
@@ -65,7 +68,7 @@ async function runGarantiScraper() {
 
         // 2. Optimize
         console.log(`   🔍 Optimizing campaign list via database check...`);
-        const { urlsToProcess } = await optimizeCampaigns(campaignLinks, 'Bonus');
+        const { urlsToProcess } = await optimizeCampaigns(campaignLinks, normalizedCard);
 
         console.log(`   🚀 Processing details for ${urlsToProcess.length} campaigns (skipping ${campaignLinks.length - urlsToProcess.length} complete/existing)...\n`);
 
@@ -98,12 +101,12 @@ async function runGarantiScraper() {
                 // AI Parsing
                 let campaignData;
                 if (isAIEnabled) {
-                    campaignData = await parseWithGemini(html, fullUrl, 'Garanti BBVA');
+                    campaignData = await parseWithGemini(html, fullUrl, normalizedBank);
                 } else {
                     campaignData = {
                         title: title,
                         description: title,
-                        card_name: 'Bonus',
+                        card_name: normalizedCard,
                         url: fullUrl,           // Mapped
                         reference_url: fullUrl, // Mapped
                         image: imageUrl || '',  // Mapped
@@ -116,8 +119,8 @@ async function runGarantiScraper() {
                 if (campaignData) {
                     // Force fields
                     campaignData.title = title; // Strict Assignment
-                    campaignData.card_name = 'Bonus'; // Default to Bonus, specific cards handled by AI if needed or generic override
-                    campaignData.bank = await normalizeBankName('Garanti BBVA'); // Enforce strict bank assignment
+                    campaignData.card_name = normalizedCard; // Default to Bonus
+                    campaignData.bank = normalizedBank; // Enforce strict bank assignment
 
                     // MAP FIELDS TO DB SCHEMA (SCRAPER_SCHEMA_GUIDE.md)
                     campaignData.url = fullUrl;           // Mapping reference_url -> url

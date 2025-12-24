@@ -5,7 +5,7 @@ import * as dotenv from 'dotenv';
 import { parseWithGemini } from '../../services/geminiParser';
 import { generateSectorSlug } from '../../utils/slugify';
 import { syncEarningAndDiscount } from '../../utils/dataFixer';
-import { normalizeBankName } from '../../utils/bankMapper';
+import { normalizeBankName, normalizeCardName } from '../../utils/bankMapper';
 
 dotenv.config();
 
@@ -25,7 +25,8 @@ const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 async function runBusinessScraper() {
     const normalizedBank = await normalizeBankName(CARD_CONFIG.bankName);
-    console.log(`\n💳 ${CARD_CONFIG.name} (${normalizedBank})\n`);
+    const normalizedCard = await normalizeCardName(normalizedBank, CARD_CONFIG.cardName);
+    console.log(`\n💳 ${CARD_CONFIG.name} (${normalizedBank} - ${normalizedCard})\n`);
     const isAIEnabled = process.argv.includes('--ai');
     const limitArg = process.argv.find(arg => arg.startsWith('--limit='));
     const limit = limitArg ? parseInt(limitArg.split('=')[1]) : Infinity;
@@ -91,7 +92,7 @@ async function runBusinessScraper() {
 
             let campaignData;
             if (isAIEnabled) {
-                campaignData = await parseWithGemini(html, fullUrl, 'Akbank');
+                campaignData = await parseWithGemini(html, fullUrl, normalizedBank);
             } else {
                 campaignData = {
                     title,
@@ -108,7 +109,7 @@ async function runBusinessScraper() {
             if (campaignData) {
                 campaignData.title = title;
                 campaignData.image = imageUrl;
-                campaignData.card_name = CARD_CONFIG.cardName;
+                campaignData.card_name = normalizedCard;
                 campaignData.bank = normalizedBank;
                 campaignData.url = fullUrl;
                 campaignData.reference_url = fullUrl;
