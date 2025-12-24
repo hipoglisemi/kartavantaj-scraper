@@ -85,17 +85,18 @@ export async function normalizeBankName(inputName: string): Promise<string> {
 
     const banks = await fetchMasterBanks();
 
-    // Try exact match
-    const exactMatch = banks.find(b => b.name === normalizedInput);
+    // Try exact match with normalized DB names
+    const exactMatch = banks.find(b => b.name.trim().replace(/\s+/g, ' ') === normalizedInput);
     if (exactMatch) return exactMatch.name;
 
-    // Try case-insensitive match
-    const caseMatch = banks.find(b => b.name.toLowerCase() === normalizedInput.toLowerCase());
+    // Try case-insensitive match with normalized DB names
+    const normalizedInputLower = normalizedInput.toLowerCase();
+    const caseMatch = banks.find(b => b.name.trim().replace(/\s+/g, ' ').toLowerCase() === normalizedInputLower);
     if (caseMatch) return caseMatch.name;
 
     // Try aliases
     const aliasMatch = banks.find(b =>
-        b.aliases && b.aliases.some(alias => alias.toLowerCase() === normalizedInput.toLowerCase())
+        b.aliases && b.aliases.some(alias => alias.trim().replace(/\s+/g, ' ').toLowerCase() === normalizedInputLower)
     );
     if (aliasMatch) return aliasMatch.name;
 
@@ -121,12 +122,12 @@ export async function normalizeCardName(bankName: string, inputCardName: string)
 
     if (!bank) return normalizedInput;
 
-    // Try exact card match
-    const exactMatch = bank.cards.find(c => c.name === normalizedInput);
+    // Try matches with normalized DB names
+    const normalizedInputLower = normalizedInput.toLowerCase();
+    const exactMatch = bank.cards.find(c => c.name.trim().replace(/\s+/g, ' ') === normalizedInput);
     if (exactMatch) return exactMatch.name;
 
-    // Try case-insensitive card match
-    const caseMatch = bank.cards.find(c => c.name.toLowerCase() === normalizedInput.toLowerCase());
+    const caseMatch = bank.cards.find(c => c.name.trim().replace(/\s+/g, ' ').toLowerCase() === normalizedInputLower);
     if (caseMatch) return caseMatch.name;
 
     // No match, return original

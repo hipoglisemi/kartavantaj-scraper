@@ -10,6 +10,40 @@ const supabase = createClient(
     process.env.SUPABASE_ANON_KEY!
 );
 
+const rogueMappings: Record<string, Record<string, string>> = {
+    'akbank': {
+        'bank\'o card axess': 'Axess',
+        'wings black plus': 'Wings',
+        'kobi kart': 'Business',
+        'ticari kartlar': 'Business',
+        'akbank kartları': 'Axess'
+    },
+    'iş bankası': {
+        'maximum kart': 'Maximum',
+        'maximiles': 'Maximum'
+    },
+    'halkbank': {
+        'paraf platinum': 'Paraf',
+        'paraf premium': 'Paraf',
+        'parafly': 'Paraf'
+    },
+    'vakıfbank': {
+        'ace kredi kartı': 'Vakıfbank World'
+    }
+};
+
+const applyRogueMapping = (bank: string, card: string): string => {
+    const bankLower = bank.toLowerCase();
+    const cardLower = card.toLowerCase();
+    const bankKey = Object.keys(rogueMappings).find(k => bankLower.includes(k));
+    if (bankKey) {
+        const mappings = rogueMappings[bankKey];
+        const matchingRogue = Object.keys(mappings).find(r => cardLower.includes(r));
+        if (matchingRogue) return mappings[matchingRogue];
+    }
+    return card;
+};
+
 async function cleanCardNames() {
     console.log('🧹 Starting Database Cleaning: Card Names & Bank Mappings...');
 
@@ -40,36 +74,26 @@ async function cleanCardNames() {
             needsUpdate = true;
         }
 
-        // --- STEP 2: Handle Multiple Card Names (Comma separated) ---
-        // We now support multiple cards in UI, but we want to ensure they are valid for the bank
-        if (finalCardName.includes(',')) {
-            const parts = finalCardName.split(',').map((p: string) => p.trim()).filter(Boolean);
-            const normalizedParts = await Promise.all(parts.map((p: string) => normalizeCardName(finalBank, p)));
+        // --- STEP 2: Handle Card Names & Rogue Mappings ---
+        const parts = finalCardName.split(',').map((p: string) => p.trim()).filter(Boolean);
+        const mappedParts = parts.map((p: string) => applyRogueMapping(finalBank, p));
+        const normalizedParts = await Promise.all(mappedParts.map((p: string) => normalizeCardName(finalBank, p)));
 
-            // Deduplicate
-            const uniqueParts = Array.from(new Set(normalizedParts));
-            const joined = uniqueParts.join(', ');
+        // Deduplicate and join
+        const uniqueParts = Array.from(new Set(normalizedParts));
+        const joined = uniqueParts.join(', ');
 
-            if (joined !== finalCardName) {
-                console.log(`🗂️  Cleaning Multiple Cards: "${finalCardName}" -> "${joined}" [ID: ${campaign.id}]`);
-                finalCardName = joined;
-                needsUpdate = true;
-            }
-        } else if (finalCardName) {
-            // Single card normalization
-            const normalizedCard = await normalizeCardName(finalBank, finalCardName);
-            if (normalizedCard !== finalCardName) {
-                console.log(`💳 Normalizing Card: "${finalCardName}" -> "${normalizedCard}" [Bank: ${finalBank}, ID: ${campaign.id}]`);
-                finalCardName = normalizedCard;
-                needsUpdate = true;
-            }
+        if (joined !== finalCardName) {
+            console.log(`💳 Cleaning & Merging Cards: "${finalCardName}" -> "${joined}" [Bank: ${finalBank}, ID: ${campaign.id}]`);
+            finalCardName = joined;
+            needsUpdate = true;
         }
 
-        // --- STEP 3: Fix Bank-Card Mismatches (Cross-check) ---
-        // Example: If bank is 'Garanti BBVA' but card is 'Wings'
+        // --- STEP 3: Fix Bank-Card Mismatches ---
         const bankLower = finalBank.toLowerCase();
         const cardLower = finalCardName.toLowerCase();
 
+        // Generic Cross-Bank Fixes
         if (bankLower.includes('garanti') && cardLower.includes('wings')) {
             console.log(`⚠️  FOUND MISMATCH: Garanti + Wings. Fixing to Bonus. [ID: ${campaign.id}]`);
             finalCardName = 'Bonus';
