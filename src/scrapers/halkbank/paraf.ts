@@ -36,6 +36,7 @@ async function runParafScraper() {
         args: ['--no-sandbox', '--disable-setuid-sandbox']
     });
     const page = await browser.newPage();
+    await page.setViewport({ width: 1920, height: 1080 });
 
     // Bot detection bypass
     await page.evaluateOnNewDocument(() => {
@@ -57,23 +58,52 @@ async function runParafScraper() {
             console.log('   ⚠️  Campaign list did not load within timeout.');
         }
 
-        // Load more campaigns if needed
+        // Load more campaigns logic
         let hasMore = true;
         let buttonClickCount = 0;
-        const maxClicks = 5;
+        const maxClicks = 20; // Increase max clicks just in case
 
         while (hasMore && buttonClickCount < maxClicks) {
             try {
-                const loadMoreBtn = await page.$('.cmp-list--campaigns .cmp-list__load-more button');
+                // Scroll to bottom to trigger any lazy loads or button visibility
+                await page.evaluate(() => {
+                    // @ts-ignore
+                    window.scrollTo(0, document.body.scrollHeight);
+                });
+                await sleep(1000);
+
+                // Look for "DAHA FAZLA" button using Text Content Scan (most robust)
+                const buttons = await page.$$('a, button, div[role="button"]');
+                let loadMoreBtn = null;
+
+                for (const btn of buttons) {
+                    const text = await page.evaluate(el => el.textContent, btn);
+                    if (text && text.trim().toUpperCase() === 'DAHA FAZLA') {
+                        // Check visibility
+                        const isVisible = await page.evaluate((el: any) => {
+                            // @ts-ignore
+                            const style = window.getComputedStyle(el);
+                            return style && style.display !== 'none' && style.visibility !== 'hidden' && el.offsetParent !== null;
+                        }, btn);
+
+                        if (isVisible) {
+                            loadMoreBtn = btn;
+                            break;
+                        }
+                    }
+                }
+
                 if (loadMoreBtn) {
-                    await loadMoreBtn.click();
-                    await sleep(2000);
+                    console.log(`   👇 Clicking 'More' button (${buttonClickCount + 1}/${maxClicks})...`);
+                    await page.evaluate((el) => el.click(), loadMoreBtn);
+                    await sleep(3000); // Wait longer for content load
                     buttonClickCount++;
-                    console.log(`   👇 Loaded more campaigns (${buttonClickCount}/${maxClicks})`);
                 } else {
+                    console.log('   ℹ️  No "DAHA FAZLA" button found (or hidden).');
                     hasMore = false;
                 }
             } catch (e) {
+                console.error('   ⚠️  Error in load more loop:', e);
                 hasMore = false;
             }
         }
