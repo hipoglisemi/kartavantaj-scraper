@@ -20,6 +20,7 @@ interface AuditStats {
     fieldsFixed: number;
     deactivated: number;
     errors: number;
+    bankStats: Record<string, { total: number, issues: number }>;
 }
 
 // Fetch master sectors once at startup
@@ -187,6 +188,19 @@ async function auditCampaign(campaign: any, stats: AuditStats): Promise<void> {
         }
     }
 
+    const hasIssue = needsUpdate || !fieldResult.isComplete;
+    if (hasIssue) {
+        if (!stats.bankStats[campaign.bank]) {
+            stats.bankStats[campaign.bank] = { total: 0, issues: 0 };
+        }
+        stats.bankStats[campaign.bank].issues++;
+    }
+
+    if (!stats.bankStats[campaign.bank]) {
+        stats.bankStats[campaign.bank] = { total: 0, issues: 0 };
+    }
+    stats.bankStats[campaign.bank].total++;
+
     stats.checked++;
 }
 
@@ -204,7 +218,8 @@ async function runQualityAudit() {
         datesFixed: 0,
         fieldsFixed: 0,
         deactivated: 0,
-        errors: 0
+        errors: 0,
+        bankStats: {}
     };
 
     try {
@@ -238,6 +253,14 @@ async function runQualityAudit() {
         console.log(`Deactivated (expired):  ${stats.deactivated}`);
         console.log(`Errors:                 ${stats.errors}`);
         console.log('='.repeat(60));
+
+        console.log('\n🏦 BANK BASED ISSUES');
+        console.log('-'.repeat(60));
+        Object.entries(stats.bankStats).sort((a, b) => b[1].issues - a[1].issues).forEach(([bank, bStats]) => {
+            const ratio = ((bStats.issues / bStats.total) * 100).toFixed(1);
+            console.log(`${bank.padEnd(20)}: ${bStats.issues} issues / ${bStats.total} total (${ratio}%)`);
+        });
+        console.log('-'.repeat(60));
 
         const totalFixes = stats.mathFixed + stats.datesFixed + stats.fieldsFixed + stats.deactivated;
         if (totalFixes > 0) {

@@ -374,36 +374,47 @@ export async function parseWithGemini(html: string, url: string, sourceBank?: st
 Extract campaign data into JSON matching this EXACT schema:
 
 {
-  "title": "string (catchy campaign title)",
-  "description": "string (2-3 sentences with emojis)",
+  "title": "string (catchy campaign title, clear and concise)",
+  "description": "string (2-3 sentences max, include 1-2 relevant emojis, focus on value proposition)",
   "category": "string (MUST be one of: ${masterData.categories.join(', ')})",
-  "discount": "string (Use ONLY for installment info, e.g. '9 Taksit', '6 Ay Taksit'. Formatting MUST be '{Number} Taksit'. If no installment, leave empty.)",
-  "earning": "string (Use ONLY for points/cashback/discounts. Formatting MUST be '{Amount} TL Puan' or '{Amount} TL İndirim' or '%{X} İndirim'. Max 20 chars. If no benefit, leave empty.)",
-  "min_spend": number (CRITICAL: Total spend required. If FOREIGN CURRENCY, convert to TL using current approximate rates (e.g. $1=35, €1=38) for calculation.),
-  "max_discount": number (Total max cap),
-  "discount_percentage": number,
+  "discount": "string (Use ONLY for installment info, e.g. '9 Taksit', '+3 Taksit'. FORMAT: '{Number} Taksit'. NEVER mention fees/interest.)",
+  "earning": "string (Use ONLY for points/cashback. FORMAT: '{Amount} TL Puan' or '{Amount} TL İndirim' or '%{X} İndirim'. MAX 20 chars.)",
+  "min_spend": number (CRITICAL: Total required spend. If title says '500 TL ve üzeri', min_spend is 500. Total sum if multiple steps.),
+  "max_discount": number (Max reward limit per customer/campaign),
+  "discount_percentage": number (If % based reward, e.g. 15 for %15),
   "valid_from": "YYYY-MM-DD",
   "valid_until": "YYYY-MM-DD",
-  "participation_method": "string (brief)",
-  "merchant": "string",
-  "bank": "string (MUST be: ${masterData.banks.join(', ')})",
-  "card_name": "string",
-  "brand": ["array"],
+  "participation_method": "string (brief: e.g. 'Mobil Uygulama', 'SMS', 'Katılım gerekmez')",
+  "merchant": "string (Primary shop/brand name)",
+  "bank": "string (AUTHORITY: MUST be exactly '${sourceBank || 'the one in text'}'. Allowed: ${masterData.banks.join(', ')})",
+  "card_name": "string (AUTHORITY: MUST be exactly '${sourceCard || 'the one in text'}')",
+  "brand": ["array of strings (Official brand names)"],
   "ai_enhanced": true
 }
 
-STRICT STANDARDIZATION RULES:
-1. BADGE TEXTS (Single Box Standard):
-   - If points/cashback: Format MUST be "500 TL Puan" (NOT "500 TL Chip-para", NOT "500 Bonus"). 
-   - If discount: Format MUST be "500 TL İndirim" or "%15 İndirim".
-   - If installments: Format MUST be "9 Taksit" or "+3 Taksit". (NOT "Vade farksız 9 taksit").
-2. MULTI-BENEFIT: If a campaign has BOTH installments and points (e.g. 9 installments + 500 TL Puan), you can put them BOTH in "earning" separated by " + " (e.g. "9 Taksit + 500 TL Puan") OR keep them separate in "discount" and "earning" respectively. The UI will merge them.
-3. MATH VALIDATION: Before finishing, compare earning and min_spend. Earning MUST BE MUCH SMALLER than min_spend. If earning > min_spend, rethink your extraction.
-4. FOREIGN CURRENCY: If the campaign is in USD or EUR, convert the values to TL in your head to ensure math makes sense, but display the Original Currency + TL equivalent in description if helpful. Set min_spend in TL.
-5. CATEGORY: Avoid 'Diğer'.
-6. BRAND STANDARDIZATION: Always prioritize matching with existing brands from the master list: [${masterData.brands.join(', ')}]. NORMALIZE brand names: remove ".com", ".com.tr", "Notebook", "Market" suffixes (e.g., Use "Monster" instead of "Monster Notebook" or "Monsternotebook"). ONLY use the PRIMARY brand if the campaign is limited to one merchant.
+### 🛑 ULTRA-STRICT RULES (Failure is NOT an option):
 
-TEXT:
+1. **BANK & CARD AUTHORITY (HIGHEST PRIORITY):**
+   - If sourceBank is provided as "${sourceBank}", you MUST use it. DO NOT hallucinate other banks.
+   - If sourceCard is provided as "${sourceCard}", you MUST use it. DO NOT change it to something else.
+   
+2. **REWARD CONSOLIDATION (Single Box Standard):**
+   - If the campaign has BOTH installments and points:
+     - Installment (e.g., "9 Taksit") goes to "discount" field.
+     - Points (e.g., "500 TL Puan") goes to "earning" field.
+   - FORMAL FORMATTING: "500 TL Puan" (NOT 500 Bonus/Chip), "9 Taksit" (NOT Vade farksız 9 taksit).
+   
+3. **MATHEMATICAL SANITY CHECK:**
+   - Earning vs Min_Spend: Earning MUST be significantly lower than min_spend (e.g., spending 10,000 to get 500 is normal).
+   - If you see "1.000 TL indirim" for a "150 TL" purchase, you are wrong. Check if it means "1.000 TL'ye kadar" or "%10".
+   
+4. **BRAND MATCHING:**
+   - Match brands against: [${masterData.brands.slice(0, 50).join(', ')} ... and others].
+   - NORMALIZE: Remove ".com", "Market", "Notebook" suffixes. Use "Migros" instead of "Migros Sanal Market".
+   
+5. **DATES:** If no year is mentioned, assume 2024/2025 based on current context. Format: YYYY-MM-DD.
+
+TEXT TO PROCESS:
 "${text.replace(/"/g, '\\"')}"
 `;
 
