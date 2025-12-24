@@ -7,11 +7,11 @@ dotenv.config({ path: path.resolve(__dirname, '../.env') });
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!);
 
 async function fixCardNames() {
-    console.log('Starting card name fix migration...');
+    console.log('Starting enhanced card and bank name fix migration...');
 
     const { data, error } = await supabase
         .from('campaigns')
-        .select('id, bank, card_name, url, title');
+        .select('*');
 
     if (error || !data) {
         console.error(error);
@@ -20,13 +20,31 @@ async function fixCardNames() {
 
     let updateCount = 0;
 
+    const cardToBank: Record<string, string> = {
+        'Wings': 'Akbank',
+        'Axess': 'Akbank',
+        'Free': 'Akbank',
+        'World': 'Yapı Kredi',
+        'Adios': 'Yapı Kredi',
+        'Play': 'Yapı Kredi',
+        'Crystal': 'Yapı Kredi',
+        'Maximum': 'İş Bankası',
+        'Maximiles': 'İş Bankası',
+        'Paraf': 'Halkbank',
+        'Bankkart': 'Ziraat',
+        'Bonus': 'Garanti BBVA',
+        'Miles&Smiles': 'Garanti BBVA',
+        'Shop&Fly': 'Garanti BBVA'
+    };
+
     for (const campaign of data) {
         let newCardName = campaign.card_name;
+        let newBank = campaign.bank;
         const url = (campaign.url || '').toLowerCase();
-        const bank = (campaign.bank || '').toLowerCase();
         const currentCard = (campaign.card_name || '').toLowerCase();
+        const currentBank = (campaign.bank || '').toLowerCase();
 
-        // Mapping logic
+        // 1. Infer Card from URL
         if (url.includes('wingscard.com.tr')) newCardName = 'Wings';
         else if (url.includes('axess.com.tr')) newCardName = 'Axess';
         else if (url.includes('free.com.tr')) newCardName = 'Free';
@@ -41,18 +59,39 @@ async function fixCardNames() {
             else newCardName = 'Maximum';
         }
 
-        // Special case for generic "Akbank Kartları" or empty if bank is Akbank
-        if (bank === 'akbank' && (currentCard === '' || currentCard.includes('akbank'))) {
+        // 2. Infer Card from redundant or generic names if URL contains keywords
+        if (currentCard === '' || currentCard === currentBank || currentCard.includes('kartları')) {
             if (url.includes('wings')) newCardName = 'Wings';
             else if (url.includes('axess')) newCardName = 'Axess';
             else if (url.includes('free')) newCardName = 'Free';
+            else if (url.includes('play')) newCardName = 'Play';
+            else if (url.includes('paraf')) newCardName = 'Paraf';
         }
 
-        if (newCardName !== campaign.card_name) {
-            console.log(`Fixing [${campaign.id}]: "${campaign.card_name}" -> "${newCardName}" (URL: ${campaign.url})`);
+        // 3. ENFORCE Bank based on Card Brand
+        if (cardToBank[newCardName]) {
+            newBank = cardToBank[newCardName];
+        }
+
+        // 4. Cleanup redundant card names (if card name is just the bank name, and we couldn't infer better)
+        // But only if it's NOT in our cardToBank map.
+        if (newCardName.toLowerCase() === newBank.toLowerCase() && !cardToBank[newCardName]) {
+            newCardName = ''; // Force it to be empty so UI can fallback or user can see it's missing
+        }
+
+        // Check if anything changed
+        if (newCardName !== campaign.card_name || newBank !== campaign.bank) {
+            console.log(`Fixing [${campaign.id}]:`);
+            if (campaign.card_name !== newCardName) console.log(`  Card: "${campaign.card_name}" -> "${newCardName}"`);
+            if (campaign.bank !== newBank) console.log(`  Bank: "${campaign.bank}" -> "${newBank}"`);
+            console.log(`  URL: ${campaign.url}`);
+
             const { error: updateError } = await supabase
                 .from('campaigns')
-                .update({ card_name: newCardName })
+                .update({
+                    card_name: newCardName,
+                    bank: newBank
+                })
                 .eq('id', campaign.id);
 
             if (updateError) {
