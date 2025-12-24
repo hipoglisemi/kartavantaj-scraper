@@ -11,13 +11,12 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 async function fixEarningStandard() {
     console.log('🚀 Kazanç Standardı Düzeltme İşlemi Başlatılıyor...');
 
-    // Title veya Açıklamasında 'taksit' VE ('puan' veya 'chip' veya 'indirim') geçenleri bul
-    // Ama earning ve discount alanları aynı veya biri boş olanları hedefle
+    // ID'leri buraya ekleyebilirsiniz (Örn: 11644, 11652)
+    const targetIds = [11644, 11652];
     const { data: campaigns, error } = await supabase
         .from('campaigns')
         .select('*')
-        .or('title.ilike.%taksit%,description.ilike.%taksit%')
-        .limit(100);
+        .in('id', targetIds);
 
     if (error) {
         console.error('Hata:', error);
@@ -39,8 +38,8 @@ async function fixEarningStandard() {
         const fieldsHaveTaksit = earning.includes('taksit') || discount.includes('taksit');
         const titleHasPuanIndirim = title.includes('puan') || title.includes('chip') || title.includes('indirim') || title.includes('%');
 
-        // Eğer başlıkta taksit var ama alanlarda yoksa veya veriler birbirinin kopyasıysa yeniden işle
-        const needsFix = (titleHasTaksit && !fieldsHaveTaksit) || (earning === discount && earning !== '');
+        // For specific target IDs, we always want to run the fix
+        const needsFix = targetIds.includes(campaign.id) || (titleHasTaksit && !fieldsHaveTaksit) || (earning === discount && earning !== '');
 
         if (needsFix) {
             console.log(`\n🛠  Düzeltiliyor [${campaign.id}]: ${campaign.title}`);
@@ -48,9 +47,17 @@ async function fixEarningStandard() {
 
             try {
                 const baseText = campaign.raw_content || `${campaign.title} ${campaign.description}`;
-                const result = await parseWithGemini(baseText, campaign.url || '', campaign.bank);
+                // YENİ KURALLARA GÖRE ANALİZ
+                const result = await parseWithGemini(campaign.description || campaign.title || '', campaign.bank || '');
 
-                if (result) {
+                console.log(`      🤖 AI Yanıtı [ID ${campaign.id}]:`, {
+                    old_earning: campaign.earning,
+                    old_discount: campaign.discount,
+                    new_earning: result?.earning,
+                    new_discount: result?.discount
+                });
+
+                if (result && (result.earning !== campaign.earning || result.discount !== campaign.discount)) {
                     console.log(`   ✨ Yeni Veri -> Earning: "${result.earning}", Discount: "${result.discount}"`);
 
                     const { error: updateError } = await supabase
