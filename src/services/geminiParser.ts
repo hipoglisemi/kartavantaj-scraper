@@ -247,13 +247,21 @@ RETURN ONLY VALID JSON. NO MARKDOWN.
 function normalizeBrandName(name: string): string {
     if (!name) return '';
 
-    // 1. Remove common domain extensions
-    let cleanName = name.replace(/\.com\.tr/gi, '')
-        .replace(/\.com/gi, '')
-        .replace(/\.net/gi, '')
-        .replace(/\.org/gi, '');
+    // 1. Remove common domain extensions and noise suffixes
+    let cleanName = name
+        .replace(/\.com\.tr|\.com|\.net|\.org/gi, '')
+        .replace(/\s+notebook$|\s+market$|\s+marketleri$/gi, '')
+        .trim();
 
-    // 2. Title Case with Turkish support
+    // 2. Specialized Merges (Canonical Mapping)
+    const lower = cleanName.toLowerCase();
+    if (lower === 'monsternotebook') return 'Monster';
+    if (lower === 'mediamarkt') return 'Media Markt';
+    if (lower === 'trendyolmilla') return 'TrendyolMilla';
+    if (lower === 'hepsiburada') return 'Hepsiburada';
+    if (lower === 'n11') return 'n11';
+
+    // 3. Title Case with Turkish support
     return cleanName.split(' ').map(word => {
         if (word.length === 0) return '';
         return word.charAt(0).toLocaleUpperCase('tr-TR') + word.slice(1).toLocaleLowerCase('tr-TR');
@@ -392,6 +400,7 @@ STRICT STANDARDIZATION RULES:
 3. MATH VALIDATION: Before finishing, compare earning and min_spend. Earning MUST BE MUCH SMALLER than min_spend. If earning > min_spend, rethink your extraction.
 4. FOREIGN CURRENCY: If the campaign is in USD or EUR, convert the values to TL in your head to ensure math makes sense, but display the Original Currency + TL equivalent in description if helpful. Set min_spend in TL.
 5. CATEGORY: Avoid 'Diğer'.
+6. BRAND STANDARDIZATION: Always prioritize matching with existing brands from the master list: [${masterData.brands.join(', ')}]. NORMALIZE brand names: remove ".com", ".com.tr", "Notebook", "Market" suffixes (e.g., Use "Monster" instead of "Monster Notebook" or "Monsternotebook"). ONLY use the PRIMARY brand if the campaign is limited to one merchant.
 
 TEXT:
 "${text.replace(/"/g, '\\"')}"
