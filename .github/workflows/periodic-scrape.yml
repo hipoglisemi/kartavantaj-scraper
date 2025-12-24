@@ -5,6 +5,11 @@ on:
     - cron: '1 0 1,15 * *'  # Her ayın 1 ve 15'inde 03:01 TR
   workflow_dispatch:
     inputs:
+      run_all:
+        description: '🟥 FORCE RUN ALL (Tümünü Çalıştır)'
+        default: 'true'
+        type: choice
+        options: ['true', 'false']
       # Yapı Kredi Cards
       run_world:
         description: 'World Card'
@@ -108,7 +113,7 @@ jobs:
 
       # --- YAPI KREDİ ---
       - name: 💳 Run World Card (World Kart Tarama)
-        if: matrix.group == 'world' && (github.event_name == 'schedule' || inputs.run_world == 'true')
+        if: matrix.group == 'world' && (github.event_name == 'schedule' || inputs.run_world == 'true' || inputs.run_all == 'true')
         run: npx tsx src/scrapers/yapikredi/world.ts --ai
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -118,9 +123,9 @@ jobs:
       - name: 💳 Run YK Lite (Diğer YK Kartlar - Adios, Play, Crystal)
         if: matrix.group == 'yapikredi-lite'
         run: |
-          if [[ "${{ github.event_name }}" == "schedule" || "${{ inputs.run_adios }}" == "true" ]]; then npx tsx src/scrapers/yapikredi/adios.ts --ai; fi
-          if [[ "${{ github.event_name }}" == "schedule" || "${{ inputs.run_play }}" == "true" ]]; then npx tsx src/scrapers/yapikredi/play.ts --ai; fi
-          if [[ "${{ github.event_name }}" == "schedule" || "${{ inputs.run_crystal }}" == "true" ]]; then npx tsx src/scrapers/yapikredi/crystal.ts --ai; fi
+          if [[ "${{ github.event_name }}" == "schedule" || "${{ inputs.run_adios }}" == "true" || "${{ inputs.run_all }}" == "true" ]]; then npx tsx src/scrapers/yapikredi/adios.ts --ai; fi
+          if [[ "${{ github.event_name }}" == "schedule" || "${{ inputs.run_play }}" == "true"  || "${{ inputs.run_all }}" == "true" ]]; then npx tsx src/scrapers/yapikredi/play.ts --ai; fi
+          if [[ "${{ github.event_name }}" == "schedule" || "${{ inputs.run_crystal }}" == "true" || "${{ inputs.run_all }}" == "true" ]]; then npx tsx src/scrapers/yapikredi/crystal.ts --ai; fi
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
@@ -128,7 +133,7 @@ jobs:
 
       # --- AKBANK ---
       - name: 💳 Run Axess (Axess Kart Tarama)
-        if: matrix.group == 'axess' && (github.event_name == 'schedule' || inputs.run_axess == 'true')
+        if: matrix.group == 'axess' && (github.event_name == 'schedule' || inputs.run_axess == 'true' || inputs.run_all == 'true')
         run: npx tsx src/scrapers/akbank/axess.ts --ai
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -138,9 +143,9 @@ jobs:
       - name: 💳 Run Akbank Lite (Diğer Akbank Kartlar - Wings, Free, Business)
         if: matrix.group == 'akbank-lite'
         run: |
-          if [[ "${{ github.event_name }}" == "schedule" || "${{ inputs.run_wings }}" == "true" ]]; then npx tsx src/scrapers/akbank/wings.ts --ai; fi
-          if [[ "${{ github.event_name }}" == "schedule" || "${{ inputs.run_free }}" == "true" ]]; then npx tsx src/scrapers/akbank/free.ts --ai; fi
-          if [[ "${{ github.event_name }}" == "schedule" || "${{ inputs.run_business }}" == "true" ]]; then npx tsx src/scrapers/akbank/business.ts --ai; fi
+          if [[ "${{ github.event_name }}" == "schedule" || "${{ inputs.run_wings }}" == "true" || "${{ inputs.run_all }}" == "true" ]]; then npx tsx src/scrapers/akbank/wings.ts --ai; fi
+          if [[ "${{ github.event_name }}" == "schedule" || "${{ inputs.run_free }}" == "true" || "${{ inputs.run_all }}" == "true" ]]; then npx tsx src/scrapers/akbank/free.ts --ai; fi
+          if [[ "${{ github.event_name }}" == "schedule" || "${{ inputs.run_business }}" == "true" || "${{ inputs.run_all }}" == "true" ]]; then npx tsx src/scrapers/akbank/business.ts --ai; fi
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
@@ -148,7 +153,7 @@ jobs:
 
       # --- OTHERS ---
       - name: 💳 Run Bonus (Bonus Kart Tarama)
-        if: matrix.group == 'bonus' && (github.event_name == 'schedule' || inputs.run_bonus == 'true')
+        if: matrix.group == 'bonus' && (github.event_name == 'schedule' || inputs.run_bonus == 'true' || inputs.run_all == 'true')
         run: npx tsx src/scrapers/garanti/bonus.ts --ai
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -156,7 +161,7 @@ jobs:
           GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
 
       - name: 💳 Run Maximum (Maximum Kart Tarama)
-        if: matrix.group == 'maximum' && (github.event_name == 'schedule' || inputs.run_maximum == 'true')
+        if: matrix.group == 'maximum' && (github.event_name == 'schedule' || inputs.run_maximum == 'true' || inputs.run_all == 'true')
         run: npx tsx src/scrapers/isbankasi/maximum.ts --ai
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -164,7 +169,7 @@ jobs:
           GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
 
       - name: 💳 Run State Banks - Ziraat Bankkart
-        if: matrix.group == 'ziraat' && (github.event_name == 'schedule' || inputs.run_bankkart == 'true')
+        if: matrix.group == 'ziraat' && (github.event_name == 'schedule' || inputs.run_bankkart == 'true' || inputs.run_all == 'true')
         run: npx tsx src/scrapers/ziraat/bankkart.ts --ai
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -172,7 +177,7 @@ jobs:
           GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
 
       - name: 💳 Run State Banks - Halkbank Paraf
-        if: matrix.group == 'halkbank' && (github.event_name == 'schedule' || inputs.run_paraf == 'true')
+        if: matrix.group == 'halkbank' && (github.event_name == 'schedule' || inputs.run_paraf == 'true' || inputs.run_all == 'true')
         run: npx tsx src/scrapers/halkbank/paraf.ts --ai
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -180,7 +185,7 @@ jobs:
           GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
 
       - name: 💳 Run State Banks - VakıfBank World
-        if: matrix.group == 'vakifbank' && (github.event_name == 'schedule' || inputs.run_vakifbank_world == 'true')
+        if: matrix.group == 'vakifbank' && (github.event_name == 'schedule' || inputs.run_vakifbank_world == 'true' || inputs.run_all == 'true')
         run: npx tsx src/scrapers/vakifbank/world.ts --ai
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
