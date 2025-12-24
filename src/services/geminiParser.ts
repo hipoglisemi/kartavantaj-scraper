@@ -384,11 +384,11 @@ Extract campaign data into JSON matching this EXACT schema:
 }
 
 STRICT STANDARDIZATION RULES:
-1. BADGE TEXTS:
-   - If points/cashback: Format MUST be "500 TL Puan" (NOT "500 TL Chip-para", NOT "500 Bonus"). Use 'Puan'.
+1. BADGE TEXTS (Single Box Standard):
+   - If points/cashback: Format MUST be "500 TL Puan" (NOT "500 TL Chip-para", NOT "500 Bonus"). 
    - If discount: Format MUST be "500 TL İndirim" or "%15 İndirim".
-   - If installments: Format MUST be "9 Taksit" (NOT "Peşin fiyatına 9 taksit").
-2. MULTI-BENEFIT: If a campaign has BOTH installments and points (e.g. 9 installments + 500 TL Puan), fill BOTH "discount" (for installments) and "earning" (for points).
+   - If installments: Format MUST be "9 Taksit" or "+3 Taksit". (NOT "Vade farksız 9 taksit").
+2. MULTI-BENEFIT: If a campaign has BOTH installments and points (e.g. 9 installments + 500 TL Puan), you can put them BOTH in "earning" separated by " + " (e.g. "9 Taksit + 500 TL Puan") OR keep them separate in "discount" and "earning" respectively. The UI will merge them.
 3. MATH VALIDATION: Before finishing, compare earning and min_spend. Earning MUST BE MUCH SMALLER than min_spend. If earning > min_spend, rethink your extraction.
 4. FOREIGN CURRENCY: If the campaign is in USD or EUR, convert the values to TL in your head to ensure math makes sense, but display the Original Currency + TL equivalent in description if helpful. Set min_spend in TL.
 5. CATEGORY: Avoid 'Diğer'.
