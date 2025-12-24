@@ -91,3 +91,27 @@ Broad categories for filtering.
 | `name` | Category name (e.g., 'Giyim', 'Market', 'Genel'). Store this in `campaigns.category`. |
 
 ---
+
+## 6. Scraper Development Rules (STRICT)
+
+### Strict Bank & Card Assignment
+When developing a new scraper, you MUST enforce strict Bank and Card assignments. The AI parser (`parseWithGemini`) is powerful for extracting details from text, but it can hallucinate or misclassify the bank/card context (e.g., seeing "Bonus" in an Axess campaign and thinking it's Garanti).
+
+**RULE:** All scrapers MUST pass the `sourceBank` and `sourceCard` arguments to `parseWithGemini`. This overrides any AI detection for these fields.
+
+#### Incorrect Usage ❌
+```typescript
+// AI determines bank/card from text (RISKY)
+campaignData = await parseWithGemini(html, fullUrl); 
+```
+
+#### Correct Usage ✅
+```typescript
+// Scraper AUTHORITY rules (SAFE)
+const BANK_NAME = 'Akbank';
+const CARD_NAME = 'Axess'; 
+
+campaignData = await parseWithGemini(html, fullUrl, BANK_NAME, CARD_NAME);
+```
+
+This ensures that data scraped from the "Axess" scraper is ALWAYS saved as "Akbank" / "Axess", regardless of the campaign content.
