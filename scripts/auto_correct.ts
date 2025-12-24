@@ -38,8 +38,17 @@ async function autoCorrect() {
         const hasMathError = earningValue >= minSpend && minSpend > 10;
         const isIncomplete = campaign.ai_parsing_incomplete;
 
-        if (hasMathError || isIncomplete || !campaign.slug) {
-            console.log(`   🛠  Hata saptandı (Matematik: ${hasMathError}, Eksik: ${isIncomplete}). Yeniden işleniyor...`);
+        // YENİ: Kazanç Standartı Kontrolü
+        const titleL = (campaign.title || '').toLowerCase();
+        const earningL = (campaign.earning || '').toLowerCase();
+        const discountL = (campaign.discount || '').toLowerCase();
+        const titleHasTaksit = titleL.includes('taksit');
+        const fieldsHaveTaksit = earningL.includes('taksit') || discountL.includes('taksit');
+        const isRedundant = earningL === discountL && earningL !== '';
+        const hasEarningError = (titleHasTaksit && !fieldsHaveTaksit) || isRedundant;
+
+        if (hasMathError || isIncomplete || hasEarningError || !campaign.slug) {
+            console.log(`   🛠  Hata saptandı (Matematik: ${hasMathError}, Eksik: ${isIncomplete}, Kazanç Standartı: ${hasEarningError}). Yeniden işleniyor...`);
 
             try {
                 // Gelişmiş Gemini promptları ile yeniden analiz
