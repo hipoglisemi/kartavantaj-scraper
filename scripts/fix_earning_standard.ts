@@ -11,8 +11,8 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 async function fixEarningStandard() {
     console.log('🚀 Kazanç Standardı Düzeltme İşlemi Başlatılıyor...');
 
-    // ID'leri buraya ekleyebilirsiniz (Örn: 11644, 11652)
-    const targetIds = [11644, 11652];
+    // ID'leri buraya ekleyebilirsiniz (Örn: 11644, 11652, 8505)
+    const targetIds = [8518, 8571, 8501, 8502];
     const { data: campaigns, error } = await supabase
         .from('campaigns')
         .select('*')
@@ -48,7 +48,7 @@ async function fixEarningStandard() {
             try {
                 const baseText = campaign.raw_content || `${campaign.title} ${campaign.description}`;
                 // YENİ KURALLARA GÖRE ANALİZ
-                const result = await parseWithGemini(campaign.description || campaign.title || '', campaign.bank || '');
+                const result = await parseWithGemini(baseText, campaign.url || '', campaign.bank || '');
 
                 console.log(`      🤖 AI Yanıtı [ID ${campaign.id}]:`, {
                     old_earning: campaign.earning,

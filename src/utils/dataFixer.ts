@@ -93,18 +93,6 @@ export function syncEarningAndDiscount(data: any): any {
     earning = standardizeBenefit(earning);
     discount = standardizeBenefit(discount);
 
-    const lowerEarning = earning.toLowerCase().trim();
-    const lowerDiscount = discount.toLowerCase().trim();
-
-    // Sync logic
-    if (lowerDiscount && lowerDiscount !== 'yok' && lowerDiscount !== '') {
-        if (!lowerEarning || lowerEarning === '0 tl puan' || lowerEarning === 'yok' || lowerEarning === 'null') {
-            earning = discount;
-        }
-    } else if (lowerEarning && lowerEarning !== 'yok' && lowerEarning !== '' && (!lowerDiscount || lowerDiscount === 'yok')) {
-        discount = earning;
-    }
-
     data.earning = earning;
     data.discount = discount;
 

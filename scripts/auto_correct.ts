@@ -44,7 +44,7 @@ async function autoCorrect() {
         const discountL = (campaign.discount || '').toLowerCase();
 
         // Kategori bazlı çakışma kontrolü (Frontend'deki mantıkla paralel)
-        const categories = ['taksit', 'mil', 'puan', 'chip', 'para', 'indirim'];
+        const categories = ['taksit', 'mil', 'puan', 'chip', 'para', 'indirim', 'lira'];
         const isCategoryRedundant = categories.some(cat =>
             earningL.includes(cat) && discountL.includes(cat) && earningL !== discountL
         );
@@ -63,6 +63,9 @@ async function autoCorrect() {
                 const result = await parseWithGemini(baseText, campaign.url || '', campaign.bank);
 
                 if (result) {
+                    if (result.valid_until === 'YYYY-MM-DD' || result.valid_until === '') delete result.valid_until;
+                    if (result.valid_from === 'YYYY-MM-DD' || result.valid_from === '') delete result.valid_from;
+
                     // Satırı güncelle
                     const { error: updateError } = await supabase
                         .from('campaigns')
