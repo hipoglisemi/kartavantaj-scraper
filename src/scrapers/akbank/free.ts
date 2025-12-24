@@ -80,7 +80,7 @@ async function runFreeScraper() {
 
             let campaignData;
             if (isAIEnabled) {
-                campaignData = await parseWithGemini(html, fullUrl, normalizedBank);
+                campaignData = await parseWithGemini(html, fullUrl, normalizedBank, normalizedCard);
             } else {
                 campaignData = { title, description: title, category: 'Diğer', sector_slug: 'diger', card_name: normalizedCard, bank: normalizedBank, url: fullUrl, reference_url: fullUrl, is_active: true };
             }

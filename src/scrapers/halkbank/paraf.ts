@@ -147,7 +147,7 @@ async function runParafScraper() {
                 let campaignData;
 
                 if (isAIEnabled) {
-                    campaignData = await parseWithGemini(html, fullUrl, normalizedBank);
+                    campaignData = await parseWithGemini(html, fullUrl, normalizedBank, normalizedCard);
 
                     // Merge fallback image if AI missed it
                     if (!campaignData.image && fallbackData.image) {

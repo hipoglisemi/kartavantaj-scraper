@@ -118,7 +118,7 @@ async function runVakifbankWorldScraper() {
                 // AI Parsing
                 let campaignData;
                 if (isAIEnabled) {
-                    campaignData = await parseWithGemini(html, fullUrl, 'Vakıfbank');
+                    campaignData = await parseWithGemini(html, fullUrl, 'Vakıfbank', normalizedCard);
                 } else {
                     campaignData = {
                         title: fallbackData.title,

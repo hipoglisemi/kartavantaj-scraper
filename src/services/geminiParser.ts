@@ -357,7 +357,7 @@ async function cleanupBrands(brandInput: any, masterData: MasterData): Promise<{
     };
 }
 
-export async function parseWithGemini(html: string, url: string, sourceBank?: string): Promise<any> {
+export async function parseWithGemini(html: string, url: string, sourceBank?: string, sourceCard?: string): Promise<any> {
     const text = html
         .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
         .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
@@ -418,6 +418,15 @@ TEXT:
         if (Array.isArray(stage1Data.brand)) {
             stage1Data.brand = stage1Data.brand.join(', ');
         }
+
+        // STRICT OVERRIDE: Source Bank/Card TRUMPS AI
+        if (sourceBank) {
+            stage1Data.bank = sourceBank;
+        }
+        if (sourceCard) {
+            stage1Data.card_name = sourceCard;
+        }
+
         return stage1Data;
     }
 
@@ -536,6 +545,15 @@ Return ONLY valid JSON with the missing fields, no markdown.
         console.warn(`   ⚠️  WARNING: Still missing critical fields: ${stillMissing.join(', ')}`);
         finalData.ai_parsing_incomplete = true;
         finalData.missing_fields = stillMissing;
+    }
+
+    // STRICT OVERRIDE BEFORE RETURN: Source Bank/Card TRUMPS AI
+    // this ensures that no matter what the AI hallucinated for bank/card, the scraper's authority wins
+    if (sourceBank) {
+        finalData.bank = sourceBank;
+    }
+    if (sourceCard) {
+        finalData.card_name = sourceCard;
     }
 
     return finalData;

@@ -126,7 +126,7 @@ export async function runPlayScraper() {
             // AI Parsing
             let campaignData;
             if (isAIEnabled) {
-                campaignData = await parseWithGemini(html, fullUrl, normalizedBank);
+                campaignData = await parseWithGemini(html, fullUrl, normalizedBank, CARD_CONFIG.cardName);
             } else {
                 campaignData = {
                     title: title,

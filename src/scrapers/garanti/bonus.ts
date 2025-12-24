@@ -101,7 +101,7 @@ async function runGarantiScraper() {
                 // AI Parsing
                 let campaignData;
                 if (isAIEnabled) {
-                    campaignData = await parseWithGemini(html, fullUrl, normalizedBank);
+                    campaignData = await parseWithGemini(html, fullUrl, normalizedBank, normalizedCard);
                 } else {
                     campaignData = {
                         title: title,
