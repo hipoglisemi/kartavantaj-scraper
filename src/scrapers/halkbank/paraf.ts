@@ -48,6 +48,15 @@ async function runParafScraper() {
     try {
         await page.goto(CAMPAIGNS_URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
 
+        // Wait for campaigns to load dynamically
+        try {
+            await page.waitForSelector('.cmp-list--campaigns', { visible: true, timeout: 20000 });
+            // Wait a bit more for items inside list
+            await sleep(2000);
+        } catch (e) {
+            console.log('   ⚠️  Campaign list did not load within timeout.');
+        }
+
         // Load more campaigns if needed
         let hasMore = true;
         let buttonClickCount = 0;
@@ -165,9 +174,7 @@ async function runParafScraper() {
                         bank: normalizedBank,
                         url: fullUrl,
                         reference_url: fullUrl,
-                        is_active: true,
-                        terms: [],
-                        tags: []
+                        is_active: true
                     };
                 }
 
