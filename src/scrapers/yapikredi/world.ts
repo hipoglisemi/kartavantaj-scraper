@@ -35,11 +35,14 @@ export async function runWorldScraper() {
     console.log(`   Source: ${CARD_CONFIG.baseUrl}\n`);
 
     const isAIEnabled = process.argv.includes('--ai');
+    const limitArg = process.argv.find(arg => arg.startsWith('--limit='));
+    const limit = limitArg ? parseInt(limitArg.split('=')[1]) : Infinity;
+
     let page = 1;
     let allCampaigns = [];
 
     // 1. Fetch List from API
-    while (true) {
+    while (allCampaigns.length < limit) {
         let retries = 0;
         const maxRetries = 3;
 
@@ -115,7 +118,10 @@ export async function runWorldScraper() {
 
     // Filter campaigns based on optimization result
     const campaignMap = new Map(allCampaigns.map(c => [new URL(c.Url, CARD_CONFIG.baseUrl).toString(), c]));
+
+    // Apply limit to the list of URLs needing processing
     const campaignsToProcess = urlsToProcess
+        .slice(0, limit)
         .map(url => campaignMap.get(url))
         .filter(Boolean);
 

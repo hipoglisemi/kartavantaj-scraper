@@ -25,6 +25,8 @@ async function runBankkartScraper() {
     const normalizedCard = await normalizeCardName(normalizedBank, 'Bankkart');
     console.log(`   Bank: ${normalizedBank}, Card: ${normalizedCard}`);
     const isAIEnabled = process.argv.includes('--ai');
+    const limitArg = process.argv.find(arg => arg.startsWith('--limit='));
+    const limit = limitArg ? parseInt(limitArg.split('=')[1]) : Infinity;
 
     const browser = await puppeteer.launch({
         headless: true,
@@ -77,10 +79,14 @@ async function runBankkartScraper() {
             return [...new Set(links)];
         });
 
-        console.log(`\n   🎉 Found ${campaignLinks.length} campaigns. Processing details...`);
+        console.log(`\n   🎉 Found ${campaignLinks.length} campaigns via scraping.`);
+
+        // Apply Limit
+        const campaignsToProcess = campaignLinks.slice(0, limit);
+        console.log(`   🚀 Processing details for ${campaignsToProcess.length} campaigns (Limit applied: ${limit})...\n`);
 
         // Process Details
-        for (const link of campaignLinks) {
+        for (const link of campaignsToProcess) {
             const fullUrl = link.startsWith('http') ? link : `${BASE_URL}${link}`;
             console.log(`\n   🔍 Processing: ${fullUrl}`);
 
