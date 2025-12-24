@@ -105,8 +105,8 @@ function getStaticBankList(): MasterBank[] {
         { id: 1, name: 'Garanti BBVA', slug: 'garanti-bbva', aliases: ['Garanti', 'BBVA'], is_active: true },
         { id: 2, name: 'Akbank', slug: 'akbank', aliases: ['Akbank'], is_active: true },
         { id: 3, name: 'İş Bankası', slug: 'is-bankasi', aliases: ['Is Bankasi', 'Isbank'], is_active: true },
-        { id: 4, name: 'Yapı Kredi', slug: 'yapi-kredi', aliases: ['Yapi Kredi', 'YKB'], is_active: true },
-        { id: 5, name: 'Ziraat Bankası', slug: 'ziraat-bankasi', aliases: ['Ziraat', 'Ziraat Bankasi'], is_active: true },
+        { id: 4, name: 'Yapı Kredi', slug: 'yapi-kredi', aliases: ['Yapı Kredi', 'Yapi Kredi', 'YKB'], is_active: true },
+        { id: 5, name: 'Ziraat', slug: 'ziraat-bankasi', aliases: ['Ziraat Bankası', 'Ziraat Bankasi'], is_active: true },
         { id: 6, name: 'Halkbank', slug: 'halkbank', aliases: ['Halk Bankası'], is_active: true },
         { id: 7, name: 'Vakıfbank', slug: 'vakifbank', aliases: ['Vakifbank', 'VakıfBank'], is_active: true },
     ];
