@@ -1,4 +1,4 @@
-name: Daily Database Audit & Stats
+name: Günlük Veri Denetimi & İstatistikler
 
 on:
   schedule:

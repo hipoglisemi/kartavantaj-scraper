@@ -1,4 +1,4 @@
-name: Auto-Correction & Data Perfection Cycle
+name: Otomatik Veri Düzeltme & İyileştirme
 
 on:
   schedule:

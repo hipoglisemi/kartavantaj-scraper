@@ -1,4 +1,4 @@
-name: Campaign Quality Check
+name: Kampanya Kalite Kontrolü
 
 on:
   # Run after periodic scrape workflow
