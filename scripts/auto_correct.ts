@@ -11,16 +11,16 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 async function autoCorrect() {
     console.log('🚀 Otomatik Düzeltme Döngüsü Başlatılıyor...');
 
-    // 1. İnceleme gerektiren kampanyaları getir
+    // 1. İnceleme gerektiren veya geliştirilmeye açık kampanyaları getir
     // - ai_parsing_incomplete true olanlar
-    // - Matematik hataları (min_spend > 0 ve earning >= min_spend ve min_spend > 10)
-
-    // Karmaşık mantık için tümünü çekip TS tarafında filtreliyoruz
+    // - Kalite skoru düşük olanlar
+    // - Earning ve discount alanları kirli/temizlenmesi gerekenler
     const { data: campaigns, error } = await supabase
         .from('campaigns')
         .select('*')
-        .or('ai_parsing_incomplete.eq.true,quality_score.lt.70')
-        .limit(50); // Rate limitlere takılmamak için toplu işleme
+        .or('ai_parsing_incomplete.eq.true,quality_score.lt.70,earning.ilike.%taksit%,discount.ilike.%taksit%') // Taksit özelinde daha geniş tarama
+        .order('id', { ascending: false })
+        .limit(100);
 
     if (error) {
         console.error('Kampanyalar çekilirken hata oluştu:', error);
@@ -42,10 +42,17 @@ async function autoCorrect() {
         const titleL = (campaign.title || '').toLowerCase();
         const earningL = (campaign.earning || '').toLowerCase();
         const discountL = (campaign.discount || '').toLowerCase();
+
+        // Kategori bazlı çakışma kontrolü (Frontend'deki mantıkla paralel)
+        const categories = ['taksit', 'mil', 'puan', 'chip', 'para', 'indirim'];
+        const isCategoryRedundant = categories.some(cat =>
+            earningL.includes(cat) && discountL.includes(cat) && earningL !== discountL
+        );
+
         const titleHasTaksit = titleL.includes('taksit');
         const fieldsHaveTaksit = earningL.includes('taksit') || discountL.includes('taksit');
         const isRedundant = earningL === discountL && earningL !== '';
-        const hasEarningError = (titleHasTaksit && !fieldsHaveTaksit) || isRedundant;
+        const hasEarningError = (titleHasTaksit && !fieldsHaveTaksit) || isRedundant || isCategoryRedundant;
 
         if (hasMathError || isIncomplete || hasEarningError || !campaign.slug) {
             console.log(`   🛠  Hata saptandı (Matematik: ${hasMathError}, Eksik: ${isIncomplete}, Kazanç Standartı: ${hasEarningError}). Yeniden işleniyor...`);
