@@ -40,7 +40,7 @@ async function fetchMasterData(): Promise<MasterData> {
         'İş Bankası',
         'Akbank',
         'QNB Finansbank',
-        'Ziraat Bankası',
+        'Ziraat',
         'Halkbank',
         'Vakıfbank',
         'Denizbank',
