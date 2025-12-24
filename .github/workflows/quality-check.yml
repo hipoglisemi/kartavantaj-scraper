@@ -3,7 +3,7 @@ name: Campaign Quality Check
 on:
   # Run after periodic scrape workflow
   workflow_run:
-    workflows: ["Periodic Scrape"]
+    workflows: ["Periodic Scraper & Auto-Fix"]
     types:
       - completed
   
