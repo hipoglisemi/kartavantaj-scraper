@@ -26,7 +26,12 @@ async function sleep(ms: number) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+const DISABLE_AI_COMPLETELY = true;
+
 async function callGeminiAPI(prompt: string): Promise<any> {
+    if (DISABLE_AI_COMPLETELY) {
+        throw new Error('AI_CALL_BLOCKED');
+    }
     const now = Date.now();
     const timeSinceLastCall = now - lastCallTime;
 

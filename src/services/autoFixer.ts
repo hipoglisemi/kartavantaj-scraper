@@ -36,6 +36,20 @@ export async function autoFixCampaign(
         return await fixBadge(campaign);
     }
 
+    // NEW: If AI is disabled, we cannot do Strategy 2 or 3
+    // We import the flag from geminiParser if possible, or assume it's true based on our global policy
+    const AI_DISABLED = true; // Hardcoded safety for now as per user request
+    if (AI_DISABLED) {
+        console.log('   🛑 AI Strategies skipped: AI is disabled.');
+        return {
+            campaignId: campaign.id,
+            success: false,
+            method: 'skip',
+            message: 'AI correction skipped (AI is disabled)',
+            newScore: validation.score
+        };
+    }
+
     // Strategy 2: AI Re-Parse (Full re-parse from HTML)
     if (criticalIssues.length >= 3 || validation.score < 50) {
         return await aiReparse(campaign);

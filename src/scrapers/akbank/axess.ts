@@ -8,6 +8,11 @@ import { generateSectorSlug } from '../../utils/slugify';
 import { syncEarningAndDiscount } from '../../utils/dataFixer';
 import { normalizeBankName, normalizeCardName } from '../../utils/bankMapper';
 import { optimizeCampaigns } from '../../utils/campaignOptimizer';
+import { calculateMissingFields } from '../../utils/aiCalculator';
+import { syncHierarchy } from '../../utils/hierarchySync';
+import { generateUniqueSlug } from '../../utils/uniqueSlugGenerator';
+import { extractDirectly } from '../../utils/dataExtractor';
+import { assignBadge } from '../../services/badgeAssigner';
 
 dotenv.config();
 
@@ -36,6 +41,12 @@ async function runAxessScraper() {
     console.log(`   Bank: ${normalizedBank}`);
     console.log(`   Card: ${normalizedCard}`);
     console.log(`   Source: ${CARD_CONFIG.baseUrl}\n`);
+
+    // Fetch Master Brands for direct extraction
+    console.log('   📚 Fetching master brands for direct matching...');
+    const { data: brandsData } = await supabase.from('master_brands').select('name');
+    const masterBrands = brandsData?.map(b => b.name) || [];
+    console.log(`   ✅ Loaded ${masterBrands.length} brands.`);
 
     const isAIEnabled = process.argv.includes('--ai');
     const limitArg = process.argv.find(arg => arg.startsWith('--limit='));
@@ -143,59 +154,96 @@ async function runAxessScraper() {
             const imagePath = $('.campaingDetailImage img').attr('src');
             const imageUrl = imagePath ? new URL(imagePath, CARD_CONFIG.baseUrl).toString() : null;
 
-            // AI Parsing
-            let campaignData;
-            if (isAIEnabled) {
-                campaignData = await parseWithGemini(html, fullUrl, normalizedBank, normalizedCard);
+            // 1. Direct Extraction (Min AI)
+            console.log(`      ⚡ Direct: Extracting deterministic fields...`);
+            const directData = await extractDirectly(html, title, masterBrands);
+
+            // Core field extraction
+            let campaignData: any = {
+                title: title,
+                description: directData.description || title, // Use extracted HTML description
+                image: imageUrl,
+                url: fullUrl,
+                reference_url: fullUrl,
+                card_name: normalizedCard,
+                bank: normalizedBank,
+                category: directData.category || 'Diğer',
+                sector_slug: directData.sector_slug || 'diger',
+                brand: directData.brand,
+                valid_from: directData.valid_from,
+                valid_until: directData.valid_until,
+                min_spend: directData.min_spend || 0,
+                earning: directData.earning,
+                discount: directData.discount,
+                join_method: directData.join_method,
+                card_id: directData.valid_cards && directData.valid_cards.length > 0 ? directData.valid_cards.join(', ') : normalizedCard,
+                is_active: true
+            };
+
+            // 1.5 Assign Badge
+            const badge = assignBadge(campaignData);
+            campaignData.badge_text = badge.text;
+            campaignData.badge_color = badge.color;
+
+            // 2. Conditional AI (DISABLED for AI-Independence Test)
+            /*
+            const needsAI = !campaignData.brand || !campaignData.valid_until || campaignData.category === 'Diğer';
+
+            if (isAIEnabled && needsAI) {
+                console.log(`      🤖 AI: Direct extraction incomplete, calling AI for enrichment...`);
+                const aiResult = await calculateMissingFields(html, campaignData);
+                campaignData.brand = campaignData.brand || aiResult.brand;
+                if (campaignData.category === 'Diğer') {
+                    campaignData.category = aiResult.category;
+                    campaignData.sector_slug = generateSectorSlug(aiResult.category);
+                }
+                console.log(`      ✅ AI: brand="${campaignData.brand}", category="${campaignData.category}"`);
             } else {
-                campaignData = {
-                    title: title,
-                    description: title,
-                    category: 'Diğer',
-                    sector_slug: 'diger',
-                    card_name: normalizedCard,
-                    bank: normalizedBank,
-                    url: fullUrl,
-                    reference_url: fullUrl,
-                    is_active: true
-                };
+                console.log(`      ✅ Direct: brand="${campaignData.brand}", category="${campaignData.category}", until="${campaignData.valid_until}"`);
+            }
+            */
+            console.log(`      ✅ Direct: brand="${campaignData.brand}", category="${campaignData.category}", until="${campaignData.valid_until}"`);
+
+            // Sync complete hierarchy (bank_id, card_id, brand_id, sector_id)
+            const { bank_id, card_id, brand_id, sector_id } = await syncHierarchy(
+                normalizedBank,
+                normalizedCard,
+                campaignData.brand,
+                campaignData.sector_slug
+            );
+            campaignData.bank_id = bank_id;
+            campaignData.card_id = card_id;
+            campaignData.brand_id = brand_id;
+            campaignData.sector_id = sector_id;
+
+            // Generate unique slug (/card-brand-sector format)
+            const slug = await generateUniqueSlug(normalizedCard, campaignData.brand, campaignData.sector_slug);
+            campaignData.slug = slug;
+
+            // Sync earning and discount
+            syncEarningAndDiscount(campaignData);
+
+            // Check for activity if end_date exists
+            if (campaignData.valid_until) {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const endDate = new Date(campaignData.valid_until);
+                if (endDate < today) {
+                    console.log(`      ⚠️  Expired (${campaignData.valid_until}), skipping...`);
+                    continue;
+                }
             }
 
-            if (campaignData) {
-                // STRICT ASSIGNMENT
-                campaignData.title = title;
-                campaignData.image = imageUrl; // Add extracted image
-                campaignData.card_name = normalizedCard;
-                campaignData.bank = normalizedBank;
-                campaignData.url = fullUrl;
-                campaignData.reference_url = fullUrl;
-                campaignData.category = campaignData.category || 'Diğer';
-                campaignData.sector_slug = generateSectorSlug(campaignData.category);
-                syncEarningAndDiscount(campaignData);
-                campaignData.is_active = true;
+            const { error } = await supabase
+                .from('campaigns')
+                .upsert(campaignData, { onConflict: 'reference_url' });
 
-                // Check for activity if end_date exists
-                if (campaignData.end_date) {
-                    const today = new Date();
-                    today.setHours(0, 0, 0, 0);
-                    const endDate = new Date(campaignData.end_date);
-                    if (endDate < today) {
-                        console.log(`      ⚠️  Expired (${campaignData.end_date}), skipping...`);
-                        continue;
-                    }
-                }
-
-                campaignData.min_spend = campaignData.min_spend || 0;
-
-                const { error } = await supabase
-                    .from('campaigns')
-                    .upsert(campaignData, { onConflict: 'reference_url' });
-
-                if (error) {
-                    console.error(`      ❌ Error: ${error.message}`);
-                } else {
-                    console.log(`      ✅ Saved: ${campaignData.title}`);
-                }
+            if (error) {
+                console.error(`      ❌ Error: ${error.message}`);
+            } else {
+                console.log(`      ✅ Saved: ${campaignData.title}`);
+                console.log(`         Hierarchy: bank_id=${bank_id}, card_id=${card_id}, brand_id=${brand_id}, sector_id=${sector_id}`);
+                console.log(`         Slug: /${slug}`);
             }
 
         } catch (error: any) {

@@ -58,14 +58,22 @@ async function fetchMasterData(): Promise<MasterData> {
 
 // Rate limiting: Track last request time
 let lastRequestTime = 0;
-const MIN_REQUEST_INTERVAL_MS = 1000; // Minimum 1 second between requests (unlimited RPM with 2.5-flash)
+const MIN_REQUEST_INTERVAL_MS = 1000;
+
+// SAFETY SWITCH: Set to true to completely block AI calls during testing
+const DISABLE_AI_COMPLETELY = true;
 
 // Sleep utility
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 async function callGeminiAPI(prompt: string, retryCount = 0): Promise<any> {
     const MAX_RETRIES = 3;
-    const BASE_DELAY_MS = 2000; // Start with 2 seconds
+    const BASE_DELAY_MS = 2000;
+
+    if (DISABLE_AI_COMPLETELY) {
+        console.log('   🛑 AI BLOCKED: DISABLE_AI_COMPLETELY is set to true.');
+        throw new Error('AI_CALL_BLOCKED');
+    }
 
     try {
         // Rate limiting: Ensure minimum interval between requests

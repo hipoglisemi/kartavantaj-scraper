@@ -1,4 +1,6 @@
 
+import { assignBadge } from '../services/badgeAssigner';
+
 /**
  * Utility function to standardize and shorten benefit text for UI badges.
  * E.g., "Peşin fiyatına 6 aya varan taksit fırsatı" -> "6 Taksit"
@@ -95,6 +97,18 @@ export function syncEarningAndDiscount(data: any): any {
 
     data.earning = earning;
     data.discount = discount;
+
+    // Auto-populate merchant from brand if missing (precaution for frontend)
+    if (!data.merchant && data.brand) {
+        data.merchant = data.brand;
+    }
+
+    // Auto-assign badge if missing or needs update
+    if (!data.badge_text) {
+        const badge = assignBadge(data);
+        data.badge_text = badge.text;
+        data.badge_color = badge.color;
+    }
 
     syncBrands(data);
 
