@@ -12,8 +12,10 @@ interface ExtractedData {
     sector_slug?: string | null;
     category?: string | null;
     description?: string | null;
-    valid_cards?: string[]; // New
-    join_method?: string | null; // New
+    valid_cards?: string[];
+    join_method?: string | null;
+    date_flags?: string[]; // Added Phase 7.5
+    ai_suggested_valid_until?: string | null; // Added Phase 7.5
 }
 
 // ... existing code ...
@@ -22,6 +24,36 @@ const MONTHS: Record<string, string> = {
     'ocak': '01', 'şubat': '02', 'mart': '03', 'nisan': '04', 'mayıs': '05', 'haziran': '06',
     'temmuz': '07', 'ağustos': '08', 'eylül': '09', 'ekim': '10', 'kasım': '11', 'aralık': '12'
 };
+
+/**
+ * Normalizes Turkish text by stripping common suffixes (Phase 7.5)
+ * Small, safe, and doesn't use fuzzy matching.
+ */
+export function normalizeTurkishText(text: string): string {
+    if (!text) return '';
+    // Basic cleaning and lowercasing
+    // Replace Turkish İ with i and I with ı to handle case correctly
+    let normalized = text
+        .replace(/İ/g, 'i').replace(/I/g, 'ı')
+        .toLowerCase()
+        .replace(/['’]/g, ' ')
+        .replace(/[.,:;!?]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+    const tokens = normalized.split(' ');
+    const cleanedTokens = tokens.map(token => {
+        // Only strip if word is long enough to avoid stripping roots
+        if (token.length <= 4) return token;
+
+        // Controlled suffixes: -de/da, -den/dan, -in/ın/un/ün, -ler/lar, -li/lı/lu/lü
+        return token
+            .replace(/(?:lar|ler|dan|den|tan|ten|da|de|ta|te|ın|in|un|ün)$/i, '')
+            .replace(/(?:li|lı|lu|lü)$/i, '');
+    });
+
+    return cleanedTokens.join(' ');
+}
 
 const SECTORS = [
     { slug: 'market-gida', name: 'Market & Gıda', keywords: ['migros', 'carrefoursa', 'şok market', 'a101', 'bim', 'getir', 'yemeksepeti market', 'kasap', 'şarküteri', 'fırın'] },
@@ -43,7 +75,7 @@ const SECTORS = [
 ];
 
 /**
- * Main extractor function
+ * Main extractor function (Phase 7.5)
  */
 export async function extractDirectly(
     html: string,
@@ -67,7 +99,7 @@ export async function extractDirectly(
     const $$ = cheerio.load(targetHtml);
     $$('script, style, iframe, nav, footer, header, .footer, .header, .sidebar, #header, #footer').remove();
 
-    // Attempt to isolate just the "description" part if possible
+    // Isolated content
     const possibleCleanSelectors = ['.campaign-text', '.content-body', '.description', 'h2, p, li'];
     let cleanTextMatches: string[] = [];
     $$(possibleCleanSelectors.join(',')).each((_, el) => {
@@ -75,45 +107,57 @@ export async function extractDirectly(
     });
 
     const cleanText = cleanTextMatches.join(' ').replace(/\s+/g, ' ').trim() || $$.text().replace(/\s+/g, ' ').trim();
+    const normalizedText = normalizeTurkishText(cleanText);
 
-    // Use cleaned HTML for description if available, otherwise plain text.
-    const descriptionHtml = $$.html().trim();
+    // 1. Date Extraction (Phase 7.5 - parseDates)
+    const dates = parseDates(cleanText);
 
-    const dates = extractDates(cleanText);
+    // 2. Extractions
     const min_spend = extractMinSpend(cleanText);
     const earning = extractEarning(title, cleanText);
     const discount = extractDiscount(title, cleanText);
     const valid_cards = extractValidCards(cleanText);
     const join_method = extractJoinMethod(cleanText);
 
+    // 3. AI Referee Check (Phase 7.5 Specification)
+    let ai_suggested_valid_until: string | null = null;
+    if (!dates.valid_until) {
+        const dateSignals = ['ocak', 'şubat', 'mart', 'nisan', 'mayıs', 'haziran', 'temmuz', 'ağustos', 'eylül', 'ekim', 'kasım', 'aralık', 'geçerli', 'tarih'];
+        const hasSignal = dateSignals.some(s => cleanText.toLowerCase().includes(s));
+        if (hasSignal) {
+            // Signals for external AI referee logic
+        }
+    }
+
+    // 4. Classification
     const localBrands = [...masterBrands];
-    // Add missing big brands if needed (as objects)
     const brandNames = localBrands.map(b => b.name.toLowerCase());
     if (!brandNames.includes('vatan bilgisayar')) localBrands.push({ name: 'Vatan Bilgisayar' });
     if (!brandNames.includes('teknosa')) localBrands.push({ name: 'Teknosa' });
 
-    // Fetch dynamic sectors from cache/database
     const dynamicSectors = await getSectorsWithKeywords();
-    const classification = extractClassification(title, cleanText, localBrands, dynamicSectors);
+    // Use normalized text for classification (Phase 7.5 Requirement)
+    const classification = extractClassification(title, normalizedText, localBrands, dynamicSectors);
 
     return {
-        valid_from: dates.from,
-        valid_until: dates.until,
+        valid_from: dates.valid_from,
+        valid_until: dates.valid_until,
+        date_flags: dates.date_flags,
         min_spend,
         earning,
         discount,
         brand: classification.brand,
         sector_slug: classification.sector_slug,
         category: classification.category,
-        description: descriptionHtml || cleanText,
+        description: $$.html().trim() || cleanText,
         valid_cards,
-        join_method
+        join_method,
+        ai_suggested_valid_until
     };
 }
 
 /**
  * Converts Turkish date strings (e.g., "31 Aralık 2025", "31.12.2025" or "31 Aralık") to ISO (2025-12-31)
- * Optimized for year-guessing (Phase 7)
  */
 function parseTurkishDate(dateStr: string, defaultYear?: number): string | null {
     if (!dateStr) return null;
@@ -126,28 +170,21 @@ function parseTurkishDate(dateStr: string, defaultYear?: number): string | null 
     const currentMonth = now.getMonth() + 1;
 
     if (parts.length === 3) {
-        // Format: 31 Aralık 2025 or 31 12 2025
         day = parts[0].padStart(2, '0');
         const monthPart = parts[1];
         year = parts[2];
-
         if (/^\d{1,2}$/.test(monthPart)) {
             month = monthPart.padStart(2, '0');
         } else {
             month = MONTHS[monthPart] || '';
         }
     } else if (parts.length === 2) {
-        // Format: 31 Aralık (Missing Year)
         day = parts[0].padStart(2, '0');
         month = MONTHS[parts[1]] || (/^\d{1,2}$/.test(parts[1]) ? parts[1].padStart(2, '0') : '');
-
         if (!month) return null;
-        year = ''; // Initialize year to avoid lint error
 
-        // Heuristic Year Guessing (Phase 7)
         const monthNum = parseInt(month);
-        // If extracted month is earlier than current month, it's likely next year
-        if (monthNum < currentMonth - 1) { // -1 buffer
+        if (monthNum < currentMonth - 1) {
             year = (currentYear + 1).toString();
         } else {
             year = currentYear.toString();
@@ -157,142 +194,130 @@ function parseTurkishDate(dateStr: string, defaultYear?: number): string | null 
     }
 
     if (!month || !day || !year) return null;
-
-    // Validate ranges
-    const dayNum = parseInt(day);
-    const monthNum = parseInt(month);
-    const yearNum = parseInt(year);
-
-    if (dayNum < 1 || dayNum > 31) return null;
-    if (monthNum < 1 || monthNum > 12) return null;
-    if (yearNum < 2000 || yearNum > 2100) return null;
+    if (day.length > 2 || year.length !== 4) return null; // Basic validation
 
     return `${year}-${month}-${day}`;
 }
 
 /**
- * Extracts dates from text (Phase 7 Optimized)
+ * Robust Date Parsing (Phase 7.5 Specifications)
  */
-export function extractDates(text: string): { from: string | null, until: string | null } {
-    // 1. Text dates (31 Aralık 2024 or 31 Aralık)
-    const textDateRegex = /(\d{1,2})\s+(Ocak|Şubat|Mart|Nisan|Mayıs|Haziran|Temmuz|Ağustos|Eylül|Ekim|Kasım|Aralık)(?:\s+(\d{4}))?/gi;
+export function parseDates(text: string, today: Date = new Date()): {
+    valid_from: string | null,
+    valid_until: string | null,
+    date_flags: string[]
+} {
+    let valid_from: string | null = null;
+    let valid_until: string | null = null;
+    let date_flags: string[] = [];
 
-    // 2. Numeric dates (31.12.2024)
-    const numericDateRegex = /\d{1,2}[./]\d{1,2}[./]\d{4}/g;
+    // Filter out point usage context before parsing
+    const normalized = text.replace(/\s+/g, ' ');
 
-    // 3. Ranges (1-31 Ocak 2024 or 1-31 Ocak)
-    const rangeSameMonthRegex = /(\d{1,2})\s*[-–]\s*(\d{1,2})\s+(Ocak|Şubat|Mart|Nisan|Mayıs|Haziran|Temmuz|Ağustos|Eylül|Ekim|Kasım|Aralık)(?:\s+(\d{4}))?/gi;
-
-    let matches: { date: string, index: number, isRange?: boolean, startDay?: string }[] = [];
-
-    let m;
-    // Catch ranges first
-    while ((m = rangeSameMonthRegex.exec(text)) !== null) {
-        matches.push({
-            date: `${m[2]} ${m[3]} ${m[4] || ''}`.trim(),
-            index: m.index,
-            isRange: true,
-            startDay: m[1]
-        });
+    // 1. DD.MM.YYYY - DD.MM.YYYY
+    const fullNumericRange = /(\d{1,2})[./](\d{1,2})[./](\d{4})\s*[-–]\s*(\d{1,2})[./](\d{1,2})[./](\d{4})/g;
+    let m = fullNumericRange.exec(normalized);
+    if (m) {
+        valid_from = `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;
+        valid_until = `${m[6]}-${m[5].padStart(2, '0')}-${m[4].padStart(2, '0')}`;
+        return { valid_from, valid_until, date_flags };
     }
 
-    // Catch full text dates
-    while ((m = textDateRegex.exec(text)) !== null) {
-        // Skip if this part was already caught by a range (basic index check)
-        if (matches.some(prev => Math.abs(prev.index - m!.index) < 10)) continue;
-        matches.push({ date: m[0], index: m.index });
-    }
-
-    // Catch numeric dates
-    while ((m = numericDateRegex.exec(text)) !== null) {
-        matches.push({ date: m[0], index: m.index });
-    }
-
-    if (matches.length > 0) {
-        // Filter out reward usage dates (Phase 7 Refined)
-        const filteredMatches = matches.filter(match => {
-            const start = Math.max(0, match.index - 40); // Shorter start context
-            const end = Math.min(text.length, match.index + 40); // Shorter end context
-            const context = text.substring(start, end).toLowerCase();
-
-            // Only filter if point keywords are VERY close to the date
-            const pointKeywords = ['puan kullanım', 'silinir', 'harcanabilir', 'chip kullanım', 'puan son'];
-            if (pointKeywords.some(kw => context.includes(kw))) {
-                return false;
+    // 2. DD.MM - DD.MM (Yearless)
+    const shortNumericRange = /(\d{1,2})[./](\d{1,2})\s*[-–]\s*(\d{1,2})[./](\d{1,2})/g;
+    m = shortNumericRange.exec(normalized);
+    if (m) {
+        const fromDateObj = parseTurkishDate(`${m[1]}.${m[2]}`, today.getFullYear());
+        const untilDateObj = parseTurkishDate(`${m[3]}.${m[4]}`, today.getFullYear());
+        if (fromDateObj && untilDateObj) {
+            valid_from = fromDateObj;
+            valid_until = untilDateObj;
+            if (valid_from > valid_until) {
+                valid_until = parseTurkishDate(`${m[3]}.${m[4]}`, today.getFullYear() + 1);
             }
-            return true;
-        });
-
-        if (filteredMatches.length > 0) {
-            // Sort by occurrence in text
-            filteredMatches.sort((a, b) => a.index - b.index);
-
-            // Step 1: Extract untilDate (usually the last or only date)
-            const lastMatch = filteredMatches[filteredMatches.length - 1];
-            let untilDate = parseTurkishDate(lastMatch.date);
-
-            // Step 2: Extract fromDate
-            let fromDate: string | null = null;
-            const firstMatch = filteredMatches[0];
-
-            if (firstMatch.isRange && firstMatch.startDay) {
-                // Range like "1-31 Ocak"
-                if (untilDate) {
-                    const yearMonth = untilDate.substring(0, 8);
-                    fromDate = `${yearMonth}${firstMatch.startDay.padStart(2, '0')}`;
-                }
-            } else if (filteredMatches.length > 1) {
-                fromDate = parseTurkishDate(firstMatch.date);
-            }
-
-            // Step 3: Chronological Fix (Phase 7)
-            // If fromDate is after untilDate, they likely belong to different years
-            if (fromDate && untilDate && fromDate > untilDate) {
-                const fromParts = fromDate.split('-');
-                const untilParts = untilDate.split('-');
-
-                // If years are same, try decrementing fromYear (e.g. Dec 2024 -> Jan 2025 range)
-                // Actually, missions usually go forward. So if from > until, and years are same,
-                // it might be that until is next year and from is this year (but guessed next).
-                // Example: Oct 15 - Nov 15 (Context Dec). Guess: Oct 2026 - Nov 2025 (Wrong).
-                // Fix: Set both to same year if it makes sense.
-
-                if (fromParts[0] === untilParts[0]) {
-                    // Same year but backwards? (e.g. Dec - Jan range)
-                    // Set fromYear to currentYear if guessed next year
-                    const year = parseInt(fromParts[0]) - 1;
-                    fromDate = `${year}-${fromParts[1]}-${fromParts[2]}`;
-                } else if (fromParts[0] > untilParts[0]) {
-                    // Guess was different (e.g. Oct 2026 - Nov 2025)
-                    fromDate = `${untilParts[0]}-${fromParts[1]}-${fromParts[2]}`;
-                }
-            }
-
-            return { from: fromDate, until: untilDate };
+            date_flags.push('year_inferred');
+            return { valid_from, valid_until, date_flags };
         }
     }
 
-    // Heuristic: If no dates found, search for "ay sonuna kadar" (end of month)
-    const endOfMonthMatch = text.match(/(Ocak|Şubat|Mart|Nisan|Mayıs|Haziran|Temmuz|Ağustos|Eylül|Ekim|Kasım|Aralık)\s+sonuna\s+kadar/i);
-    if (endOfMonthMatch) {
-        const monthName = endOfMonthMatch[1].toLowerCase();
-        const monthNum = MONTHS[monthName];
-        if (monthNum) {
-            const now = new Date();
-            let year = now.getFullYear();
-            const currentMonth = now.getMonth() + 1;
-
-            // Heuristic (Phase 7): If extracted month is earlier than current month, it's next year
-            if (parseInt(monthNum) < currentMonth - 1) {
-                year++;
-            }
-
-            const lastDay = new Date(year, parseInt(monthNum), 0).getDate();
-            return { from: null, until: `${year}-${monthNum.padStart(2, '0')}-${lastDay}` };
+    // 3. 1-31 Ocak (Phase 7 logic but more robust)
+    const textRangeRegex = /(\d{1,2})\s*[-–]\s*(\d{1,2})\s+(Ocak|Şubat|Mart|Nisan|Mayıs|Haziran|Temmuz|Ağustos|Eylül|Ekim|Kasım|Aralık)(?:\s+(\d{4}))?/gi;
+    m = textRangeRegex.exec(normalized);
+    if (m) {
+        const year = m[4] ? parseInt(m[4]) : today.getFullYear();
+        const untilStr = `${m[2]} ${m[3]} ${year}`.trim();
+        valid_until = parseTurkishDate(untilStr, year);
+        if (valid_until) {
+            const yearMonth = valid_until.substring(0, 8);
+            valid_from = `${yearMonth}${m[1].padStart(2, '0')}`;
+            if (!m[4]) date_flags.push('year_inferred');
+            return { valid_from, valid_until, date_flags };
         }
     }
 
-    return { from: null, until: null };
+    // 4. 1 Ocak’tan 31 Ocak’a kadar (Refined)
+    const longTextRangeRegex = /(\d{1,2})\s+(Ocak|Şubat|Mart|Nisan|Mayıs|Haziran|Temmuz|Ağustos|Eylül|Ekim|Kasım|Aralık)\s*(?:'dan|'den|'tan|'ten|’dan|’den|’tan|’ten)?\s*(\d{1,2})\s+(Ocak|Şubat|Mart|Nisan|Mayıs|Haziran|Temmuz|Ağustos|Eylül|Ekim|Kasım|Aralık)\s*(?:'a|'e|’a|’e)?\s+kadar/gi;
+    m = longTextRangeRegex.exec(normalized);
+    if (!m) {
+        const crossMonthRegex = /(\d{1,2})\s+(Ocak|Şubat|Mart|Nisan|Mayıs|Haziran|Temmuz|Ağustos|Eylül|Ekim|Kasım|Aralık)\s*[-–]\s*(\d{1,2})\s+(Ocak|Şubat|Mart|Nisan|Mayıs|Haziran|Temmuz|Ağustos|Eylül|Ekim|Kasım|Aralık)/gi;
+        m = crossMonthRegex.exec(normalized);
+    }
+    if (m) {
+        const fromStr = `${m[1]} ${m[2]}`;
+        const untilStr = `${m[3]} ${m[4]}`;
+        valid_from = parseTurkishDate(fromStr, today.getFullYear());
+        valid_until = parseTurkishDate(untilStr, today.getFullYear());
+        if (valid_from && valid_until) {
+            if (valid_from > valid_until) {
+                valid_until = parseTurkishDate(untilStr, today.getFullYear() + 1);
+            }
+            date_flags.push('year_inferred');
+            return { valid_from, valid_until, date_flags };
+        }
+    }
+
+    // Fallback: Individual dates with "until" signals
+    const untilSignals = ["’a kadar", "a kadar", "e kadar", "son gün", "son tarih", "tarihine kadar"];
+    const textDatePat = /(\d{1,2})\s+(Ocak|Şubat|Mart|Nisan|Mayıs|Haziran|Temmuz|Ağustos|Eylül|Ekim|Kasım|Aralık)(?:\s+(\d{4}))?/gi;
+    const numericDatePat = /(\d{1,2})[./](\d{1,2})[./](\d{4})/g;
+
+    let bestUntilMatch: string | null = null;
+    let numericM;
+    while ((numericM = numericDatePat.exec(normalized)) !== null) {
+        const snippet = normalized.substring(Math.max(0, numericM.index - 20), numericM.index + 50).toLowerCase();
+        if (untilSignals.some(s => snippet.includes(s))) {
+            bestUntilMatch = `${numericM[3]}-${numericM[2].padStart(2, '0')}-${numericM[1].padStart(2, '0')}`;
+        }
+    }
+    if (!bestUntilMatch) {
+        let textM;
+        while ((textM = textDatePat.exec(normalized)) !== null) {
+            const snippet = normalized.substring(Math.max(0, textM.index - 20), textM.index + 50).toLowerCase();
+            if (untilSignals.some(s => snippet.includes(s))) {
+                const parsed = parseTurkishDate(textM[0], textM[3] ? parseInt(textM[3]) : today.getFullYear());
+                if (parsed) {
+                    bestUntilMatch = parsed;
+                    if (!textM[3]) date_flags.push('year_inferred');
+                }
+            }
+        }
+    }
+
+    // Last resort: Month-end heuristic
+    if (!bestUntilMatch) {
+        const endOfMonthMatch = normalized.match(/(Ocak|Şubat|Mart|Nisan|Mayıs|Haziran|Temmuz|Ağustos|Eylül|Ekim|Kasım|Aralık)\s+sonuna\s+kadar/i);
+        if (endOfMonthMatch) {
+            const monthNum = MONTHS[endOfMonthMatch[1].toLowerCase()];
+            if (monthNum) {
+                let year = today.getFullYear();
+                if (parseInt(monthNum) < (today.getMonth() + 1) - 1) year++;
+                const lastDay = new Date(year, parseInt(monthNum), 0).getDate();
+                bestUntilMatch = `${year}-${monthNum.padStart(2, '0')}-${lastDay.toString().padStart(2, '0')}`;
+                date_flags.push('year_inferred');
+            }
+        }
+    }
+    return { valid_from, valid_until: bestUntilMatch, date_flags };
 }
 
 /**
@@ -455,16 +480,26 @@ export function extractClassification(
     const sectorScores = masterSectors.map(sector => {
         let score = 0;
 
+        // Use normalized title/content for keywords (Phase 7.5)
+        const nTitle = normalizeTurkishText(title);
+        // content is already normalized when passed from extractDirectly, but let's be safe
+        const nContent = normalizeTurkishText(content);
+
         // Title matches get 5x weight
         for (const kw of (sector.keywords || [])) {
-            const matches = titleLower.match(new RegExp(kw.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'));
+            const nKw = normalizeTurkishText(kw);
+            // Use word boundaries for phrase matching
+            const regex = new RegExp(`\\b${nKw.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'g');
+            const matches = nTitle.match(regex);
             if (matches) score += matches.length * 5;
         }
 
         // Content matches (first 1000 chars only) get 1x weight
-        const contentSnippet = contentLower.substring(0, 1000);
+        const contentSnippet = nContent.substring(0, 1000);
         for (const kw of (sector.keywords || [])) {
-            const matches = contentSnippet.match(new RegExp(kw.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'));
+            const nKw = normalizeTurkishText(kw);
+            const regex = new RegExp(`\\b${nKw.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'g');
+            const matches = contentSnippet.match(regex);
             if (matches) score += matches.length;
         }
 
