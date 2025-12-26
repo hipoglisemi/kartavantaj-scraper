@@ -4,6 +4,7 @@ import * as cheerio from 'cheerio';
 import { createClient } from '@supabase/supabase-js';
 import * as dotenv from 'dotenv';
 import { parseWithGemini } from '../../services/geminiParser';
+import { enhanceDescription } from '../../services/descriptionEnhancer';
 import { generateSectorSlug } from '../../utils/slugify';
 import { syncEarningAndDiscount } from '../../utils/dataFixer';
 import { normalizeBankName, normalizeCardName } from '../../utils/bankMapper';
@@ -159,9 +160,13 @@ async function runAxessScraper() {
             const directData = await extractDirectly(html, title, masterBrands);
 
             // Core field extraction
+            const rawDescription = directData.description || title;
+            console.log(`      ✨ Enhancing description with AI...`);
+            const enhancedDescription = await enhanceDescription(rawDescription);
+
             let campaignData: any = {
                 title: title,
-                description: directData.description || title, // Use extracted HTML description
+                description: enhancedDescription, // AI-enhanced marketing description
                 image: imageUrl,
                 url: fullUrl,
                 reference_url: fullUrl,
