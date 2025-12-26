@@ -112,14 +112,18 @@ export async function extractDirectly(
 }
 
 /**
- * Converts Turkish date strings (e.g., "31 Aralık 2025" or "31.12.2025") to ISO (2025-12-31)
+ * Converts Turkish date strings (e.g., "31 Aralık 2025", "31.12.2025" or "31 Aralık") to ISO (2025-12-31)
+ * Optimized for year-guessing (Phase 7)
  */
-function parseTurkishDate(dateStr: string): string | null {
+function parseTurkishDate(dateStr: string, defaultYear?: number): string | null {
     if (!dateStr) return null;
     const cleanStr = dateStr.trim().replace(/[.,/]/g, ' ').replace(/\s+/g, ' ');
     const parts = cleanStr.toLowerCase().split(' ');
 
     let day = '', month = '', year = '';
+    const now = new Date();
+    const currentYear = defaultYear || now.getFullYear();
+    const currentMonth = now.getMonth() + 1;
 
     if (parts.length === 3) {
         // Format: 31 Aralık 2025 or 31 12 2025
@@ -127,18 +131,32 @@ function parseTurkishDate(dateStr: string): string | null {
         const monthPart = parts[1];
         year = parts[2];
 
-        // Check if month is numeric
         if (/^\d{1,2}$/.test(monthPart)) {
             month = monthPart.padStart(2, '0');
         } else {
-            // Text month
-            month = MONTHS[monthPart];
+            month = MONTHS[monthPart] || '';
+        }
+    } else if (parts.length === 2) {
+        // Format: 31 Aralık (Missing Year)
+        day = parts[0].padStart(2, '0');
+        month = MONTHS[parts[1]] || (/^\d{1,2}$/.test(parts[1]) ? parts[1].padStart(2, '0') : '');
+
+        if (!month) return null;
+        year = ''; // Initialize year to avoid lint error
+
+        // Heuristic Year Guessing (Phase 7)
+        const monthNum = parseInt(month);
+        // If extracted month is earlier than current month, it's likely next year
+        if (monthNum < currentMonth - 1) { // -1 buffer
+            year = (currentYear + 1).toString();
+        } else {
+            year = currentYear.toString();
         }
     } else {
         return null;
     }
 
-    if (!month || isNaN(parseInt(day)) || isNaN(parseInt(year))) return null;
+    if (!month || !day || !year) return null;
 
     // Validate ranges
     const dayNum = parseInt(day);
@@ -149,56 +167,131 @@ function parseTurkishDate(dateStr: string): string | null {
     if (monthNum < 1 || monthNum > 12) return null;
     if (yearNum < 2000 || yearNum > 2100) return null;
 
-    return `${year} -${month} -${day} `;
+    return `${year}-${month}-${day}`;
 }
 
 /**
- * Extracts dates from text
+ * Extracts dates from text (Phase 7 Optimized)
  */
 export function extractDates(text: string): { from: string | null, until: string | null } {
-    const textDateRegex = /\d{1,2}\s+(?:Ocak|Şubat|Mart|Nisan|Mayıs|Haziran|Temmuz|Ağustos|Eylül|Ekim|Kasım|Aralık)\s+\d{4}/gi;
+    // 1. Text dates (31 Aralık 2024 or 31 Aralık)
+    const textDateRegex = /(\d{1,2})\s+(Ocak|Şubat|Mart|Nisan|Mayıs|Haziran|Temmuz|Ağustos|Eylül|Ekim|Kasım|Aralık)(?:\s+(\d{4}))?/gi;
+
+    // 2. Numeric dates (31.12.2024)
     const numericDateRegex = /\d{1,2}[./]\d{1,2}[./]\d{4}/g;
 
-    let matches: { date: string, index: number }[] = [];
+    // 3. Ranges (1-31 Ocak 2024 or 1-31 Ocak)
+    const rangeSameMonthRegex = /(\d{1,2})\s*[-–]\s*(\d{1,2})\s+(Ocak|Şubat|Mart|Nisan|Mayıs|Haziran|Temmuz|Ağustos|Eylül|Ekim|Kasım|Aralık)(?:\s+(\d{4}))?/gi;
+
+    let matches: { date: string, index: number, isRange?: boolean, startDay?: string }[] = [];
 
     let m;
+    // Catch ranges first
+    while ((m = rangeSameMonthRegex.exec(text)) !== null) {
+        matches.push({
+            date: `${m[2]} ${m[3]} ${m[4] || ''}`.trim(),
+            index: m.index,
+            isRange: true,
+            startDay: m[1]
+        });
+    }
+
+    // Catch full text dates
     while ((m = textDateRegex.exec(text)) !== null) {
+        // Skip if this part was already caught by a range (basic index check)
+        if (matches.some(prev => Math.abs(prev.index - m!.index) < 10)) continue;
         matches.push({ date: m[0], index: m.index });
     }
+
+    // Catch numeric dates
     while ((m = numericDateRegex.exec(text)) !== null) {
         matches.push({ date: m[0], index: m.index });
     }
 
     if (matches.length > 0) {
-        // Filter out dates that look like reward usage expiration
-        // "Points can be used until..."
-        // Look at context around the date (e.g. 50 chars before)
-        const validDates = matches.filter(match => {
-            const start = Math.max(0, match.index - 70);
-            const end = Math.min(text.length, match.index + 60); // Suffix verbs like 'kullanılabilir' are far ahead
+        // Filter out reward usage dates (Phase 7 Refined)
+        const filteredMatches = matches.filter(match => {
+            const start = Math.max(0, match.index - 40); // Shorter start context
+            const end = Math.min(text.length, match.index + 40); // Shorter end context
             const context = text.substring(start, end).toLowerCase();
 
-            // Exclude if context contains reward keywords indicating "usage period"
-            if (context.includes('puan') || context.includes('chip') || context.includes('indirim') || context.includes('kullanılabilir') || context.includes('silinir') || context.includes('geri alınır')) {
-                // ...BUT allow if it says "Campaign ... valid until X" despite mentioning points?
-                // Risk: "Earn points until X" -> X is campaign end. "Use points until Y" -> Y is usage.
-
-                // Strong signal for Usage Date: "kullanılabilir", "silinir", "harcanabilir"
-                if (context.includes('kullanılabilir') || context.includes('silinir') || context.includes('harcanabilir')) {
-                    return false;
-                }
+            // Only filter if point keywords are VERY close to the date
+            const pointKeywords = ['puan kullanım', 'silinir', 'harcanabilir', 'chip kullanım', 'puan son'];
+            if (pointKeywords.some(kw => context.includes(kw))) {
+                return false;
             }
             return true;
-        }).map(m => parseTurkishDate(m.date)).filter(Boolean) as string[];
+        });
 
-        if (validDates.length > 0) {
-            validDates.sort((a, b) => a.localeCompare(b));
-            return {
-                from: validDates.length > 1 ? validDates[0] : null,
-                until: validDates[validDates.length - 1]
-            };
+        if (filteredMatches.length > 0) {
+            // Sort by occurrence in text
+            filteredMatches.sort((a, b) => a.index - b.index);
+
+            // Step 1: Extract untilDate (usually the last or only date)
+            const lastMatch = filteredMatches[filteredMatches.length - 1];
+            let untilDate = parseTurkishDate(lastMatch.date);
+
+            // Step 2: Extract fromDate
+            let fromDate: string | null = null;
+            const firstMatch = filteredMatches[0];
+
+            if (firstMatch.isRange && firstMatch.startDay) {
+                // Range like "1-31 Ocak"
+                if (untilDate) {
+                    const yearMonth = untilDate.substring(0, 8);
+                    fromDate = `${yearMonth}${firstMatch.startDay.padStart(2, '0')}`;
+                }
+            } else if (filteredMatches.length > 1) {
+                fromDate = parseTurkishDate(firstMatch.date);
+            }
+
+            // Step 3: Chronological Fix (Phase 7)
+            // If fromDate is after untilDate, they likely belong to different years
+            if (fromDate && untilDate && fromDate > untilDate) {
+                const fromParts = fromDate.split('-');
+                const untilParts = untilDate.split('-');
+
+                // If years are same, try decrementing fromYear (e.g. Dec 2024 -> Jan 2025 range)
+                // Actually, missions usually go forward. So if from > until, and years are same,
+                // it might be that until is next year and from is this year (but guessed next).
+                // Example: Oct 15 - Nov 15 (Context Dec). Guess: Oct 2026 - Nov 2025 (Wrong).
+                // Fix: Set both to same year if it makes sense.
+
+                if (fromParts[0] === untilParts[0]) {
+                    // Same year but backwards? (e.g. Dec - Jan range)
+                    // Set fromYear to currentYear if guessed next year
+                    const year = parseInt(fromParts[0]) - 1;
+                    fromDate = `${year}-${fromParts[1]}-${fromParts[2]}`;
+                } else if (fromParts[0] > untilParts[0]) {
+                    // Guess was different (e.g. Oct 2026 - Nov 2025)
+                    fromDate = `${untilParts[0]}-${fromParts[1]}-${fromParts[2]}`;
+                }
+            }
+
+            return { from: fromDate, until: untilDate };
         }
     }
+
+    // Heuristic: If no dates found, search for "ay sonuna kadar" (end of month)
+    const endOfMonthMatch = text.match(/(Ocak|Şubat|Mart|Nisan|Mayıs|Haziran|Temmuz|Ağustos|Eylül|Ekim|Kasım|Aralık)\s+sonuna\s+kadar/i);
+    if (endOfMonthMatch) {
+        const monthName = endOfMonthMatch[1].toLowerCase();
+        const monthNum = MONTHS[monthName];
+        if (monthNum) {
+            const now = new Date();
+            let year = now.getFullYear();
+            const currentMonth = now.getMonth() + 1;
+
+            // Heuristic (Phase 7): If extracted month is earlier than current month, it's next year
+            if (parseInt(monthNum) < currentMonth - 1) {
+                year++;
+            }
+
+            const lastDay = new Date(year, parseInt(monthNum), 0).getDate();
+            return { from: null, until: `${year}-${monthNum.padStart(2, '0')}-${lastDay}` };
+        }
+    }
+
     return { from: null, until: null };
 }
 
