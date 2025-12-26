@@ -6,6 +6,7 @@ import * as dotenv from 'dotenv';
 import { parseWithGemini } from '../../services/geminiParser';
 import { enhanceDescription } from '../../services/descriptionEnhancer';
 import { isBankCampaign, getBankCampaignReason } from '../../utils/bankCampaignDetector';
+import { extractSnippetForAI, classifySectorWithAI } from '../../utils/aiSnippetClassifier';
 import { generateSectorSlug } from '../../utils/slugify';
 import { syncEarningAndDiscount } from '../../utils/dataFixer';
 import { normalizeBankName, normalizeCardName } from '../../utils/bankMapper';
@@ -221,31 +222,33 @@ async function runAxessScraper() {
 
             // 2. Conditional AI Enhancement (only for non-bank campaigns)
             if (!isBankCamp) {
-                const needsAI = !campaignData.brand || !campaignData.valid_until || campaignData.category === 'Diğer' || campaignData.sector_slug === 'diger';
+                // Check if AI is needed (only for sector classification now)
+                const needsSectorAI = campaignData.sector_slug === 'diger';
 
-                if (isAIEnabled && needsAI) {
-                    console.log(`      🤖 AI: Direct extraction incomplete, calling AI for enrichment...`);
-                    const aiResult = await parseWithGemini(html, fullUrl, normalizedBank, normalizedCard);
+                if (isAIEnabled && needsSectorAI) {
+                    console.log(`      🤖 AI Snippet: Sector unclear, using minimal AI classification...`);
 
-                    // Brand fix (only if missing)
-                    if (!campaignData.brand) {
-                        campaignData.brand = aiResult.brand;
+                    // Extract snippet (300-400 chars) instead of full HTML
+                    const snippet = extractSnippetForAI(title, directData.description || '');
+                    console.log(`      📝 Snippet length: ${snippet.length} chars (vs ${html.length} full HTML)`);
+
+                    // Minimal AI call (sector-only)
+                    const geminiKey = process.env.GOOGLE_GEMINI_KEY || '';
+                    const aiSector = await classifySectorWithAI(snippet, geminiKey);
+
+                    if (aiSector.sector_slug !== 'diger') {
+                        campaignData.sector_slug = aiSector.sector_slug;
+                        campaignData.classification_method = 'ai_snippet';
+                        campaignData.sector_confidence = aiSector.confidence >= 0.7 ? 'high' : 'medium';
+                        console.log(`      ✅ AI Sector: "${aiSector.sector_slug}" (confidence: ${aiSector.confidence})`);
+                    } else {
+                        // AI couldn't classify, flag for manual review
+                        campaignData.needs_manual_sector = true;
+                        campaignData.sector_confidence = 'low';
+                        console.log(`      ⚠️ AI uncertain, flagged for manual review`);
                     }
-
-                    // Sector fix (only if fallback "diger")
-                    if (campaignData.sector_slug === 'diger' && aiResult.category && aiResult.category !== 'Diğer') {
-                        campaignData.category = aiResult.category;
-                        campaignData.sector_slug = generateSectorSlug(aiResult.category);
-                    }
-
-                    // Date fix (only if missing)
-                    if (!campaignData.valid_until && aiResult.validUntil) {
-                        campaignData.valid_until = aiResult.validUntil;
-                    }
-
-                    console.log(`      ✅ AI Enhanced: brand="${campaignData.brand}", category="${campaignData.category}", sector="${campaignData.sector_slug}"`);
                 } else {
-                    console.log(`      ✅ Direct: brand="${campaignData.brand}", category="${campaignData.category}", until="${campaignData.valid_until}"`);
+                    console.log(`      ✅ Direct: brand="${campaignData.brand}", sector="${campaignData.sector_slug}"`);
                 }
             } // End of AI enhancement block (non-bank campaigns only)
 
