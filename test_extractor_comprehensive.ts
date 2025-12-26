@@ -17,7 +17,9 @@ const testCases = {
     ],
     join: [
         { text: "Juzdan ile Hemen Katıl butonuna tıklayın.", expected: "Juzdan ile Katıl" },
-        { text: "KAYIT yazıp 4566'ya SMS gönderin.", expected: "SMS ile Katıl" }
+        { text: "KAYIT yazıp 4566'ya SMS gönderin.", expected: "SMS ile Katıl" },
+        { text: "Müşteri hizmetlerini arayarak kayıt olabilirsiniz.", expected: "Müşteri Hizmetleri" },
+        { text: "Akbank Mobil uygulamasından katılabilirsiniz.", expected: "Mobil Uygulama" }
     ]
 };
 

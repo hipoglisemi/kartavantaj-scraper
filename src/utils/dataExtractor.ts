@@ -264,9 +264,18 @@ export function extractValidCards(text: string): string[] {
 
 export function extractJoinMethod(text: string): string | null {
     const lowerText = text.toLowerCase();
+
+    // Priority order matters (specific to generic)
     if (lowerText.includes('juzdan') || lowerText.includes('juzdan ile')) return 'Juzdan ile Katıl';
-    if (lowerText.includes('sms') || /kayıt\s+yazıp/.test(lowerText)) return 'SMS ile Katıl';
+
+    if (lowerText.includes('sms') || /kayıt\s+yazıp/.test(lowerText) || /\d{4}'e\s+gönder/.test(lowerText)) return 'SMS ile Katıl';
+
+    if (lowerText.includes('müşteri hizmetleri') || lowerText.includes('çağrı merkezi') || lowerText.includes('444 25 25')) return 'Müşteri Hizmetleri';
+
+    if (lowerText.includes('mobil şube') || lowerText.includes('akbank mobil') || lowerText.includes('mobil uygulama')) return 'Mobil Uygulama';
+
     if (lowerText.includes('otomatik')) return 'Otomatik Katılım';
+
     return null;
 }
 
