@@ -229,7 +229,7 @@ async function runAxessScraper() {
                     console.log(`      🤖 AI Snippet: Sector unclear, using minimal AI classification...`);
 
                     // Extract snippet (300-400 chars) instead of full HTML
-                    const snippet = extractSnippetForAI(title, rawDescription);
+                    const snippet = extractSnippetForAI(title, campaignData.description);
                     console.log(`      📝 Snippet length: ${snippet.length} chars (vs ${html.length} full HTML)`);
 
                     // Minimal AI call (sector-only)
