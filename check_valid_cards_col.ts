@@ -7,14 +7,15 @@ dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!);
 
-async function checkParticipation() {
-    console.log('🔍 Checking values in participation_method column...');
+async function checkValidCards() {
+    console.log('🔍 Checking values in valid_cards column...');
 
+    // Select some rows
     const { data, error } = await supabase
         .from('campaigns')
-        .select('title, participation_method')
+        .select('title, valid_cards')
         .eq('bank', 'Akbank')
-        .not('participation_method', 'is', null) // Only show ones with data
+        .not('valid_cards', 'is', null)
         .limit(5);
 
     if (error) {
@@ -23,13 +24,13 @@ async function checkParticipation() {
     }
 
     if (!data || data.length === 0) {
-        console.log('⚠️ No campaigns found with participation_method populated yet.');
+        console.log('⚠️ No campaigns found with valid_cards populated yet.');
     } else {
-        console.log(`✅ Found ${data.length} campaigns with participation details:`);
+        console.log(`✅ Found ${data.length} campaigns with card details:`);
         data.forEach(c => {
-            console.log(`   - "${c.title.substring(0, 30)}...": [${c.participation_method}]`);
+            console.log(`   - "${c.title.substring(0, 30)}...": [${c.valid_cards}] (Type: ${typeof c.valid_cards})`);
         });
     }
 }
 
-checkParticipation();
+checkValidCards();

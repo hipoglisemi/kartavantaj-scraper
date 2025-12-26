@@ -175,8 +175,8 @@ async function runAxessScraper() {
                 min_spend: directData.min_spend || 0,
                 earning: directData.earning,
                 discount: directData.discount,
-                join_method: directData.join_method,
-                card_id: directData.valid_cards && directData.valid_cards.length > 0 ? directData.valid_cards.join(', ') : normalizedCard,
+                participation_method: directData.join_method,
+                valid_cards: directData.valid_cards, // Mapping extracted cards to valid_cards column
                 is_active: true
             };
 
