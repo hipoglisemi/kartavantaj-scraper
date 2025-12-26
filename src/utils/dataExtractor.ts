@@ -47,7 +47,7 @@ const SECTORS = [
 export async function extractDirectly(
     html: string,
     title: string,
-    masterBrands: string[] = []
+    masterBrands: Array<{ name: string, sector_id?: number }> = []
 ): Promise<ExtractedData> {
     const $ = cheerio.load(html);
 
@@ -86,9 +86,10 @@ export async function extractDirectly(
     const join_method = extractJoinMethod(cleanText);
 
     const localBrands = [...masterBrands];
-    // Add missing big brands if needed
-    if (!localBrands.map(b => b.toLowerCase()).includes('vatan bilgisayar')) localBrands.push('Vatan Bilgisayar');
-    if (!localBrands.map(b => b.toLowerCase()).includes('teknosa')) localBrands.push('Teknosa');
+    // Add missing big brands if needed (as objects)
+    const brandNames = localBrands.map(b => b.name.toLowerCase());
+    if (!brandNames.includes('vatan bilgisayar')) localBrands.push({ name: 'Vatan Bilgisayar' });
+    if (!brandNames.includes('teknosa')) localBrands.push({ name: 'Teknosa' });
 
     const classification = extractClassification(title, cleanText, localBrands);
 
@@ -303,23 +304,24 @@ export function extractJoinMethod(text: string): string | null {
 
 /**
  * Extracts brand and sector using master data hints
+ * NEW: Supports brand→sector mapping for AI-free classification
  */
 export function extractClassification(
     title: string,
     content: string,
-    masterBrands: string[] = [],
+    masterBrands: Array<{ name: string, sector_id?: number }> = [],
     masterSectors: any[] = SECTORS
-): { brand: string | null, sector_slug: string | null, category: string | null } {
+): { brand: string | null, sector_slug: string | null, category: string | null, method?: string } {
     const titleLower = title.toLowerCase();
     const contentLower = content.toLowerCase();
 
     // 1. Find Brand (Priority: Title Match > early content match)
-    let foundBrand: string | null = null;
-    const sortedBrands = [...masterBrands].sort((a, b) => b.length - a.length);
+    let foundBrand: { name: string, sector_id?: number } | null = null;
+    const sortedBrands = [...masterBrands].sort((a, b) => b.name.length - a.name.length);
 
     // Check title first (Strongest signal)
     for (const mb of sortedBrands) {
-        if (titleLower.includes(mb.toLowerCase())) {
+        if (titleLower.includes(mb.name.toLowerCase())) {
             foundBrand = mb;
             break;
         }
@@ -329,14 +331,28 @@ export function extractClassification(
     if (!foundBrand) {
         const contentSnippet = contentLower.substring(0, 3000);
         for (const mb of sortedBrands) {
-            if (contentSnippet.includes(mb.toLowerCase())) {
+            if (contentSnippet.includes(mb.name.toLowerCase())) {
                 foundBrand = mb;
                 break;
             }
         }
     }
 
-    // 2. Find Sector via keywords with scoring
+    // 2. Brand-Based Sector Classification (NEW - Phase 2)
+    if (foundBrand && foundBrand.sector_id) {
+        // Brand has direct sector mapping → use it (skip keyword scoring)
+        const sector = masterSectors.find(s => s.id === foundBrand.sector_id);
+        if (sector) {
+            return {
+                brand: foundBrand.name,
+                sector_slug: sector.slug,
+                category: sector.name,
+                method: 'brand_mapping' // High confidence
+            };
+        }
+    }
+
+    // 3. Fallback: Find Sector via keywords with scoring
     let foundSectorSlug: string | null = null;
     let foundCategory: string | null = null;
 
@@ -368,8 +384,9 @@ export function extractClassification(
     }
 
     return {
-        brand: foundBrand,
+        brand: foundBrand?.name || null,
         sector_slug: foundSectorSlug || 'diger',
-        category: foundCategory || 'Diğer'
+        category: foundCategory || 'Diğer',
+        method: 'keyword_scoring'
     };
 }

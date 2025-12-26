@@ -44,11 +44,11 @@ async function runAxessScraper() {
     console.log(`   Card: ${normalizedCard}`);
     console.log(`   Source: ${CARD_CONFIG.baseUrl}\n`);
 
-    // Fetch Master Brands for direct extraction
-    console.log('   📚 Fetching master brands for direct matching...');
-    const { data: brandsData } = await supabase.from('master_brands').select('name');
-    const masterBrands = brandsData?.map(b => b.name) || [];
-    console.log(`   ✅ Loaded ${masterBrands.length} brands.`);
+    // Fetch Master Brands for direct extraction (with sector mapping)
+    console.log('   📚 Fetching master brands with sector mappings...');
+    const { data: brandsData } = await supabase.from('master_brands').select('name, sector_id');
+    const masterBrands = brandsData || [];
+    console.log(`   ✅ Loaded ${masterBrands.length} brands (${masterBrands.filter(b => b.sector_id).length} with sector mapping).`);
 
     const isAIEnabled = !process.argv.includes('--no-ai'); // AI ENABLED by default, use --no-ai to disable
     const limitArg = process.argv.find(arg => arg.startsWith('--limit='));
