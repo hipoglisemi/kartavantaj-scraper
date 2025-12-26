@@ -190,24 +190,33 @@ async function runAxessScraper() {
             campaignData.badge_text = badge.text;
             campaignData.badge_color = badge.color;
 
-            // 2. Conditional AI (DISABLED for AI-Independence Test)
-            /*
-            const needsAI = !campaignData.brand || !campaignData.valid_until || campaignData.category === 'Diğer';
+            // 2. Conditional AI Enhancement
+            const needsAI = !campaignData.brand || !campaignData.valid_until || campaignData.category === 'Diğer' || campaignData.sector_slug === 'diger';
 
             if (isAIEnabled && needsAI) {
                 console.log(`      🤖 AI: Direct extraction incomplete, calling AI for enrichment...`);
-                const aiResult = await calculateMissingFields(html, campaignData);
-                campaignData.brand = campaignData.brand || aiResult.brand;
-                if (campaignData.category === 'Diğer') {
+                const aiResult = await parseWithGemini(html, fullUrl, normalizedBank, normalizedCard);
+
+                // Brand fix (only if missing)
+                if (!campaignData.brand) {
+                    campaignData.brand = aiResult.brand;
+                }
+
+                // Sector fix (only if fallback "diger")
+                if (campaignData.sector_slug === 'diger' && aiResult.category && aiResult.category !== 'Diğer') {
                     campaignData.category = aiResult.category;
                     campaignData.sector_slug = generateSectorSlug(aiResult.category);
                 }
-                console.log(`      ✅ AI: brand="${campaignData.brand}", category="${campaignData.category}"`);
+
+                // Date fix (only if missing)
+                if (!campaignData.valid_until && aiResult.validUntil) {
+                    campaignData.valid_until = aiResult.validUntil;
+                }
+
+                console.log(`      ✅ AI Enhanced: brand="${campaignData.brand}", category="${campaignData.category}", sector="${campaignData.sector_slug}"`);
             } else {
                 console.log(`      ✅ Direct: brand="${campaignData.brand}", category="${campaignData.category}", until="${campaignData.valid_until}"`);
             }
-            */
-            console.log(`      ✅ Direct: brand="${campaignData.brand}", category="${campaignData.category}", until="${campaignData.valid_until}"`);
 
             // Sync complete hierarchy (bank_id, card_id, brand_id, sector_id)
             const { bank_id, card_id, brand_id, sector_id } = await syncHierarchy(
