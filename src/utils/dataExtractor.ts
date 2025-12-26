@@ -1,5 +1,6 @@
 // src/utils/dataExtractor.ts
 import * as cheerio from 'cheerio';
+import { getSectorsWithKeywords } from './sectorCache';
 
 interface ExtractedData {
     valid_from?: string | null;
@@ -91,7 +92,9 @@ export async function extractDirectly(
     if (!brandNames.includes('vatan bilgisayar')) localBrands.push({ name: 'Vatan Bilgisayar' });
     if (!brandNames.includes('teknosa')) localBrands.push({ name: 'Teknosa' });
 
-    const classification = extractClassification(title, cleanText, localBrands);
+    // Fetch dynamic sectors from cache/database
+    const dynamicSectors = await getSectorsWithKeywords();
+    const classification = extractClassification(title, cleanText, localBrands, dynamicSectors);
 
     return {
         valid_from: dates.from,
@@ -146,7 +149,7 @@ function parseTurkishDate(dateStr: string): string | null {
     if (monthNum < 1 || monthNum > 12) return null;
     if (yearNum < 2000 || yearNum > 2100) return null;
 
-    return `${year}-${month}-${day}`;
+    return `${year} -${month} -${day} `;
 }
 
 /**
@@ -218,7 +221,7 @@ export function extractMinSpend(text: string): number {
 
     // 3. Fallback: "3000 TL ... harcama/alışveriş"
     // EXCLUDE "chip-para", "puan", "indirim" in the interim text to avoid picking up the reward amount
-    // `(?:(?!chip-para|puan|indirim).){0,60}`
+    // `(?: (? !chip - para | puan | indirim).){ 0, 60 } `
     const broadRegex = /(\d{3,6})\s*TL\s+(?:(?!chip-para|puan|indirim).){0,60}?(?:harcama|alışveriş|yükleme|sipariş|ödeme)/i;
     match = broadRegex.exec(t);
     if (match) return parseInt(match[1]);
