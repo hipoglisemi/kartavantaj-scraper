@@ -5,6 +5,7 @@ import { createClient } from '@supabase/supabase-js';
 import * as dotenv from 'dotenv';
 import { parseWithGemini } from '../../services/geminiParser';
 import { enhanceDescription } from '../../services/descriptionEnhancer';
+import { isBankCampaign, getBankCampaignReason } from '../../utils/bankCampaignDetector';
 import { generateSectorSlug } from '../../utils/slugify';
 import { syncEarningAndDiscount } from '../../utils/dataFixer';
 import { normalizeBankName, normalizeCardName } from '../../utils/bankMapper';
@@ -155,68 +156,98 @@ async function runAxessScraper() {
             const imagePath = $('.campaingDetailImage img').attr('src');
             const imageUrl = imagePath ? new URL(imagePath, CARD_CONFIG.baseUrl).toString() : null;
 
-            // 1. Direct Extraction (Min AI)
-            console.log(`      ⚡ Direct: Extracting deterministic fields...`);
-            const directData = await extractDirectly(html, title, masterBrands);
+            // 0. Bank Campaign Detection (Skip AI entirely)
+            const isBankCamp = isBankCampaign(title, html);
+            let campaignData: any;
 
-            // Core field extraction
-            const rawDescription = directData.description || title;
-            console.log(`      ✨ Enhancing description with AI...`);
-            const enhancedDescription = await enhanceDescription(rawDescription);
+            if (isBankCamp) {
+                const reason = getBankCampaignReason(title, html);
+                console.log(`      🏦 Bank Campaign Detected: ${reason}`);
+                console.log(`      ⏭️  Skipping AI, setting sector='diger'`);
 
-            let campaignData: any = {
-                title: title,
-                description: enhancedDescription, // AI-enhanced marketing description
-                image: imageUrl,
-                url: fullUrl,
-                reference_url: fullUrl,
-                card_name: normalizedCard,
-                bank: normalizedBank,
-                category: directData.category || 'Diğer',
-                sector_slug: directData.sector_slug || 'diger',
-                brand: directData.brand,
-                valid_from: directData.valid_from,
-                valid_until: directData.valid_until,
-                min_spend: directData.min_spend || 0,
-                earning: directData.earning,
-                discount: directData.discount,
-                participation_method: directData.join_method,
-                valid_cards: directData.valid_cards, // Mapping extracted cards to valid_cards column
-                is_active: true
-            };
+                campaignData = {
+                    title: title,
+                    description: title, // No AI enhancement for bank campaigns
+                    image: imageUrl,
+                    url: fullUrl,
+                    reference_url: fullUrl,
+                    card_name: normalizedCard,
+                    bank: normalizedBank,
+                    category: 'Diğer',
+                    sector_slug: 'diger',
+                    brand: null,
+                    is_bank_campaign: true,
+                    classification_method: 'bank_campaign',
+                    sector_confidence: 'high',
+                    needs_manual_sector: false,
+                    is_active: true
+                };
+            } else {
+                // 1. Direct Extraction (Min AI)
+                console.log(`      ⚡ Direct: Extracting deterministic fields...`);
+                const directData = await extractDirectly(html, title, masterBrands);
+
+                // Core field extraction
+                const rawDescription = directData.description || title;
+                console.log(`      ✨ Enhancing description with AI...`);
+                const enhancedDescription = await enhanceDescription(rawDescription);
+
+                campaignData = {
+                    title: title,
+                    description: enhancedDescription, // AI-enhanced marketing description
+                    image: imageUrl,
+                    url: fullUrl,
+                    reference_url: fullUrl,
+                    card_name: normalizedCard,
+                    bank: normalizedBank,
+                    category: directData.category || 'Diğer',
+                    sector_slug: directData.sector_slug || 'diger',
+                    brand: directData.brand,
+                    valid_from: directData.valid_from,
+                    valid_until: directData.valid_until,
+                    min_spend: directData.min_spend || 0,
+                    earning: directData.earning,
+                    discount: directData.discount,
+                    participation_method: directData.join_method,
+                    valid_cards: directData.valid_cards, // Mapping extracted cards to valid_cards column
+                    is_active: true
+                };
+            } // End of else block (non-bank campaigns)
 
             // 1.5 Assign Badge
             const badge = assignBadge(campaignData);
             campaignData.badge_text = badge.text;
             campaignData.badge_color = badge.color;
 
-            // 2. Conditional AI Enhancement
-            const needsAI = !campaignData.brand || !campaignData.valid_until || campaignData.category === 'Diğer' || campaignData.sector_slug === 'diger';
+            // 2. Conditional AI Enhancement (only for non-bank campaigns)
+            if (!isBankCamp) {
+                const needsAI = !campaignData.brand || !campaignData.valid_until || campaignData.category === 'Diğer' || campaignData.sector_slug === 'diger';
 
-            if (isAIEnabled && needsAI) {
-                console.log(`      🤖 AI: Direct extraction incomplete, calling AI for enrichment...`);
-                const aiResult = await parseWithGemini(html, fullUrl, normalizedBank, normalizedCard);
+                if (isAIEnabled && needsAI) {
+                    console.log(`      🤖 AI: Direct extraction incomplete, calling AI for enrichment...`);
+                    const aiResult = await parseWithGemini(html, fullUrl, normalizedBank, normalizedCard);
 
-                // Brand fix (only if missing)
-                if (!campaignData.brand) {
-                    campaignData.brand = aiResult.brand;
+                    // Brand fix (only if missing)
+                    if (!campaignData.brand) {
+                        campaignData.brand = aiResult.brand;
+                    }
+
+                    // Sector fix (only if fallback "diger")
+                    if (campaignData.sector_slug === 'diger' && aiResult.category && aiResult.category !== 'Diğer') {
+                        campaignData.category = aiResult.category;
+                        campaignData.sector_slug = generateSectorSlug(aiResult.category);
+                    }
+
+                    // Date fix (only if missing)
+                    if (!campaignData.valid_until && aiResult.validUntil) {
+                        campaignData.valid_until = aiResult.validUntil;
+                    }
+
+                    console.log(`      ✅ AI Enhanced: brand="${campaignData.brand}", category="${campaignData.category}", sector="${campaignData.sector_slug}"`);
+                } else {
+                    console.log(`      ✅ Direct: brand="${campaignData.brand}", category="${campaignData.category}", until="${campaignData.valid_until}"`);
                 }
-
-                // Sector fix (only if fallback "diger")
-                if (campaignData.sector_slug === 'diger' && aiResult.category && aiResult.category !== 'Diğer') {
-                    campaignData.category = aiResult.category;
-                    campaignData.sector_slug = generateSectorSlug(aiResult.category);
-                }
-
-                // Date fix (only if missing)
-                if (!campaignData.valid_until && aiResult.validUntil) {
-                    campaignData.valid_until = aiResult.validUntil;
-                }
-
-                console.log(`      ✅ AI Enhanced: brand="${campaignData.brand}", category="${campaignData.category}", sector="${campaignData.sector_slug}"`);
-            } else {
-                console.log(`      ✅ Direct: brand="${campaignData.brand}", category="${campaignData.category}", until="${campaignData.valid_until}"`);
-            }
+            } // End of AI enhancement block (non-bank campaigns only)
 
             // Sync complete hierarchy (bank_id, card_id, brand_id, sector_id)
             const { bank_id, card_id, brand_id, sector_id } = await syncHierarchy(
