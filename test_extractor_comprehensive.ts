@@ -5,6 +5,7 @@ const testCases = {
         { text: "Kampanya 31 Aralık 2025 tarihine kadar geçerlidir.", expected: "2025-12-31" },
         { text: "Son gün: 15 Ocak 2026.", expected: "2026-01-15" },
         { text: "Geçerlilik: 31.12.2025", expected: "2025-12-31" },
+        { text: "Kampanya 15 Ocak 2026 tarihine kadar geçerlidir. Kazanılan puanlar 20 Şubat 2026 tarihine kadar kullanılabilir.", expected: "2026-01-15" }
     ],
     amounts: [
         { text: "250 TL chip-para kazanmak için 3.000 TL harcama yapın.", expectedMinSpend: 3000, expectedEarning: "250 TL chip-para" },

@@ -155,21 +155,43 @@ export function extractDates(text: string): { from: string | null, until: string
     const textDateRegex = /\d{1,2}\s+(?:Ocak|Şubat|Mart|Nisan|Mayıs|Haziran|Temmuz|Ağustos|Eylül|Ekim|Kasım|Aralık)\s+\d{4}/gi;
     const numericDateRegex = /\d{1,2}[./]\d{1,2}[./]\d{4}/g;
 
-    let dates: string[] = [];
+    let matches: { date: string, index: number }[] = [];
 
-    const textMatches = text.match(textDateRegex);
-    if (textMatches) dates.push(...textMatches);
+    let m;
+    while ((m = textDateRegex.exec(text)) !== null) {
+        matches.push({ date: m[0], index: m.index });
+    }
+    while ((m = numericDateRegex.exec(text)) !== null) {
+        matches.push({ date: m[0], index: m.index });
+    }
 
-    const numericMatches = text.match(numericDateRegex);
-    if (numericMatches) dates.push(...numericMatches);
+    if (matches.length > 0) {
+        // Filter out dates that look like reward usage expiration
+        // "Points can be used until..."
+        // Look at context around the date (e.g. 50 chars before)
+        const validDates = matches.filter(match => {
+            const start = Math.max(0, match.index - 70);
+            const end = Math.min(text.length, match.index + 60); // Suffix verbs like 'kullanılabilir' are far ahead
+            const context = text.substring(start, end).toLowerCase();
 
-    if (dates.length > 0) {
-        const parsedDates = dates.map(d => parseTurkishDate(d)).filter(Boolean) as string[];
-        if (parsedDates.length > 0) {
-            parsedDates.sort((a, b) => a.localeCompare(b));
+            // Exclude if context contains reward keywords indicating "usage period"
+            if (context.includes('puan') || context.includes('chip') || context.includes('indirim') || context.includes('kullanılabilir') || context.includes('silinir') || context.includes('geri alınır')) {
+                // ...BUT allow if it says "Campaign ... valid until X" despite mentioning points?
+                // Risk: "Earn points until X" -> X is campaign end. "Use points until Y" -> Y is usage.
+
+                // Strong signal for Usage Date: "kullanılabilir", "silinir", "harcanabilir"
+                if (context.includes('kullanılabilir') || context.includes('silinir') || context.includes('harcanabilir')) {
+                    return false;
+                }
+            }
+            return true;
+        }).map(m => parseTurkishDate(m.date)).filter(Boolean) as string[];
+
+        if (validDates.length > 0) {
+            validDates.sort((a, b) => a.localeCompare(b));
             return {
-                from: parsedDates.length > 1 ? parsedDates[0] : null,
-                until: parsedDates[parsedDates.length - 1]
+                from: validDates.length > 1 ? validDates[0] : null,
+                until: validDates[validDates.length - 1]
             };
         }
     }
