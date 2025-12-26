@@ -81,7 +81,7 @@ ${snippet}`;
             return { sector_slug: 'diger', confidence: 0.1 };
         }
 
-        const data = await response.json();
+        const data = await response.json() as any;
         const sectorSlug = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim().toLowerCase() || 'diger';
 
         // Validate sector slug
