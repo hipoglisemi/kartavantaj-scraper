@@ -49,7 +49,7 @@ async function runAxessScraper() {
     const masterBrands = brandsData?.map(b => b.name) || [];
     console.log(`   ✅ Loaded ${masterBrands.length} brands.`);
 
-    const isAIEnabled = process.argv.includes('--ai');
+    const isAIEnabled = !process.argv.includes('--no-ai'); // AI ENABLED by default, use --no-ai to disable
     const limitArg = process.argv.find(arg => arg.startsWith('--limit='));
     const limit = limitArg ? parseInt(limitArg.split('=')[1]) : Infinity;
 

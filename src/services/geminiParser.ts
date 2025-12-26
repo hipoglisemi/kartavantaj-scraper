@@ -61,7 +61,7 @@ let lastRequestTime = 0;
 const MIN_REQUEST_INTERVAL_MS = 1000;
 
 // SAFETY SWITCH: Set to true to completely block AI calls during testing
-const DISABLE_AI_COMPLETELY = true;
+const DISABLE_AI_COMPLETELY = false; // AI ENABLED for backend scraper
 
 // Sleep utility
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -226,8 +226,8 @@ RETURN ONLY VALID JSON. NO MARKDOWN.
         .limit(1)
         .maybeSingle();
 
-    // Strict Brand Cleanup
-    const brandCleaned = await cleanupBrands(result.brand, masterData);
+    // Strict Brand Cleanup (with AI validation for unknown brands)
+    const brandCleaned = await cleanupBrands(result.brand, masterData, description);
     result.brand = brandCleaned.brand;
     result.brand_suggestion = brandCleaned.suggestion;
 
@@ -279,9 +279,13 @@ function normalizeBrandName(name: string): string {
 
 /**
  * Normalizes and cleans brand data to ensure it's a flat string and matches master data.
- * Automatically adds new brands to master_brands if they are valid and not existing.
+ * NEW: Uses AI brand validator for unknown brands (with minimal context snippet).
  */
-async function cleanupBrands(brandInput: any, masterData: MasterData): Promise<{ brand: string, suggestion: string }> {
+async function cleanupBrands(
+    brandInput: any,
+    masterData: MasterData,
+    campaignText: string = '' // NEW: Full campaign text for snippet extraction
+): Promise<{ brand: string, suggestion: string }> {
     let brands: string[] = [];
 
     // 1. Normalize input to array
@@ -326,9 +330,13 @@ async function cleanupBrands(brandInput: any, masterData: MasterData): Promise<{
         }
     }
 
-    // Process new brands: Add to DB if they don't exist
+    // Process new brands: AI Validation (NEW!)
     if (unmatched.length > 0) {
         console.log(`   🆕 New brands detected: ${unmatched.join(', ')}`);
+
+        // Import validator (lazy load to avoid circular dependencies)
+        const { validateBrand } = await import('./brandValidator');
+
         for (const newBrand of unmatched) {
             try {
                 // Double check if it exists in DB (case insensitive)
@@ -339,30 +347,58 @@ async function cleanupBrands(brandInput: any, masterData: MasterData): Promise<{
                     .single();
 
                 if (!existing) {
-                    const { error } = await supabase
-                        .from('master_brands')
-                        .insert([{ name: newBrand }]);
-
-                    if (!error) {
-                        console.log(`   ✅ Added new brand: ${newBrand}`);
-                        matched.push(newBrand);
-                        // Update cache to include this new brand for future matches in this run
-                        masterData.brands.push(newBrand);
+                    // Extract context snippet (300-400 chars around brand mention)
+                    let snippet = '';
+                    if (campaignText) {
+                        const brandIndex = campaignText.toLowerCase().indexOf(newBrand.toLowerCase());
+                        if (brandIndex !== -1) {
+                            const start = Math.max(0, brandIndex - 150);
+                            const end = Math.min(campaignText.length, brandIndex + 250);
+                            snippet = campaignText.substring(start, end).trim();
+                        } else {
+                            // Brand not found in text, use first 400 chars
+                            snippet = campaignText.substring(0, 400);
+                        }
                     } else {
-                        console.error(`   ❌ Error adding brand ${newBrand}:`, error.message);
+                        snippet = `Brand: ${newBrand}`;
+                    }
+
+                    // 🤖 AI Validation (200 tokens vs 4,500)
+                    const validation = await validateBrand(newBrand, snippet);
+
+                    if (validation.decision === 'AUTO_ADD') {
+                        console.log(`   ✅ AI Verified & Adding: ${newBrand} (${validation.reason})`);
+
+                        const { error } = await supabase
+                            .from('master_brands')
+                            .insert([{ name: newBrand }]);
+
+                        if (!error) {
+                            matched.push(newBrand);
+                            masterData.brands.push(newBrand);
+                        } else {
+                            console.error(`   ❌ DB Error adding ${newBrand}:`, error.message);
+                        }
+                    } else if (validation.decision === 'PENDING_REVIEW') {
+                        console.log(`   ⏸️ Pending Review: ${newBrand} (${validation.reason})`);
+                        // Don't add to matched, but don't reject either
+                        // Could add to brand_suggestions table here
+                    } else {
+                        console.log(`   🚫 AI Rejected: ${newBrand} (${validation.reason})`);
+                        // Don't add to matched
                     }
                 } else {
                     matched.push(existing.name);
                 }
             } catch (err) {
-                console.error(`   ❌ Failed to process brand ${newBrand}`);
+                console.error(`   ❌ Failed to validate brand ${newBrand}:`, err);
             }
         }
     }
 
     return {
         brand: [...new Set(matched)].join(', '),
-        suggestion: '' // Suggestions are now automatically added to matched if verified/added
+        suggestion: ''
     };
 }
 
@@ -506,9 +542,9 @@ Return ONLY valid JSON with the missing fields, no markdown.
         .limit(1)
         .maybeSingle();
 
-    // Use unified brand cleanup
+    // Use unified brand cleanup (with AI validation for unknown brands)
     const masterDataForFinal = await fetchMasterData();
-    const brandCleaned = await cleanupBrands(finalData.brand, masterDataForFinal);
+    const brandCleaned = await cleanupBrands(finalData.brand, masterDataForFinal, description);
 
     finalData.brand = brandCleaned.brand;
     finalData.brand_suggestion = brandCleaned.suggestion;
