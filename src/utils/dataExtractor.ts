@@ -731,6 +731,11 @@ export function recalculateMathRequirement(math: any, text: string): void {
     }
 
     math.required_spend_for_max_benefit = requirement;
+
+    // USER REQUIREMENT: min_spend should represent the total requirement for max benefit
+    if (requirement !== null && requirement > 0) {
+        math.min_spend = requirement;
+    }
 }
 
 export function extractEarning(title: string, content: string): string | null {

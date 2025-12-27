@@ -166,6 +166,14 @@ export async function runWorldScraper() {
             }
 
             if (campaignData) {
+                // 1.8 Marketing Text Enhancement (NEW)
+                if (isAIEnabled) {
+                    console.log(`      🤖 AI Marketing: Generating catchy summary...`);
+                    // @ts-ignore
+                    const { enhanceDescription } = await import('../../services/descriptionEnhancer');
+                    campaignData.ai_marketing_text = await enhanceDescription(campaignData.title);
+                }
+
                 // STRICT ASSIGNMENT - Prevent AI misclassification
                 campaignData.title = title;
                 campaignData.card_name = normalizedCard;
@@ -194,7 +202,6 @@ export async function runWorldScraper() {
                     console.log(`      ✅ Saved: ${campaignData.title}`);
                 }
             }
-
         } catch (error: any) {
             console.error(`      ❌ Error: ${error.message}`);
         }

@@ -232,6 +232,7 @@ async function runAxessScraper() {
                     coupon_code: directData.coupon_code,
                     reward_type: directData.reward_type,
                     needs_manual_reward: directData.needs_manual_reward || false,
+                    ai_marketing_text: '', // To be filled below
                     publish_status: 'processing',
                     publish_updated_at: new Date().toISOString(),
                     is_active: true
@@ -242,6 +243,12 @@ async function runAxessScraper() {
             const badge = assignBadge(campaignData);
             campaignData.badge_text = badge.text;
             campaignData.badge_color = badge.color;
+
+            // 1.8 Marketing Text Enhancement (NEW)
+            if (isAIEnabled && !isBankCamp) {
+                console.log(`      🤖 AI Marketing: Generating catchy summary...`);
+                campaignData.ai_marketing_text = await enhanceDescription(campaignData.title);
+            }
 
             // 2. Conditional AI Enhancement (only for non-bank campaigns)
             if (!isBankCamp) {

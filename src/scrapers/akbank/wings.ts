@@ -283,6 +283,14 @@ async function runWingsScraper() {
         }
 
         if (campaignData) {
+            // 1.8 Marketing Text Enhancement (NEW)
+            if (isAIEnabled) {
+                console.log(`      🤖 AI Marketing: Generating catchy summary...`);
+                // @ts-ignore
+                const { enhanceDescription } = await import('../../services/descriptionEnhancer');
+                campaignData.ai_marketing_text = await enhanceDescription(campaignData.title);
+            }
+
             campaignData.title = title;
 
             // Image assignment logic

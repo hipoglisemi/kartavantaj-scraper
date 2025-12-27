@@ -485,6 +485,21 @@ async function cleanupBrands(
                     .single();
 
                 if (!existing) {
+                    // NEW: Check Brand Aliases first
+                    const normalizedAlias = newBrand.toLowerCase().trim();
+                    const { data: aliasMatch } = await supabase
+                        .from('brand_aliases')
+                        .select('master_brands(name)')
+                        .eq('alias_norm', normalizedAlias)
+                        .maybeSingle();
+
+                    if (aliasMatch && (aliasMatch as any).master_brands) {
+                        const canonicalName = (aliasMatch as any).master_brands.name;
+                        console.log(`   🔗 Alias Match: "${newBrand}" -> "${canonicalName}"`);
+                        matched.push(canonicalName);
+                        continue; // Skip AI validation
+                    }
+
                     // Extract context snippet (300-400 chars around brand mention)
                     let snippet = '';
                     if (campaignText) {
@@ -557,51 +572,52 @@ export async function parseWithGemini(html: string, url: string, sourceBank?: st
     // STAGE 1: Full Parse
     const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
     const stage1Prompt = `
+You are a FINANCIAL CAMPAIGN PARSER.
+Your task is NOT to write marketing text.
+Your task is to READ, CALCULATE, and STRUCTURE campaign data with MATHEMATICAL ACCURACY.
+
 CONTEXT: Today is ${today}. Use this date to resolve relative dates like "31 Aralık" to the correct year (${today.split('-')[0]}).
+
+### 🛑 ULTRA-STRICT RULES (Failure is NOT an option):
+1. **BRAND & CARD DISTINCTION:**
+   - Merchant / Brand = place where shopping is done (e.g. Tatilsepeti, Teknosa).
+   - Card names (Axess, World, Bonus, Maximum, Paraf, Akbank) are NOT merchants. NEVER return card names as merchant/brand.
+   - Match brands against: [${masterData.brands.slice(0, 50).join(', ')} ... and others].
+
+2. **MATHEMATICAL CALCULATION (CRITICAL):**
+   - You MUST calculate the spending required to achieve the MAXIMUM POSSIBLE REWARD.
+   - If tiered: Use the tier that gives the MAXIMUM reward.
+   - If incremental ("1.000 TL harcamaya 100 TL"): Calculate min_spend for total max reward (e.g., if max is 500, min_spend = 5.000).
+   - "Varan/Kadar" expressions: Calculate the MAXIMUM THEORETICAL value.
+   - min_spend MUST be >= max_total_gain.
+
+3. **BANK & CARD AUTHORITY:**
+   - Bank MUST beExactly '${sourceBank || 'specified in text'}'. Allowed: ${masterData.banks.join(', ')}.
+   - Card MUST be exactly '${sourceCard || 'specified in text'}'.
 
 Extract campaign data into JSON matching this EXACT schema:
 
 {
-  "title": "string (catchy campaign title, clear and concise)",
-  "description": "string (ONLY summarize and simplify the given text. Do NOT add, infer, or assume any new conditions. Rich marketing text. Focus on benefits. Max 4-5 sentences. Do NOT include boring legal terms here.)",
-  "conditions": ["string (Rule 1)", "string (Rule 2)"],
-  "category": "string (MUST be one of: ${masterData.categories.join(', ')})",
-  "discount": "string (Use ONLY for installment info, e.g. '9 Taksit', '+3 Taksit'. FORMAT: '{Number} Taksit'. NEVER mention fees/interest.)",
-  "earning": "string (Use ONLY for points/cashback. FORMAT: '{Amount} TL Puan' or '{Amount} TL İndirim' or '%{X} İndirim'. MAX 20 chars.)",
-  "min_spend": number (CRITICAL: Total required spend. If title says '500 TL ve üzeri', min_spend is 500. Total sum if multiple steps.),
-  "max_discount": number (Max reward limit per customer/campaign),
-  "discount_percentage": number (If % based reward, e.g. 15 for %15),
+  "title": "string (original campaign title)",
+  "description": "string (Professional summary for marketing, focus on benefits, 1-2 emojis, Turkish)",
+  "category": "string (MUST be exactly one of: ${masterData.categories.join(', ')})",
+  "min_spend": number,
+  "reward_text": "string (FORMAT: '100 TL Puan', '50 TL İndirim' or '%10 İndirim'. Max 20 chars)",
+  "installment_text": "string (FORMAT: '9 Taksit' or '+3 Taksit')",
+  "max_total_gain": number,
+  "tiers": [
+    { "min_spend": number, "reward": number }
+  ],
+  "reward_type": "exact" | "max_possible",
+  "math_confidence": "high" | "medium" | "low",
+  "excluded_conditions": ["string"],
   "valid_from": "YYYY-MM-DD",
   "valid_until": "YYYY-MM-DD",
-  "participation_method": "string (brief: e.g. 'Mobil Uygulama', 'SMS', 'Katılım gerekmez')",
-  "merchant": "string (Primary shop/brand name)",
-  "bank": "string (AUTHORITY: MUST be exactly '${sourceBank || 'the one in text'}'. Allowed: ${masterData.banks.join(', ')})",
-  "card_name": "string (AUTHORITY: MUST be exactly '${sourceCard || 'the one in text'}')",
+  "participation_method": "string (e.g. 'Juzdan', 'SMS', 'Otomatik')",
   "brand": ["array of strings (Official brand names)"],
+  "ai_marketing_text": "string (A warm, catchy summary in Turkish, 1 line)",
   "ai_enhanced": true
 }
-
-### 🛑 ULTRA-STRICT RULES (Failure is NOT an option):
-
-1. **BANK & CARD AUTHORITY (HIGHEST PRIORITY):**
-   - If sourceBank is provided as "${sourceBank}", you MUST use it. DO NOT hallucinate other banks.
-   - If sourceCard is provided as "${sourceCard}", you MUST use it. DO NOT change it to something else.
-   
-2. **REWARD CONSOLIDATION (Single Box Standard):**
-   - If the campaign has BOTH installments and points:
-     - Installment (e.g., "9 Taksit") goes to "discount" field.
-     - Points (e.g., "500 TL Puan") goes to "earning" field.
-   - FORMAL FORMATTING: "500 TL Puan" (NOT 500 Bonus/Chip), "9 Taksit" (NOT Vade farksız 9 taksit).
-   
-3. **MATHEMATICAL SANITY CHECK:**
-   - Earning vs Min_Spend: Earning MUST be significantly lower than min_spend (e.g., spending 10,000 to get 500 is normal).
-   - If you see "1.000 TL indirim" for a "150 TL" purchase, you are wrong. Check if it means "1.000 TL'ye kadar" or "%10".
-   
-4. **BRAND MATCHING:**
-   - Match brands against: [${masterData.brands.slice(0, 50).join(', ')} ... and others].
-   - NORMALIZE: Remove ".com", "Market", "Notebook" suffixes. Use "Migros" instead of "Migros Sanal Market".
-   
-5. **DATES:** If no year is mentioned, assume 2024/2025 based on current context. Format: YYYY-MM-DD.
 
 TEXT TO PROCESS:
 "${text.replace(/"/g, '\\"')}"
@@ -615,20 +631,40 @@ TEXT TO PROCESS:
 
     if (missingFields.length === 0) {
         console.log('   ✅ Stage 1: Complete (all fields extracted)');
+
+        // MAP V5 FIELDS TO LEGACY SCHEMA FOR DB COMPATIBILITY
+        const mappedData = {
+            ...stage1Data,
+            earning: stage1Data.reward_text,
+            discount: stage1Data.installment_text,
+            max_discount: stage1Data.max_total_gain,
+            math_flags: [
+                ...(stage1Data.math_flags || []),
+                `confidence_${stage1Data.math_confidence}`,
+                `reward_${stage1Data.reward_type}`
+            ],
+            // Store tiers as JSON string in conditions or specialized field if exists
+            conditions: [
+                ...(stage1Data.conditions || []),
+                ...(stage1Data.excluded_conditions || []),
+                stage1Data.tiers && stage1Data.tiers.length > 0 ? `MARKDOWN_TIERS: ${JSON.stringify(stage1Data.tiers)}` : null
+            ].filter(Boolean)
+        };
+
         // Ensure brand is properly formatted as a string/json for DB
-        if (Array.isArray(stage1Data.brand)) {
-            stage1Data.brand = stage1Data.brand.join(', ');
+        if (Array.isArray(mappedData.brand)) {
+            mappedData.brand = mappedData.brand.join(', ');
         }
 
         // STRICT OVERRIDE: Source Bank/Card TRUMPS AI
         if (sourceBank) {
-            stage1Data.bank = sourceBank;
+            mappedData.bank = sourceBank;
         }
         if (sourceCard) {
-            stage1Data.card_name = sourceCard;
+            mappedData.card_name = sourceCard;
         }
 
-        return stage1Data;
+        return mappedData;
     }
 
     // STAGE 2: Fill Missing Fields
@@ -641,11 +677,12 @@ ${missingFields.map(field => `- ${field}`).join('\n')}
 
 Extract ONLY these missing fields from the text below. Return JSON with ONLY these fields.
 
-FIELD DEFINITIONS:
+FIELD DEFINITIONS (V5 STANDARDS):
 - valid_until: Campaign end date in YYYY-MM-DD format
-- eligible_customers: Array of eligible card types
-- min_spend: Minimum spending amount as a number
-- earning: Reward amount or description (e.g. "500 TL Puan")
+- reward_text: Reward amount (e.g. "500 TL Puan")
+- installment_text: Installment info (e.g. "9 Taksit")
+- min_spend: Total spend required for MAXIMUM reward (Number)
+- max_total_gain: Max reward limit (Number)
 - category: MUST be EXACTLY one of: ${masterData.categories.join(', ')}
 - bank: MUST be EXACTLY one of: ${masterData.banks.join(', ')}. ${sourceBank ? `(Source: ${sourceBank})` : ''}
 - brand: Array of strings representing ALL mentioned merchants/brands.
@@ -659,9 +696,27 @@ Return ONLY valid JSON with the missing fields, no markdown.
     const stage2Data = await callGeminiAPI(stage2Prompt);
 
     // Merge stage 1 and stage 2 data
-    const finalData = {
+    const mergedData = {
         ...stage1Data,
         ...stage2Data
+    };
+
+    // MAP V5 FIELDS TO LEGACY SCHEMA (Stage 2 Fallback)
+    const finalData = {
+        ...mergedData,
+        earning: mergedData.reward_text || mergedData.earning,
+        discount: mergedData.installment_text || mergedData.discount,
+        max_discount: mergedData.max_total_gain || mergedData.max_discount,
+        math_flags: [
+            ...(mergedData.math_flags || []),
+            mergedData.math_confidence ? `confidence_${mergedData.math_confidence}` : null,
+            mergedData.reward_type ? `reward_${mergedData.reward_type}` : null
+        ].filter(Boolean),
+        conditions: [
+            ...(mergedData.conditions || []),
+            ...(mergedData.excluded_conditions || []),
+            mergedData.tiers && mergedData.tiers.length > 0 ? `MARKDOWN_TIERS: ${JSON.stringify(mergedData.tiers)}` : null
+        ].filter(Boolean)
     };
 
     const title = finalData.title || '';

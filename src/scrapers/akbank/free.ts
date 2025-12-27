@@ -85,6 +85,14 @@ async function runFreeScraper() {
                 campaignData = { title, description: title, category: 'Diğer', sector_slug: 'diger', card_name: normalizedCard, bank: normalizedBank, url: fullUrl, reference_url: fullUrl, is_active: true };
             }
             if (campaignData) {
+                // 1.8 Marketing Text Enhancement (NEW)
+                if (isAIEnabled) {
+                    console.log(`      🤖 AI Marketing: Generating catchy summary...`);
+                    // @ts-ignore
+                    const { enhanceDescription } = await import('../../services/descriptionEnhancer');
+                    campaignData.ai_marketing_text = await enhanceDescription(campaignData.title);
+                }
+
                 campaignData.title = title;
                 campaignData.image = imageUrl; // Add extracted image
                 campaignData.card_name = normalizedCard;

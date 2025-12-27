@@ -176,6 +176,14 @@ async function runScraperLogic(isAIEnabled: boolean, limit: number = 9999) {
                 }
 
                 if (campaignData) {
+                    // 1.8 Marketing Text Enhancement (NEW)
+                    if (isAIEnabled) {
+                        console.log(`      🤖 AI Marketing: Generating catchy summary...`);
+                        // @ts-ignore
+                        const { enhanceDescription } = await import('../../services/descriptionEnhancer');
+                        campaignData.ai_marketing_text = await enhanceDescription(campaignData.title);
+                    }
+
                     // Force fields
                     campaignData.title = title; // Strict Assignment
                     campaignData.card_name = normalizedCard;
