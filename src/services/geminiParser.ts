@@ -613,7 +613,8 @@ Extract campaign data into JSON matching this EXACT schema:
   "excluded_conditions": ["string"],
   "valid_from": "YYYY-MM-DD",
   "valid_until": "YYYY-MM-DD",
-  "participation_method": "string (e.g. 'Juzdan', 'SMS', 'Otomatik')",
+  "participation_method": "string (Natural Turkish explanation of HOW to participate, as found in text. e.g. 'Juzdan uygulamasından Hemen Katıl butonuna basarak' or 'KAYIT yazıp 4566\'ya mesaj göndererek'. AVOID short codes like 'SMS' or 'APP'.)",
+  "eligible_cards": ["array of strings (List all specific eligible cards mentioned in the text, e.g. ['Axess', 'Wings', 'Akbank Kart'])"],
   "brand": ["array of strings (Official brand names)"],
   "ai_marketing_text": "string (A warm, catchy summary in Turkish, 1 line)",
   "ai_enhanced": true
@@ -686,6 +687,8 @@ FIELD DEFINITIONS (V5 STANDARDS):
 - category: MUST be EXACTLY one of: ${masterData.categories.join(', ')}
 - bank: MUST be EXACTLY one of: ${masterData.banks.join(', ')}. ${sourceBank ? `(Source: ${sourceBank})` : ''}
 - brand: Array of strings representing ALL mentioned merchants/brands.
+- participation_method: Natural language explanation of how to participate.
+- eligible_cards: Array of eligible card names.
 
 TEXT:
 "${text.replace(/"/g, '\\"')}"
@@ -716,7 +719,8 @@ Return ONLY valid JSON with the missing fields, no markdown.
             ...(mergedData.conditions || []),
             ...(mergedData.excluded_conditions || []),
             mergedData.tiers && mergedData.tiers.length > 0 ? `MARKDOWN_TIERS: ${JSON.stringify(mergedData.tiers)}` : null
-        ].filter(Boolean)
+        ].filter(Boolean),
+        eligible_cards: mergedData.eligible_cards || []
     };
 
     const title = finalData.title || '';
