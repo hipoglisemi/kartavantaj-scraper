@@ -21,7 +21,6 @@ interface ExtractedData {
     participation_method?: string | null;
     spend_channel?: 'IN_STORE_POS' | 'ONLINE' | 'IN_APP' | 'MERCHANT_SPECIFIC' | 'MEMBER_MERCHANT' | 'UNKNOWN' | null;
     spend_channel_detail?: string | null;
-    conditions?: string[] | null;
     date_flags?: string[];
     math_flags?: string[];
     required_spend_for_max_benefit?: number | null;
@@ -40,10 +39,12 @@ interface ExtractedData {
     needs_manual_sector?: boolean;
     math_method?: string;
     needs_manual_math?: boolean;
+    ai_marketing_text?: string;
     perk_text?: string | null;
     coupon_code?: string | null;
     reward_type?: string | null;
     needs_manual_reward?: boolean;
+    conditions?: string[] | null;
 }
 
 // ... existing code ...
@@ -176,14 +177,16 @@ export async function extractDirectly(
     const dates = parseDates(cleanText);
     const math = extractMathDetails(title, cleanText);
     const eligible_cards = extractValidCards(cleanText);
-    const participation_method = extractJoinMethod(cleanText);
+    const participation_method_deterministic = extractJoinMethod(cleanText);
+    let participation_method: string | null = participation_method_deterministic;
+    let ai_marketing_text = '';
+    let conditions: string[] = [];
 
     // 3. Date & Math Referee Check (Referee Mode - Restricted)
     let ai_suggested_valid_until: string | null = null;
     let ai_suggested_math: any = null;
     let math_method = 'deterministic';
     let needs_manual_math = false;
-    let conditions: string[] = [];
 
     // AI Math Referee Trigger Logic
     const hasMathSignal = /(?:tl|%|puan|chip|bonus|indirim|maxipuan|parafpara|kazan)/i.test(normalizedText);
@@ -197,24 +200,11 @@ export async function extractDirectly(
                 ai_suggested_math = aiMath;
                 console.log('   🤖 AI Math Referee suggested logic:', aiMath);
 
-                // CONFLICT DETECTION (Point: Mark differences as conflicts)
-                if (aiMath.min_spend !== undefined && aiMath.min_spend !== math.min_spend && math.min_spend > 0) {
-                    math.math_flags.push('ai_conflict_min_spend');
-                    needs_manual_math = true;
-                }
-                if (aiMath.max_discount !== undefined && aiMath.max_discount !== math.max_discount && math.max_discount !== null && math.max_discount > 0) {
-                    math.math_flags.push('ai_conflict_cap');
-                    needs_manual_math = true;
-                }
-                if (aiMath.discount_percentage !== undefined && aiMath.discount_percentage !== math.discount_percentage && math.discount_percentage !== null && math.discount_percentage > 0) {
-                    math.math_flags.push('ai_conflict_discount');
-                    needs_manual_math = true;
-                }
-                // Check earning conflict (basic check)
-                if (aiMath.earning && math.earning && !math.earning.includes(String(aiMath.reward_value))) {
-                    math.math_flags.push('ai_conflict_reward');
-                    needs_manual_math = true;
-                }
+                // OVERRIDE deterministic math with AI (Phase 8 Strategy)
+                if (aiMath.min_spend !== undefined) math.min_spend = aiMath.min_spend;
+                if (aiMath.earning) math.earning = aiMath.earning;
+                if (aiMath.max_discount !== undefined) math.max_discount = aiMath.max_discount;
+                if (aiMath.reward_type) math.reward_type = aiMath.reward_type;
 
                 // Rule 1: Always re-calculate requirement deterministically (AI never overrides it directly)
                 recalculateMathRequirement(math, cleanText);
@@ -263,10 +253,9 @@ export async function extractDirectly(
 
                 if (aiReward.reward_type === 'unknown') needs_manual_reward = true;
 
-                // New: Field labeling for operation info
-                if (!participation_method && aiReward.participation_method) (math as any).participation_method = aiReward.participation_method;
-                if (!spend_channel && aiReward.spend_channel) (math as any).spend_channel = aiReward.spend_channel;
-                if (!eligible_cards.length && aiReward.eligible_cards) (math as any).eligible_cards = aiReward.eligible_cards;
+                if (aiReward.participation_method) participation_method = aiReward.participation_method;
+                if (aiReward.eligible_cards && aiReward.eligible_cards.length > 0) (math as any).eligible_cards = aiReward.eligible_cards;
+                if (aiReward.ai_marketing_text) ai_marketing_text = aiReward.ai_marketing_text;
 
                 if (aiReward.conditions) {
                     conditions = [...new Set([...conditions, ...aiReward.conditions])];
@@ -275,6 +264,11 @@ export async function extractDirectly(
         } catch (e) {
             console.warn('   ⚠️ AI Reward Labeler failed.');
         }
+    }
+
+    // 7. Final Marketing Enhancement (Sync with V7)
+    if (!ai_marketing_text && (math.earning || math.discount)) {
+        ai_marketing_text = `${title}. ${math.earning ? math.earning + ' kazanma fırsatı!' : ''} ${math.discount ? math.discount + ' imkanıyla.' : ''}`.trim();
     }
 
     return {
@@ -308,11 +302,10 @@ export async function extractDirectly(
         participation_method: (math as any).participation_method || participation_method,
         spend_channel: (math as any).spend_channel || spend_channel,
         spend_channel_detail,
-        perk_text: math.perk_text,
-        coupon_code: math.coupon_code,
         reward_type: math.reward_type,
         needs_manual_reward,
-        conditions: conditions.length > 0 ? conditions : null
+        conditions: conditions.length > 0 ? conditions : null,
+        ai_marketing_text: ai_marketing_text
     };
 }
 

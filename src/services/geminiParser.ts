@@ -91,7 +91,7 @@ async function fetchMasterData(): Promise<MasterData> {
 
 // Rate limiting: Track last request time
 let lastRequestTime = 0;
-const MIN_REQUEST_INTERVAL_MS = 1000;
+const MIN_REQUEST_INTERVAL_MS = 10000;
 
 // SAFETY SWITCH: Set to true to completely block AI calls during testing
 const DISABLE_AI_COMPLETELY = false; // AI ENABLED for backend scraper
@@ -120,7 +120,7 @@ async function callGeminiAPI(prompt: string, retryCount = 0): Promise<any> {
         lastRequestTime = Date.now();
 
         const response = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}`,
             {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -314,25 +314,33 @@ export async function parseMathReferee(
     console.log(`   🤖 Math Referee: Analyzing snippet for "${title.substring(0, 30)}..."`);
 
     const mathPrompt = `
-Analyze this bank campaign snippet and extract EXACT math details.
+You are a FINANCIAL CAMPAIGN PARSER.
+Your task is to READ, CALCULATE, and STRUCTURE technical data with MATHEMATICAL ACCURACY.
+
+Analyze this bank campaign snippet and extract EXACT financial math.
 TITLE: ${title}
 SNIPPET: "${snippet}"
 
+### 🛑 ULTRA-STRICT RULES:
+1. **MATHEMATICAL CALCULATION**: Calculate the TOTAL spending required to achieve the MAXIMUM POSSIBLE REWARD.
+2. **REWARD TEXT**: Format: "100 TL Puan" or "9 Taksit". Max 20 chars.
+3. **CONDITIONS**: List ALL reward tiers and important constraints "barem barem". NO legal jargon.
+4. **NATURAL LANGUAGE**: Participation method must be a natural Turkish sentence.
+5. **RETURN ALL TEXT IN TURKISH.**
+
 RETURN JSON ONLY:
 {
-  "max_discount": number,
-  "discount_percentage": number,
-  "conditions": ["string (Tier 1: 500 TL harca 50 TL kazan)", "string (Tier 2: ...)", "string (Usage limit)"],
-  "participation_method": "string (Natural language participation explanation in Turkish)"
+  "min_spend": number,
+  "reward_text": "string",
+  "installment_text": "string|null",
+  "max_total_gain": number,
+  "conditions": ["string"],
+  "participation_method": "string",
+  "eligible_cards": ["string"],
+  "reward_type": "puan" | "indirim" | "taksit",
+  "reward_value": number,
+  "reward_unit": "tl" | "%" | "taksit"
 }
-
-RULES:
-- If "min_spend" is not mentioned, return 0.
-- If multiple steps exist, return the FIRST step as reward_value and the TOTAL cap as max_discount.
-- discount_percentage is the rate like 10 for %10. If not found, return 0.
-- max_discount is the absolute cap like 500 for "500 TL'ye kadar". If not found, return 0.
-- Be precise. Turkish suffixes like "TL'ye" mean "to TL".
-- RETURN ALL TEXT IN TURKISH. No English allowed.
 `;
 
     try {
@@ -340,16 +348,16 @@ RULES:
 
         // Normalize AI response to match our internal suggestion structure
         return {
-            min_spend: aiMath.min_spend || 0,
-            earning: aiMath.reward_type !== 'taksit' ? `${aiMath.reward_value} ${aiMath.reward_unit?.toUpperCase()} ${aiMath.reward_type}` : null,
-            max_discount: aiMath.max_discount || 0,
-            discount_percentage: aiMath.discount_percentage || (aiMath.reward_unit === '%' ? aiMath.reward_value : 0),
-            discount: aiMath.reward_type === 'taksit' ? `${aiMath.reward_value} Taksit` : null,
+            min_spend: aiMath.min_spend || aiMath.min_spend_total || 0,
+            earning: aiMath.reward_text || (aiMath.reward_value ? `${aiMath.reward_value} ${aiMath.reward_unit?.toUpperCase() || ''} ${aiMath.reward_type || ''}`.trim() : null),
+            max_discount: aiMath.max_total_gain || aiMath.max_discount || 0,
+            discount: aiMath.installment_text || (aiMath.reward_type === 'taksit' ? `${aiMath.reward_value} Taksit` : null),
             reward_type: aiMath.reward_type,
             reward_value: aiMath.reward_value,
             reward_unit: aiMath.reward_unit,
             conditions: aiMath.conditions || [],
-            participation_method: aiMath.participation_method
+            participation_method: aiMath.participation_method,
+            eligible_cards: aiMath.eligible_cards
         };
     } catch (err) {
         console.error('   ❌ Math Referee failed:', err);
@@ -366,25 +374,39 @@ export async function parseRewardTypeAI(title: string, cleanText: string): Promi
     console.log(`   🤖 Reward Labeler: Analyzing snippet for type classification...`);
 
     const prompt = `
+You are a FINANCIAL CAMPAIGN PARSER.
+Categorize this campaign and extract operational metadata.
+
+### RULES:
+- **participation_method**: Natural Turkish sentence.
+- **conditions**: List specific reward tiers barem-barem.
+- **marketing_summary**: 1 catchy line focused on benefit.
+- **RETURN ALL TEXT IN TURKISH.**
+
 Return ONLY JSON:
 {
-  "reward_type": "perk" | "points" | "cashback" | "discount_pct" | "installment" | "mixed" | "unknown",
-  "perk_text": "string|null (Brief description if perk)",
-  "coupon_code": "string|null",
-  "participation_method": "string (Natural language explanation of how to participate in Turkish)",
-  "spend_channel": "IN_STORE_POS" | "ONLINE" | "IN_APP" | "MERCHANT_SPECIFIC" | "MEMBER_MERCHANT" | "UNKNOWN" | null,
-  "eligible_cards": ["string"] | [],
-  "conditions": ["string"]
+  "reward_type": "points" | "cashback" | "discount" | "installment" | "mixed" | "unknown",
+  "reward_text": "string",
+  "participation_method": "string",
+  "eligible_cards": ["string"],
+  "conditions": ["string"],
+  "ai_marketing_text": "string",
+  "perk_text": "string|null",
+  "coupon_code": "string|null"
 }
-No extra keys, no explanation.
-
 TITLE: ${title}
 TEXT: "${snippet}"
-RETURN ALL TEXT VALUES IN TURKISH. No English.
 `;
 
     try {
-        return await callGeminiAPI(prompt);
+        const result = await callGeminiAPI(prompt);
+        return {
+            ...result,
+            participation_method: result.participation_method,
+            eligible_cards: result.eligible_cards || [],
+            conditions: result.conditions || [],
+            ai_marketing_text: result.ai_marketing_text
+        };
     } catch (err) {
         console.error('   ❌ Reward Labeler failed:', err);
         return null;

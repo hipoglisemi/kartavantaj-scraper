@@ -233,7 +233,7 @@ async function runAxessScraper() {
                     reward_type: directData.reward_type,
                     needs_manual_reward: directData.needs_manual_reward || false,
                     conditions: directData.conditions,
-                    ai_marketing_text: '', // To be filled below
+                    ai_marketing_text: directData.ai_marketing_text || '',
                     publish_status: 'processing',
                     publish_updated_at: new Date().toISOString(),
                     is_active: true

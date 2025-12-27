@@ -1,4 +1,5 @@
-// Uses global fetch (Node 18+)
+import * as dotenv from 'dotenv';
+dotenv.config();
 
 const GEMINI_API_KEY = process.env.GOOGLE_GEMINI_KEY!;
 
@@ -9,40 +10,49 @@ const GEMINI_API_KEY = process.env.GOOGLE_GEMINI_KEY!;
  * @param rawDescription - The original description (usually just title)
  * @returns Enhanced marketing-style description with emojis (2 sentences max)
  */
-export async function enhanceDescription(rawDescription: string): Promise<string> {
+export async function enhanceDescription(rawDescription: string, retryCount = 0): Promise<string> {
+    const MAX_RETRIES = 3;
+    const BASE_DELAY_MS = 2000;
+
     if (!rawDescription || rawDescription.length < 10) {
-        console.log('   ⚠️ Description too short, skipping enhancement');
         return rawDescription;
     }
 
-    // Skip if already looks enhanced (has emojis)
     if (/[\u{1F300}-\u{1F9FF}]/u.test(rawDescription)) {
-        console.log('   ℹ️ Description already has emojis, skipping');
         return rawDescription;
     }
 
     const prompt = `
-Convert the following campaign description into a short, exciting, marketing-style summary (Max 2 sentences).
-Use 1-2 relevant emojis (e.g. 🎉, ✈️, 🛍️).
+You are a creative banking marketing expert.
+Convert this raw campaign into a 1-sentence catchy summary.
 Language: TURKISH.
-RETURN ONLY THE ENHANCED TEXT, NO JSON, NO EXPLANATION.
+- Use 1 emoji. 
+- Focus on the PRIMARY benefit.
+- NO extra words, NO prefix.
 
-Description: "${rawDescription}"
+Input: "${rawDescription}"
     `.trim();
 
     try {
         const response = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}`,
             {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    contents: [{
-                        parts: [{ text: prompt }]
-                    }]
+                    contents: [{ parts: [{ text: prompt }] }]
                 })
             }
         );
+
+        if (response.status === 429 || response.status >= 500) {
+            if (retryCount < MAX_RETRIES) {
+                const delay = BASE_DELAY_MS * Math.pow(2, retryCount);
+                console.log(`   ⏳ Marketing enhancement rate limit/error (${response.status}). Retrying in ${delay}ms...`);
+                await new Promise(r => setTimeout(r, delay));
+                return enhanceDescription(rawDescription, retryCount + 1);
+            }
+        }
 
         if (!response.ok) {
             console.warn(`   ⚠️ Description enhancement failed (${response.status}), using original`);
@@ -60,8 +70,13 @@ Description: "${rawDescription}"
         return rawDescription;
 
     } catch (error: any) {
+        if (retryCount < MAX_RETRIES) {
+            const delay = BASE_DELAY_MS * Math.pow(2, retryCount);
+            await new Promise(r => setTimeout(r, delay));
+            return enhanceDescription(rawDescription, retryCount + 1);
+        }
         console.error('   ❌ Description enhancement error:', error.message);
-        return rawDescription; // Fallback to original
+        return rawDescription;
     }
 }
 
