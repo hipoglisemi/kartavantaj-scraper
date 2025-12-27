@@ -389,19 +389,49 @@ export function parseDates(text: string, today: Date = new Date()): {
         }
     }
 
-    // 3. 1-31 Ocak (Phase 7 logic but more robust)
+    // 3. 1-31 Ocak (Phase 7 logic but more robust) - FIXED for audit
     const textRangeRegex = /(\d{1,2})\s*[-–]\s*(\d{1,2})\s+(Ocak|Şubat|Mart|Nisan|Mayıs|Haziran|Temmuz|Ağustos|Eylül|Ekim|Kasım|Aralık)(?:\s+(\d{4}))?/gi;
     m = textRangeRegex.exec(normalized);
     if (m) {
-        const year = m[4] ? parseInt(m[4]) : today.getFullYear();
-        const untilStr = `${m[2]} ${m[3]} ${year}`.trim();
-        valid_until = parseTurkishDate(untilStr, year);
-        if (valid_until) {
-            const yearMonth = valid_until.substring(0, 8);
-            valid_from = `${yearMonth}${m[1].padStart(2, '0')}`;
-            if (!m[4]) date_flags.push('year_inferred');
+        const startDay = parseInt(m[1]);
+        const endDay = parseInt(m[2]);
+        const monthName = m[3];
+        const explicitYear = m[4] ? parseInt(m[4]) : null;
+
+        // Determine year with improved logic
+        const monthNum = parseInt(MONTHS[monthName.toLowerCase()]);
+        const currentYear = today.getFullYear();
+        const currentMonth = today.getMonth() + 1; // 0-indexed to 1-indexed
+
+        let year: number;
+        if (explicitYear) {
+            year = explicitYear;
+        } else {
+            // Use current year if month is current or future, next year if past
+            if (monthNum >= currentMonth) {
+                year = currentYear;
+            } else {
+                year = currentYear + 1;
+            }
+            date_flags.push('year_inferred');
+        }
+
+        // Check for invalid range (e.g., "31-31 Aralık")
+        if (startDay === endDay) {
+            // Treat as single date, not a range
+            const singleDateStr = `${endDay} ${monthName} ${year}`.trim();
+            valid_until = parseTurkishDate(singleDateStr, year);
+            valid_from = null;
+            date_flags.push('single_date_from_invalid_range');
             return { valid_from, valid_until, date_flags };
         }
+
+        // Valid range: construct from and until dates
+        const monthStr = MONTHS[monthName.toLowerCase()];
+        valid_from = `${year}-${monthStr}-${startDay.toString().padStart(2, '0')}`;
+        valid_until = `${year}-${monthStr}-${endDay.toString().padStart(2, '0')}`;
+
+        return { valid_from, valid_until, date_flags };
     }
 
     // 4. 1 Ocak’tan 31 Ocak’a kadar (Refined)
@@ -714,16 +744,37 @@ export function extractMinSpend(text: string): number {
 }
 
 /**
- * Extracts discount/installment info
+ * Extracts discount/installment info - EXPANDED for audit
  */
 export function extractDiscount(title: string, content: string): string | null {
-    const installmentRegex = /(\d+|\+\d+)\s*(?:aya\s+varan\s+)?taksit/gi;
+    // Expanded patterns to catch more taksit variations
+    const installmentPatterns = [
+        /(faizsiz|vade\s*farksız|masrafsız)\s+(\d+)\s+taksit/gi,
+        /(ilave|ek|ekstra)\s+(\d+)\s+taksit/gi,
+        /\+(\d+)\s+taksit/gi,
+        /(peşin\s+fiyatına|peşine)\s+(\d+)\s+taksit/gi,
+        /(\d+)\s+aya?\s+varan\s+taksit/gi,
+        /(\d+)\s+taksit/gi // Generic fallback
+    ];
 
-    const titleMatch = title.match(installmentRegex);
-    if (titleMatch) return titleMatch[0].trim();
+    for (const pattern of installmentPatterns) {
+        const titleMatch = title.match(pattern);
+        if (titleMatch) {
+            // Extract number from match
+            const numMatch = titleMatch[0].match(/(\d+)/);
+            if (numMatch) {
+                return `${numMatch[1]} Taksit`;
+            }
+        }
 
-    const contentMatch = content.match(installmentRegex);
-    if (contentMatch) return contentMatch[0].trim();
+        const contentMatch = content.match(pattern);
+        if (contentMatch) {
+            const numMatch = contentMatch[0].match(/(\d+)/);
+            if (numMatch) {
+                return `${numMatch[1]} Taksit`;
+            }
+        }
+    }
 
     return null;
 }
@@ -751,8 +802,34 @@ export type ParticipationMethod = 'AUTO' | 'SMS' | 'JUZDAN' | 'MOBILE_APP' | 'CA
 export function extractJoinMethod(text: string): ParticipationMethod | null {
     const lowerText = text.toLowerCase();
 
+    // Priority order: specific signals first
     if (lowerText.includes('juzdan') || lowerText.includes('juzdan ile')) return 'JUZDAN';
-    if (lowerText.includes('sms') || /kayıt\s+yazıp/.test(lowerText) || /\d{4}'e\s+gönder/.test(lowerText)) return 'SMS';
+
+    // Expanded SMS signals for audit
+    const smsSignals = [
+        'sms',
+        /kayıt\s+yazıp/i,
+        /kayit\s+yaz/i,
+        /katıl\s+yazıp/i,
+        /katil\s+yaz/i,
+        /gönder/i,
+        /gonder/i,
+        /\d{4}['']?e\s+sms/i,
+        /\d{4}['']?e\s+gönder/i,
+        /mesaj\s+gönder/i,
+        /kısa\s+mesaj/i,
+        /kisa\s+mesaj/i,
+        /sms\s+ile/i
+    ];
+
+    for (const signal of smsSignals) {
+        if (typeof signal === 'string') {
+            if (lowerText.includes(signal)) return 'SMS';
+        } else {
+            if (signal.test(text)) return 'SMS';
+        }
+    }
+
     if (lowerText.includes('müşteri hizmetleri') || lowerText.includes('çağrı merkezi') || lowerText.includes('444 25 25')) return 'CALL_CENTER';
     if (lowerText.includes('mobil şube') || lowerText.includes('akbank mobil') || lowerText.includes('mobil uygulama')) return 'MOBILE_APP';
     if (lowerText.includes('otomatik') || lowerText.includes('başvuru gerekmez')) return 'AUTO';

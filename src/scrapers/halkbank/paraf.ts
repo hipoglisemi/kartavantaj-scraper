@@ -217,6 +217,8 @@ async function runParafScraper() {
                     if (!campaignData.sector_slug) campaignData.sector_slug = 'genel';
 
                     syncEarningAndDiscount(campaignData);
+                    campaignData.publish_status = 'processing';
+                    campaignData.publish_updated_at = new Date().toISOString();
 
                     // Check expiration
                     if (campaignData.end_date) {

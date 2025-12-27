@@ -176,11 +176,12 @@ async function runAxessScraper() {
                     bank: normalizedBank,
                     category: 'Diğer',
                     sector_slug: 'diger',
-                    brand: null,
                     is_bank_campaign: true,
                     classification_method: 'bank_campaign',
                     sector_confidence: 'high',
                     needs_manual_sector: false,
+                    publish_status: 'processing',
+                    publish_updated_at: new Date().toISOString(),
                     is_active: true
                 };
             } else {
@@ -227,11 +228,12 @@ async function runAxessScraper() {
                     participation_method: directData.participation_method,
                     eligible_cards: directData.eligible_cards,
                     spend_channel: directData.spend_channel,
-                    spend_channel_detail: directData.spend_channel_detail,
                     perk_text: directData.perk_text,
                     coupon_code: directData.coupon_code,
                     reward_type: directData.reward_type,
                     needs_manual_reward: directData.needs_manual_reward || false,
+                    publish_status: 'processing',
+                    publish_updated_at: new Date().toISOString(),
                     is_active: true
                 };
             } // End of else block (non-bank campaigns)

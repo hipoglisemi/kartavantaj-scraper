@@ -176,6 +176,8 @@ export async function runWorldScraper() {
                 campaignData.category = campaignData.category || 'Diğer';
                 campaignData.sector_slug = generateSectorSlug(campaignData.category);
                 syncEarningAndDiscount(campaignData);
+                campaignData.publish_status = 'processing';
+                campaignData.publish_updated_at = new Date().toISOString();
                 campaignData.is_active = true;
 
                 // Set default min_spend
