@@ -34,31 +34,14 @@ export async function classifySectorWithAI(
 ): Promise<{ sector_slug: string, confidence: number }> {
     const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent';
 
-    const prompt = `Classify this Turkish credit card campaign into ONE sector.
+    const prompt = `Classify this Turkish credit card campaign into EXACTLY ONE sector slug.
+    
+Response MUST be only the slug string. No explanation, no JSON, no formatting.
 
-Valid sectors (return slug only):
-- market-gida
-- akaryakit
-- giyim-aksesuar
-- restoran-kafe
-- elektronik
-- mobilya-dekorasyon
-- kozmetik-saglik
-- e-ticaret
-- ulasim
-- dijital-platform
-- kultur-sanat
-- egitim
-- sigorta
-- otomotiv
-- vergi-kamu
-- turizm-konaklama
-- diger
+Valid slugs:
+market-gida, akaryakit, giyim-aksesuar, restoran-kafe, elektronik, mobilya-dekorasyon, kozmetik-saglik, e-ticaret, ulasim, dijital-platform, kultur-sanat, egitim, sigorta, otomotiv, vergi-kamu, turizm-konaklama, diger
 
-Return ONLY the sector slug (e.g., "elektronik" or "market-gida" or "diger").
-No explanation, no JSON, just the slug.
-
-Campaign snippet:
+Campaign:
 ${snippet}`;
 
     try {
@@ -71,20 +54,19 @@ ${snippet}`;
                 }],
                 generationConfig: {
                     temperature: 0.1,
-                    maxOutputTokens: 20 // Very short response
+                    maxOutputTokens: 15
                 }
             })
         });
 
         if (!response.ok) {
             console.error('AI classification failed:', response.statusText);
-            return { sector_slug: 'diger', confidence: 0.1 };
+            return { sector_slug: 'diger', confidence: 0 };
         }
 
         const data = await response.json() as any;
         const sectorSlug = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim().toLowerCase() || 'diger';
 
-        // Validate sector slug
         const validSlugs = [
             'market-gida', 'akaryakit', 'giyim-aksesuar', 'restoran-kafe',
             'elektronik', 'mobilya-dekorasyon', 'kozmetik-saglik', 'e-ticaret',
@@ -93,17 +75,17 @@ ${snippet}`;
         ];
 
         if (!validSlugs.includes(sectorSlug)) {
-            console.warn(`Invalid sector slug from AI: "${sectorSlug}", using "diger"`);
-            return { sector_slug: 'diger', confidence: 0.3 };
+            console.warn(`Invalid AI response: "${sectorSlug}"`);
+            return { sector_slug: 'diger', confidence: 0 };
         }
 
         return {
             sector_slug: sectorSlug,
-            confidence: sectorSlug === 'diger' ? 0.5 : 0.8
+            confidence: sectorSlug === 'diger' ? 0.4 : 0.8
         };
 
     } catch (error) {
         console.error('AI classification error:', error);
-        return { sector_slug: 'diger', confidence: 0.1 };
+        return { sector_slug: 'diger', confidence: 0 };
     }
 }

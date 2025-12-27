@@ -190,12 +190,10 @@ async function runAxessScraper() {
 
                 // Core field extraction
                 const rawDescription = directData.description || title;
-                console.log(`      ✨ Enhancing description with AI...`);
-                const enhancedDescription = await enhanceDescription(rawDescription);
 
                 campaignData = {
                     title: title,
-                    description: enhancedDescription, // AI-enhanced marketing description
+                    description: rawDescription, // Using raw description to save tokens
                     image: imageUrl,
                     url: fullUrl,
                     reference_url: fullUrl,
@@ -207,10 +205,31 @@ async function runAxessScraper() {
                     valid_from: directData.valid_from,
                     valid_until: directData.valid_until,
                     min_spend: directData.min_spend || 0,
+                    min_spend_currency: directData.min_spend_currency,
                     earning: directData.earning,
+                    earning_currency: directData.earning_currency,
                     discount: directData.discount,
+                    max_discount: directData.max_discount,
+                    max_discount_currency: directData.max_discount_currency,
+                    discount_percentage: directData.discount_percentage,
+                    math_flags: directData.math_flags,
+                    required_spend_for_max_benefit: directData.required_spend_for_max_benefit,
+                    required_spend_currency: directData.required_spend_currency,
+                    has_mixed_currency: directData.has_mixed_currency || false,
+                    ai_suggested_valid_until: directData.ai_suggested_valid_until,
+                    ai_suggested_math: directData.ai_suggested_math,
+                    is_bank_campaign: directData.is_bank_campaign || false,
+                    sector_confidence: directData.sector_confidence,
+                    classification_method: directData.classification_method,
+                    needs_manual_sector: directData.needs_manual_sector || false,
+                    math_method: directData.math_method,
+                    needs_manual_math: directData.needs_manual_math || false,
                     participation_method: directData.join_method,
-                    valid_cards: directData.valid_cards, // Mapping extracted cards to valid_cards column
+                    valid_cards: directData.valid_cards,
+                    perk_text: directData.perk_text,
+                    coupon_code: directData.coupon_code,
+                    reward_type: directData.reward_type,
+                    needs_manual_reward: directData.needs_manual_reward || false,
                     is_active: true
                 };
             } // End of else block (non-bank campaigns)

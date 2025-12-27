@@ -6,16 +6,41 @@ interface ExtractedData {
     valid_from?: string | null;
     valid_until?: string | null;
     min_spend?: number;
+    min_spend_currency?: string;
     earning?: string | null;
+    earning_currency?: string;
     discount?: string | null;
+    max_discount?: number | null;
+    max_discount_currency?: string;
+    discount_percentage?: number | null;
     brand?: string | null;
     sector_slug?: string | null;
     category?: string | null;
     description?: string | null;
     valid_cards?: string[];
     join_method?: string | null;
-    date_flags?: string[]; // Added Phase 7.5
-    ai_suggested_valid_until?: string | null; // Added Phase 7.5
+    date_flags?: string[];
+    math_flags?: string[];
+    required_spend_for_max_benefit?: number | null;
+    required_spend_currency?: string;
+    has_mixed_currency?: boolean;
+    ai_suggested_valid_until?: string | null;
+    ai_suggested_math?: {
+        min_spend?: number;
+        earning?: string;
+        max_discount?: number;
+        discount_percentage?: number;
+    } | null;
+    is_bank_campaign?: boolean;
+    sector_confidence?: 'high' | 'medium' | 'low';
+    classification_method?: string;
+    needs_manual_sector?: boolean;
+    math_method?: string;
+    needs_manual_math?: boolean;
+    perk_text?: string | null;
+    coupon_code?: string | null;
+    reward_type?: string | null;
+    needs_manual_reward?: boolean;
 }
 
 // ... existing code ...
@@ -24,6 +49,21 @@ const MONTHS: Record<string, string> = {
     'ocak': '01', 'şubat': '02', 'mart': '03', 'nisan': '04', 'mayıs': '05', 'haziran': '06',
     'temmuz': '07', 'ağustos': '08', 'eylül': '09', 'ekim': '10', 'kasım': '11', 'aralık': '12'
 };
+
+const CURRENCY_SYMBOLS: Record<string, string> = {
+    '₺': 'TRY', 'tl': 'TRY',
+    '$': 'USD', 'usd': 'USD', 'dollar': 'USD', 'dolar': 'USD',
+    '€': 'EUR', 'eur': 'EUR', 'avro': 'EUR',
+    '£': 'GBP', 'gbp': 'GBP', 'sterlin': 'GBP'
+};
+
+function detectCurrency(text: string): string {
+    const lower = text.toLowerCase();
+    for (const [sym, code] of Object.entries(CURRENCY_SYMBOLS)) {
+        if (lower.includes(sym)) return code;
+    }
+    return 'TRY';
+}
 
 /**
  * Normalizes Turkish text by stripping common suffixes (Phase 7.5)
@@ -84,7 +124,7 @@ export async function extractDirectly(
 ): Promise<ExtractedData> {
     const $ = cheerio.load(html);
 
-    // Target common content area selectors to avoid noise
+    // Isolated content
     const contentSelectors = ['.cmsContent', '.campaingDetail', 'main', 'article'];
     let targetHtml = '';
     for (const sel of contentSelectors) {
@@ -99,7 +139,6 @@ export async function extractDirectly(
     const $$ = cheerio.load(targetHtml);
     $$('script, style, iframe, nav, footer, header, .footer, .header, .sidebar, #header, #footer').remove();
 
-    // Isolated content
     const possibleCleanSelectors = ['.campaign-text', '.content-body', '.description', 'h2, p, li'];
     let cleanTextMatches: string[] = [];
     $$(possibleCleanSelectors.join(',')).each((_, el) => {
@@ -109,50 +148,144 @@ export async function extractDirectly(
     const cleanText = cleanTextMatches.join(' ').replace(/\s+/g, ' ').trim() || $$.text().replace(/\s+/g, ' ').trim();
     const normalizedText = normalizeTurkishText(cleanText);
 
-    // 1. Date Extraction (Phase 7.5 - parseDates)
-    const dates = parseDates(cleanText);
+    // 1. Bank Campaign Detection (Point 1 - AI-Free)
+    const { isBankCampaign } = await import('./bankCampaignDetector');
+    const isBank = isBankCampaign(title, cleanText);
+    if (isBank) {
+        console.log(`   🏦 Bank Service Detected (Point 1), skipping AI classification.`);
+        return {
+            valid_from: null,
+            valid_until: null,
+            min_spend: 0,
+            earning: null,
+            discount: null,
+            sector_slug: 'diger',
+            category: 'Diğer',
+            brand: null,
+            description: cleanText,
+            is_bank_campaign: true,
+            classification_method: 'bank_detector',
+            sector_confidence: 'high'
+        };
+    }
 
-    // 2. Extractions
-    const min_spend = extractMinSpend(cleanText);
-    const earning = extractEarning(title, cleanText);
-    const discount = extractDiscount(title, cleanText);
+    // 2. Date & Math Extraction (Deterministic - Phase 7.5 & 8)
+    const dates = parseDates(cleanText);
+    const math = extractMathDetails(title, cleanText);
     const valid_cards = extractValidCards(cleanText);
     const join_method = extractJoinMethod(cleanText);
 
-    // 3. AI Referee Check (Phase 7.5 Specification)
+    // 3. Date & Math Referee Check (Referee Mode - Restricted)
     let ai_suggested_valid_until: string | null = null;
-    if (!dates.valid_until) {
-        const dateSignals = ['ocak', 'şubat', 'mart', 'nisan', 'mayıs', 'haziran', 'temmuz', 'ağustos', 'eylül', 'ekim', 'kasım', 'aralık', 'geçerli', 'tarih'];
-        const hasSignal = dateSignals.some(s => cleanText.toLowerCase().includes(s));
-        if (hasSignal) {
-            // Signals for external AI referee logic
+    let ai_suggested_math: any = null;
+    let math_method = 'deterministic';
+    let needs_manual_math = false;
+
+    // AI Math Referee Trigger Logic
+    const hasMathSignal = /(?:tl|%|puan|chip|bonus|indirim|maxipuan|parafpara|kazan)/i.test(normalizedText);
+    const isMathSuspicious = math.math_flags.length > 0 || math.min_spend === 0 || !math.earning;
+
+    if (hasMathSignal && isMathSuspicious) {
+        try {
+            const { parseMathReferee } = await import('../services/geminiParser');
+            const aiMath = await parseMathReferee(title, cleanText, math);
+            if (aiMath) {
+                ai_suggested_math = aiMath;
+                console.log('   🤖 AI Math Referee suggested logic:', aiMath);
+
+                // CONFLICT DETECTION (Point: Mark differences as conflicts)
+                if (aiMath.min_spend !== undefined && aiMath.min_spend !== math.min_spend && math.min_spend > 0) {
+                    math.math_flags.push('ai_conflict_min_spend');
+                    needs_manual_math = true;
+                }
+                if (aiMath.max_discount !== undefined && aiMath.max_discount !== math.max_discount && math.max_discount !== null && math.max_discount > 0) {
+                    math.math_flags.push('ai_conflict_cap');
+                    needs_manual_math = true;
+                }
+                if (aiMath.discount_percentage !== undefined && aiMath.discount_percentage !== math.discount_percentage && math.discount_percentage !== null && math.discount_percentage > 0) {
+                    math.math_flags.push('ai_conflict_discount');
+                    needs_manual_math = true;
+                }
+                // Check earning conflict (basic check)
+                if (aiMath.earning && math.earning && !math.earning.includes(String(aiMath.reward_value))) {
+                    math.math_flags.push('ai_conflict_reward');
+                    needs_manual_math = true;
+                }
+
+                // Rule 1: Always re-calculate requirement deterministically (AI never overrides it directly)
+                recalculateMathRequirement(math, cleanText);
+            }
+        } catch (e) {
+            console.warn('   ⚠️ AI Math Referee failed.');
         }
     }
 
-    // 4. Classification
+    // 5. Classification (Deterministic ONLY)
     const localBrands = [...masterBrands];
-    const brandNames = localBrands.map(b => b.name.toLowerCase());
-    if (!brandNames.includes('vatan bilgisayar')) localBrands.push({ name: 'Vatan Bilgisayar' });
-    if (!brandNames.includes('teknosa')) localBrands.push({ name: 'Teknosa' });
-
     const dynamicSectors = await getSectorsWithKeywords();
-    // Use normalized text for classification (Phase 7.5 Requirement)
-    const classification = extractClassification(title, normalizedText, localBrands, dynamicSectors);
+    const classification = extractClassification(title, cleanText, localBrands, dynamicSectors);
+
+    let sector_slug = classification.sector_slug;
+    let confidence = classification.confidence;
+    let classification_method = classification.method;
+    let needs_manual_sector = confidence < 0.7; // Flag if deterministic is weak
+
+    if (sector_slug === 'diger') needs_manual_sector = true;
+
+    // 6. Snippet AI Labeler (Minimal Token) - Triggered on Uncertainty
+    let needs_manual_reward = false;
+    const perkSignalRegex = /ücretsiz|bedava|kupon|promosyon\s*kodu|kod:|voucher|otopark|vale|geçiş|hgs|ogs|fast|bilet|hediye|çekiliş\s*katılım\s*kodu/i;
+    const isUncertainReward = math.reward_type === 'unknown' || (perkSignalRegex.test(cleanText) && !math.perk_text);
+
+    if (isUncertainReward) {
+        try {
+            const { parseRewardTypeAI } = await import('../services/geminiParser');
+            const aiReward = await parseRewardTypeAI(title, cleanText);
+            if (aiReward) {
+                if (!math.reward_type || math.reward_type === 'unknown') math.reward_type = aiReward.reward_type;
+                if (!math.perk_text) math.perk_text = aiReward.perk_text;
+                if (!math.coupon_code) math.coupon_code = aiReward.coupon_code;
+
+                if (aiReward.reward_type === 'unknown') needs_manual_reward = true;
+            }
+        } catch (e) {
+            console.warn('   ⚠️ AI Reward Labeler failed.');
+        }
+    }
 
     return {
         valid_from: dates.valid_from,
         valid_until: dates.valid_until,
         date_flags: dates.date_flags,
-        min_spend,
-        earning,
-        discount,
+        min_spend: math.min_spend,
+        min_spend_currency: math.min_spend_currency,
+        earning: math.earning,
+        earning_currency: math.earning_currency,
+        discount: math.discount,
+        max_discount: math.max_discount,
+        max_discount_currency: math.max_discount_currency,
+        discount_percentage: math.discount_percentage,
+        math_flags: math.math_flags,
+        required_spend_for_max_benefit: math.required_spend_for_max_benefit,
+        required_spend_currency: math.required_spend_currency,
+        has_mixed_currency: math.has_mixed_currency,
+        ai_suggested_valid_until,
+        ai_suggested_math,
         brand: classification.brand,
-        sector_slug: classification.sector_slug,
-        category: classification.category,
-        description: $$.html().trim() || cleanText,
+        sector_slug,
+        category: sector_slug === 'diger' ? 'Diğer' : (dynamicSectors.find(s => s.slug === sector_slug)?.name || classification.category),
+        sector_confidence: confidence >= 0.7 ? 'high' : (confidence >= 0.3 ? 'medium' : 'low'),
+        classification_method,
+        needs_manual_sector,
+        math_method,
+        needs_manual_math,
+        description: cleanText,
         valid_cards,
         join_method,
-        ai_suggested_valid_until
+        perk_text: math.perk_text,
+        coupon_code: math.coupon_code,
+        reward_type: math.reward_type,
+        needs_manual_reward
     };
 }
 
@@ -320,54 +453,248 @@ export function parseDates(text: string, today: Date = new Date()): {
     return { valid_from, valid_until: bestUntilMatch, date_flags };
 }
 
-/**
- * Extracts min spend amount
- */
-export function extractMinSpend(text: string): number {
-    // Clean text: remove thousand separators, normalize spaces
-    const t = text.replace(/\./g, '').replace(/\s+/g, ' ');
+export function extractMathDetails(title: string, content: string): {
+    min_spend: number;
+    min_spend_currency: string;
+    earning: string | null;
+    earning_currency: string;
+    discount: string | null;
+    max_discount: number | null;
+    max_discount_currency: string;
+    discount_percentage: number | null;
+    math_flags: string[];
+    required_spend_for_max_benefit: number | null;
+    required_spend_currency: string;
+    has_mixed_currency: boolean;
+    perk_text: string | null;
+    coupon_code: string | null;
+    reward_type: string | null;
+} {
+    const combinedText = (title + ' ' + content).replace(/\./g, '').replace(/\s+/g, ' ');
+    const lowerText = combinedText.toLowerCase();
 
-    // 1. Range: "1000 - 2000 TL" -> 1000
-    const rangeRegex = /(\d{3,6})\s*-\s*(\d{3,6})\s*TL/i;
-    let match = rangeRegex.exec(t);
-    if (match) return parseInt(match[1]);
+    let min_spend = 0;
+    let min_spend_currency = 'TRY';
+    let earning: string | null = null;
+    let earning_currency = 'TRY';
+    let discount: string | null = null;
+    let max_discount: number | null = null;
+    let max_discount_currency = 'TRY';
+    let discount_percentage: number | null = null;
+    let math_flags: string[] = [];
+    let required_spend_for_max_benefit: number | null = null;
+    let has_mixed_currency = false;
+    let perk_text: string | null = null;
+    let coupon_code: string | null = null;
+    let reward_type: string | null = null;
 
-    // 2. "Her 1000 TL..." or "ilk 1000 TL"
-    const everyRegex = /(?:Her|ilk)\s+(\d{3,6})\s*TL/i;
-    match = everyRegex.exec(t);
-    if (match) return parseInt(match[1]);
+    // 1. Currency Detection & Mixed Flag
+    const currencies = new Set<string>();
+    const tryMatch = combinedText.match(/[₺]|TL/g);
+    const usdMatch = combinedText.match(/[$]|USD|Dollar/gi);
+    const eurMatch = combinedText.match(/[€]|EUR|Avro/gi);
+    const gbpMatch = combinedText.match(/[£]|GBP|Sterlin/gi);
 
-    // 3. Fallback: "3000 TL ... harcama/alışveriş"
-    // EXCLUDE "chip-para", "puan", "indirim" in the interim text to avoid picking up the reward amount
-    // `(?: (? !chip - para | puan | indirim).){ 0, 60 } `
-    const broadRegex = /(\d{3,6})\s*TL\s+(?:(?!chip-para|puan|indirim).){0,60}?(?:harcama|alışveriş|yükleme|sipariş|ödeme)/i;
-    match = broadRegex.exec(t);
-    if (match) return parseInt(match[1]);
+    if (tryMatch) currencies.add('TRY');
+    if (usdMatch) currencies.add('USD');
+    if (eurMatch) currencies.add('EUR');
+    if (gbpMatch) currencies.add('GBP');
 
-    // 4. Standard: "2000 TL ve üzeri"
-    const standardRegex = /(\d{3,6})\s*TL\s*(?:ve\s+üzeri|tutarında)/i;
-    match = standardRegex.exec(t);
-    if (match) return parseInt(match[1]);
+    if (currencies.size > 1) {
+        has_mixed_currency = true;
+        math_flags.push('mixed_currency');
+    }
 
-    return 0;
+    // 2. Perk & Coupon Detection (Deterministic)
+    const perkRegex = /ücretsiz|bedava|kupon|promosyon\s*kodu|kod:|voucher|otopark|vale|geçiş|hgs|ogs|fast|bilet|hediye|çekiliş\s*katılım\s*kodu/i;
+    const couponRegex = /(?:kupon|kod|code|davet\s*kodu)\s*[:\-]?\s*([A-Z0-9]{4,15})/i;
+
+    if (perkRegex.test(combinedText)) {
+        reward_type = 'perk';
+        // Extract a snippet for perk_text if it's the dominant signal
+        const perkMatch = combinedText.match(/(?:ücretsiz|bedava|hediye)\s+[a-zçğıöşü\s]{3,20}/i);
+        if (perkMatch) perk_text = perkMatch[0].trim();
+    }
+
+    const cMatch = combinedText.match(couponRegex);
+    if (cMatch) {
+        coupon_code = cMatch[1].toUpperCase();
+        if (!reward_type) reward_type = 'perk';
+    }
+
+    // 3. Strong Explicit Patterns (Priority 1)
+    const explicitMinSpendRegex = /(\d+[\d.,]*)\s*(tl|usd|eur|gbp|[$€£₺])\s*(?:ve\s+)?(?:üzeri|tutarında|harcamaya|yüklemeye|ödemeye|siparişinize|veya\s+üzeri|alışverişte|harcamanızda)/gi;
+    const explicitMinMatches = [...combinedText.matchAll(explicitMinSpendRegex)];
+    if (explicitMinMatches.length > 0) {
+        min_spend = parseInt(explicitMinMatches[0][1].replace(/[.,]/g, ''));
+        min_spend_currency = detectCurrency(explicitMinMatches[0][2]);
+    } else {
+        // Fallback to basic TL regex if no currency-aware match
+        const basicMinRegex = /(\d+[\d.,]*)\s*tl\s*(?:ve\s+)?(?:üzeri|harcamaya|alışverişte)/gi;
+        const basicMinMatch = combinedText.match(basicMinRegex);
+        if (basicMinMatch) {
+            min_spend = parseInt(basicMinMatch[0].match(/\d+/)![0]);
+            min_spend_currency = 'TRY';
+        }
+    }
+
+    const explicitCapRegex = /(?:max|maximum|toplam|toplamda|en fazla|varan|kadar)\s*(\d+[\d.,]*)\s*(tl|usd|eur|gbp|[$€£₺])/gi;
+    const explicitCapMatches = [...combinedText.matchAll(explicitCapRegex)];
+    if (explicitCapMatches.length > 0) {
+        max_discount = parseInt(explicitCapMatches[0][1].replace(/[.,]/g, ''));
+        max_discount_currency = detectCurrency(explicitCapMatches[0][2]);
+    }
+
+    const explicitPctRegex = /(?:%|yüzde)\s*(\d+)|(\d+)\s*%/gi;
+    const explicitPctMatch = explicitPctRegex.exec(lowerText);
+    if (explicitPctMatch) {
+        discount_percentage = parseInt(explicitPctMatch[1] || explicitPctMatch[2]);
+    }
+
+    // 4. Proximity-Based Candidates (Minimal Token Reuse)
+    const spendKeywords = ['harcama', 'alışveriş', 'tutarında', 'tek seferde', 'üzeri', 'peşin', 'yükleme', 'sipariş', 'ödeme'];
+    const rewardKeywords = ['puan', 'chip-para', 'bonus', 'indirim', 'maxipuan', 'parafpara', 'bankkart lira', 'nakit', 'iade', 'taksit', 'kazan', 'hediye'];
+
+    const numRegex = /(\d+[\d.,]*)(?:\s*(tl|%|kat|taksit|usd|eur|gbp|[$€£₺]))?/gi;
+    const candidates: any[] = [];
+    let m;
+    while ((m = numRegex.exec(combinedText)) !== null) {
+        const val = parseInt(m[1].replace(/[.,]/g, ''));
+        const unit = (m[2] || 'tl').toLowerCase();
+        let type = 'unknown';
+
+        const snippetBefore = lowerText.substring(Math.max(0, m.index - 25), m.index);
+        const snippetAfter = lowerText.substring(m.index, Math.min(lowerText.length, m.index + 40));
+
+        if (spendKeywords.some(kw => snippetBefore.includes(kw) || snippetAfter.includes(kw))) type = 'spend';
+        else if (rewardKeywords.some(kw => snippetBefore.includes(kw) || snippetAfter.includes(kw))) type = 'reward';
+
+        candidates.push({ val, unit: detectCurrency(unit), type, index: m.index });
+    }
+
+    if (min_spend === 0) {
+        const spendCand = candidates.filter(c => c.type === 'spend' && c.unit !== '%').sort((a, b) => b.val - a.val);
+        if (spendCand.length > 0) {
+            min_spend = spendCand[0].val;
+            min_spend_currency = spendCand[0].unit === 'tl' ? 'TRY' : spendCand[0].unit;
+        }
+    }
+
+    // 5. Extract earning / reward text
+    const relaxedRewardRegex = /(\d+[\d.,]*)\s*(?:tl|%|usd|eur|gbp|[$€£₺]|['’](?:ye|ya|e|a)|lik|lık|lük|luk)?\s*(?:(?:ye|ya|e|a|lik|lık|lük|luk|ye varan|ya varan|ye kadar|ya kadar|['’](?:ye|ya|e|a)\s+(?:varan|kadar))\s+){0,3}(?:chip-para|puan|bonus|indirim|maxipuan|parafpara|taksit|kazan|kazandır|iade|fırsatı)/gi;
+    const rewardMatches = combinedText.match(relaxedRewardRegex);
+    if (rewardMatches) {
+        earning = rewardMatches[0].trim();
+        earning_currency = detectCurrency(earning);
+        if (earning.toLowerCase().includes('taksit')) {
+            discount = earning;
+            earning = null;
+        }
+    }
+
+    // 6. Final Calculation (Deterministic Hub)
+    const mathResult: any = {
+        min_spend,
+        min_spend_currency,
+        earning,
+        earning_currency,
+        max_discount,
+        max_discount_currency,
+        discount_percentage,
+        math_flags,
+        required_spend_for_max_benefit: null,
+        required_spend_currency: min_spend_currency,
+        has_mixed_currency
+    };
+
+    if (!has_mixed_currency) {
+        recalculateMathRequirement(mathResult, combinedText);
+    }
+
+    // Reward Type Finalization
+    if (!reward_type) {
+        if (earning && discount) reward_type = 'mixed';
+        else if (discount && discount.toLowerCase().includes('taksit')) reward_type = 'installment';
+        else if (discount_percentage) reward_type = 'discount_pct';
+        else if (earning && /(puan|bonus|chip|maxipuan|parafpara|lira)/i.test(earning)) reward_type = 'points';
+        else if (earning && /iade|cashback|nakit/i.test(earning)) reward_type = 'cashback';
+        else reward_type = 'unknown';
+    }
+
+    return {
+        ...mathResult,
+        discount,
+        perk_text,
+        coupon_code,
+        reward_type
+    };
 }
 
-/**
- * Extracts earning/reward info
- */
+export function recalculateMathRequirement(math: any, text: string): void {
+    const lowerText = text.toLowerCase();
+
+    // Formula Inputs
+    const min_spend = math.min_spend || 0;
+    const max_discount = math.max_discount;
+    const discount_percentage = math.discount_percentage;
+    const earning = (math.earning || '').toLowerCase();
+
+    let requirement: number | null = null;
+
+    // 1. Incremental Logic
+    const incrementalRegex = /(?:her|her bir)\s+(\d+)[\d.,]*\s*tl(?:\s+için|\s+['’][ye|ya|e|a]|\s+harcamaya)?\s+(\d+)[\d.,]*\s*tl/i;
+    const incMatch = text.match(incrementalRegex);
+
+    if (incMatch) {
+        const stepSpend = parseInt(incMatch[1].replace(/[.,]/g, ''));
+        const stepReward = parseInt(incMatch[2].replace(/[.,]/g, ''));
+
+        if (max_discount && stepReward > 0) {
+            const steps = Math.ceil(max_discount / stepReward);
+            requirement = steps * stepSpend;
+            if (math.min_spend === 0) math.min_spend = stepSpend;
+        } else if (!max_discount) {
+            requirement = stepSpend;
+            if (!math.math_flags.includes('no_cap_in_incremental')) math.math_flags.push('no_cap_in_incremental');
+            if (math.min_spend === 0) math.min_spend = stepSpend;
+        }
+    }
+    // 2. Percentage + Cap
+    else if (max_discount && discount_percentage) {
+        requirement = Math.ceil((max_discount * 100) / discount_percentage);
+    }
+    // 3. Cap without Rate
+    else if (max_discount && !discount_percentage && !incMatch) {
+        if (!math.math_flags.includes('cap_without_rate')) math.math_flags.push('cap_without_rate');
+    }
+    // 4. Basic Min Spend
+    else if (min_spend > 0) {
+        requirement = min_spend;
+    }
+
+    // Safety: min_spend is floor
+    if (requirement && min_spend > 0) {
+        requirement = Math.max(requirement, min_spend);
+    }
+
+    // Rule 2: Point-based rewards without caps
+    const isPointsReward = earning && /(puan|bonus|chip-para|maxipuan|parafpara|bankkart lira)/i.test(earning);
+    if (isPointsReward && !max_discount && !incMatch) {
+        requirement = null;
+        if (!math.math_flags.includes('no_cap_for_points_reward')) math.math_flags.push('no_cap_for_points_reward');
+    }
+
+    math.required_spend_for_max_benefit = requirement;
+}
+
 export function extractEarning(title: string, content: string): string | null {
-    // Enhanced regex to catch "250 TL chip-para" or similar
-    const rewardRegex = /(\d+[\d.,]*)\s*(?:TL\s*)?(?:chip-para|puan|bonus|indirim|maxipuan|parafpara)/gi;
+    // Keep for backward compatibility or direct calls
+    return extractMathDetails(title, content).earning;
+}
 
-    // Check title first
-    const titleMatch = title.match(rewardRegex);
-    if (titleMatch) return titleMatch[0].trim();
-
-    // Check content
-    const contentMatch = content.match(rewardRegex);
-    if (contentMatch) return contentMatch[0].trim();
-
-    return null;
+export function extractMinSpend(text: string): number {
+    // Keep for backward compatibility or direct calls
+    return extractMathDetails('', text).min_spend;
 }
 
 /**
@@ -425,99 +752,107 @@ export function extractJoinMethod(text: string): string | null {
 
 /**
  * Extracts brand and sector using master data hints
- * NEW: Supports brand→sector mapping for AI-free classification
+ * Strictly follows "ANTIGRAVITY TEK DÜZELTME KOMUTU" Points 4 & 5.
  */
 export function extractClassification(
     title: string,
     content: string,
     masterBrands: Array<{ name: string, sector_id?: number }> = [],
     masterSectors: any[] = SECTORS
-): { brand: string | null, sector_slug: string | null, category: string | null, method?: string } {
-    const titleLower = title.toLowerCase();
-    const contentLower = content.toLowerCase();
+): {
+    brand: string | null,
+    sector_slug: string | null,
+    category: string | null,
+    confidence: number,
+    method: string
+} {
+    const nTitle = normalizeTurkishText(title);
+    const nContent = normalizeTurkishText(content); // content is already clean/normalized when passed
 
     // 1. Find Brand (Priority: Title Match > early content match)
     let foundBrand: { name: string, sector_id?: number } | null = null;
     const sortedBrands = [...masterBrands].sort((a, b) => b.name.length - a.name.length);
 
-    // Check title first (Strongest signal)
     for (const mb of sortedBrands) {
-        if (titleLower.includes(mb.name.toLowerCase())) {
+        if (nTitle.includes(normalizeTurkishText(mb.name))) {
             foundBrand = mb;
             break;
         }
     }
 
-    // Check content if not in title (Limit to start of content to avoid footer ads)
     if (!foundBrand) {
-        const contentSnippet = contentLower.substring(0, 3000);
+        const contentSnippet = nContent.substring(0, 1000);
         for (const mb of sortedBrands) {
-            if (contentSnippet.includes(mb.name.toLowerCase())) {
+            if (contentSnippet.includes(normalizeTurkishText(mb.name))) {
                 foundBrand = mb;
                 break;
             }
         }
     }
 
-    // 2. Brand-Based Sector Classification (NEW - Phase 2)
+    // 2. Brand-Based Sector Mapping (Point 4 - AI-Free)
     if (foundBrand && foundBrand.sector_id) {
-        // Brand has direct sector mapping → use it (skip keyword scoring)
         const sector = masterSectors.find(s => s.id === foundBrand.sector_id);
         if (sector) {
             return {
                 brand: foundBrand.name,
                 sector_slug: sector.slug,
                 category: sector.name,
-                method: 'brand_mapping' // High confidence
+                confidence: 1.0, // Brand mapping is definitive
+                method: 'brand_mapping'
             };
         }
     }
 
-    // 3. Fallback: Find Sector via keywords with scoring
-    let foundSectorSlug: string | null = null;
-    let foundCategory: string | null = null;
+    // 3. Keyword Scoring with Formal Confidence (Point 5)
+    let topSector: any = null;
+    let maxTitleMatches = 0;
+    let maxContentMatches = 0;
 
     const sectorScores = masterSectors.map(sector => {
-        let score = 0;
+        let titleCount = 0;
+        let contentCount = 0;
 
-        // Use normalized title/content for keywords (Phase 7.5)
-        const nTitle = normalizeTurkishText(title);
-        // content is already normalized when passed from extractDirectly, but let's be safe
-        const nContent = normalizeTurkishText(content);
-
-        // Title matches get 5x weight
-        for (const kw of (sector.keywords || [])) {
-            const nKw = normalizeTurkishText(kw);
-            // Use word boundaries for phrase matching
-            const regex = new RegExp(`\\b${nKw.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'g');
-            const matches = nTitle.match(regex);
-            if (matches) score += matches.length * 5;
-        }
-
-        // Content matches (first 1000 chars only) get 1x weight
-        const contentSnippet = nContent.substring(0, 1000);
         for (const kw of (sector.keywords || [])) {
             const nKw = normalizeTurkishText(kw);
             const regex = new RegExp(`\\b${nKw.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'g');
-            const matches = contentSnippet.match(regex);
-            if (matches) score += matches.length;
+
+            const tMatches = nTitle.match(regex);
+            if (tMatches) titleCount += tMatches.length;
+
+            const cMatches = nContent.substring(0, 1000).match(regex);
+            if (cMatches) contentCount += cMatches.length;
         }
 
-        return { ...sector, score };
+        const totalScore = (titleCount * 5) + contentCount;
+        return { ...sector, titleCount, contentCount, totalScore };
     });
 
-    const sortedSectors = sectorScores.sort((a, b) => b.score - a.score);
-    const topSector = sortedSectors[0];
+    const sortedByScore = sectorScores.sort((a, b) => b.totalScore - a.totalScore);
+    const candidate = sortedByScore[0];
 
-    if (topSector && topSector.score > 0) {
-        foundSectorSlug = topSector.slug;
-        foundCategory = topSector.name;
+    let confidence = 0;
+    if (candidate && candidate.totalScore > 0) {
+        // High (1.0): Title match AND at least one other signal
+        if (candidate.titleCount > 0 && (candidate.titleCount > 1 || candidate.contentCount > 0)) {
+            confidence = 1.0;
+        }
+        // Medium (0.7): Title match OR significant content signals
+        else if (candidate.titleCount > 0 || candidate.contentCount >= 2) {
+            confidence = 0.7;
+        }
+        // Low (0.3): Weak content signals
+        else {
+            confidence = 0.3;
+        }
+        topSector = candidate;
     }
 
     return {
         brand: foundBrand?.name || null,
-        sector_slug: foundSectorSlug || 'diger',
-        category: foundCategory || 'Diğer',
+        sector_slug: topSector?.slug || 'diger',
+        category: topSector?.name || 'Diğer',
+        confidence: confidence,
         method: 'keyword_scoring'
     };
 }

@@ -251,6 +251,108 @@ RETURN ONLY VALID JSON. NO MARKDOWN.
 }
 
 /**
+ * Phase 8: Math Referee
+ * Resolves conflicts or fills missing math fields using a 400-token-min snippet.
+ */
+export async function parseMathReferee(
+    title: string,
+    content: string,
+    existingData: any
+): Promise<any> {
+    // 1. Extract token-min snippet (Title + 400 chars around numbers/keywords)
+    const textCleaner = (t: string) => t.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+    const cleanContent = textCleaner(content);
+
+    // Strategy: Find first number or spend/reward keyword and take 400 chars from there
+    const keywords = ['harcama', 'puan', 'indirim', 'chip-para', 'bonus', 'taksit', 'tl', '%'];
+    let startIndex = 0;
+    const lowerContent = cleanContent.toLowerCase();
+
+    for (const kw of keywords) {
+        const idx = lowerContent.indexOf(kw);
+        if (idx !== -1) {
+            startIndex = Math.max(0, idx - 50);
+            break;
+        }
+    }
+
+    const snippet = cleanContent.substring(startIndex, startIndex + 400);
+
+    console.log(`   🤖 Math Referee: Analyzing snippet for "${title.substring(0, 30)}..."`);
+
+    const mathPrompt = `
+Analyze this bank campaign snippet and extract EXACT math details.
+TITLE: ${title}
+SNIPPET: "${snippet}"
+
+RETURN JSON ONLY:
+{
+  "min_spend": number,
+  "reward_value": number,
+  "reward_unit": "tl" | "%" | "taksit",
+  "reward_type": "puan" | "indirim" | "taksit",
+  "max_discount": number,
+  "discount_percentage": number
+}
+
+RULES:
+- If "min_spend" is not mentioned, return 0.
+- If multiple steps exist, return the FIRST step as reward_value and the TOTAL cap as max_discount.
+- discount_percentage is the rate like 10 for %10. If not found, return 0.
+- max_discount is the absolute cap like 500 for "500 TL'ye kadar". If not found, return 0.
+- Be precise. Turkish suffixes like "TL'ye" mean "to TL".
+`;
+
+    try {
+        const aiMath = await callGeminiAPI(mathPrompt);
+
+        // Normalize AI response to match our internal suggestion structure
+        return {
+            min_spend: aiMath.min_spend || 0,
+            earning: aiMath.reward_type !== 'taksit' ? `${aiMath.reward_value} ${aiMath.reward_unit?.toUpperCase()} ${aiMath.reward_type}` : null,
+            max_discount: aiMath.max_discount || 0,
+            discount_percentage: aiMath.discount_percentage || (aiMath.reward_unit === '%' ? aiMath.reward_value : 0),
+            discount: aiMath.reward_type === 'taksit' ? `${aiMath.reward_value} Taksit` : null,
+            reward_type: aiMath.reward_type,
+            reward_value: aiMath.reward_value,
+            reward_unit: aiMath.reward_unit
+        };
+    } catch (err) {
+        console.error('   ❌ Math Referee failed:', err);
+        return null; // Don't crash the whole process
+    }
+}
+
+/**
+ * Minimal Reward Type Labeler (Snippet AI) - Ultra-min token usage
+ */
+export async function parseRewardTypeAI(title: string, cleanText: string): Promise<any> {
+    const snippet = (title + ' ' + cleanText).substring(0, 400);
+
+    console.log(`   🤖 Reward Labeler: Analyzing snippet for type classification...`);
+
+    const prompt = `
+Return ONLY JSON:
+{
+  "reward_type": "perk" | "points" | "cashback" | "discount_pct" | "installment" | "mixed" | "unknown",
+  "perk_text": "string|null (Brief description if perk)",
+  "coupon_code": "string|null"
+}
+No extra keys, no explanation.
+
+TITLE: ${title}
+TEXT: "${snippet}"
+`;
+
+    try {
+        return await callGeminiAPI(prompt);
+    } catch (err) {
+        console.error('   ❌ Reward Labeler failed:', err);
+        return null;
+    }
+}
+
+/**
  * Standardizes brand names (Sync with frontend metadataService)
  */
 function normalizeBrandName(name: string): string {
