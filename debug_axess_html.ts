@@ -1,37 +1,30 @@
+
 import axios from 'axios';
 import * as cheerio from 'cheerio';
+import { extractDirectly } from './src/utils/dataExtractor';
 
-async function debugAxessHtml() {
-    const url = 'https://www.axess.com.tr/axess/kampanyadetay/8/21943/axesse-ozel-carrefoursa-magazalarinda-250-tl-chip-para';
+async function auditCampaign() {
+    // A complex campaign URL from previous logs
+    const url = 'https://www.axess.com.tr/axess/kampanyadetay/8/21920/carrefoursanin-yeni-dijital-cuzdani-payfourdan-tek-seferde-yapacaginiz-3000-tl-ve-uzeri-ilk-yuklemenize-150-tl-chip-para';
+
     console.log(`🔍 Fetching: ${url}`);
+    const res = await axios.get(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+    const html = res.data;
+    const $ = cheerio.load(html);
 
-    try {
-        const response = await axios.get(url, {
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-            }
-        });
+    // Extract valid title from page first
+    const title = $('h1').first().text().trim() || $('.campaign-detail-title').text().trim() || 'No Title';
+    console.log(`📑 Title: ${title}`);
 
-        const $ = cheerio.load(response.data);
-        const title = $('h2.pageTitle').text().trim();
-        const content = $('.cmsContent.clearfix').text().trim();
-        const image = $('.campaingDetailImage img').attr('src');
+    // Extract using our logic (pass raw HTML and title)
+    // Note: extractDirectly is async
+    const extracted = await extractDirectly(html, title, []);
 
-        console.log('\n--- EXTRACTED DATA ---');
-        console.log(`Title: ${title}`);
-        console.log(`Image: ${image}`);
-        console.log('\n--- CONTENT SNIPPET ---');
-        console.log(content.substring(0, 1000));
+    console.log('\n--- 🤖 Extracted Data (JSON) ---');
+    console.log(JSON.stringify(extracted, null, 2));
 
-        // Let's look for dates
-        const dateRegex = /\d{1,2}\s+(?:Ocak|Şubat|Mart|Nisan|Mayıs|Haziran|Temmuz|Ağustos|Eylül|Ekim|Kasım|Aralık)\s+\d{4}/g;
-        const dates = content.match(dateRegex);
-        console.log('\n--- DATES FOUND ---');
-        console.log(dates);
-
-    } catch (error: any) {
-        console.error(`❌ Error: ${error.message}`);
-    }
+    console.log('\n--- 📝 Raw Description (First 500 chars) ---');
+    console.log(extracted.description?.substring(0, 500));
 }
 
-debugAxessHtml();
+auditCampaign();

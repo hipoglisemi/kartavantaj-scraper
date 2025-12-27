@@ -80,6 +80,15 @@ export function validateCampaign(campaign: any): CampaignValidation {
         score -= 5;
     }
 
+    // 6. Math Validation (NEW - Phase 8)
+    const mathIssues = validateMath(campaign);
+    mathIssues.forEach(issue => {
+        issues.push(issue);
+        if (issue.severity === 'critical') score -= 15;
+        if (issue.severity === 'warning') score -= 10;
+        if (issue.severity === 'info') score -= 2;
+    });
+
     // Ensure score doesn't go below 0
     score = Math.max(0, Math.round(score));
 
@@ -200,6 +209,69 @@ function validateDates(campaign: any): ValidationIssue | null {
     }
 
     return null;
+}
+
+function validateMath(campaign: any): ValidationIssue[] {
+    const issues: ValidationIssue[] = [];
+    const {
+        min_spend,
+        earning,
+        math_flags = [],
+        max_discount,
+        discount_percentage,
+        required_spend_for_max_benefit,
+        ai_suggested_math
+    } = campaign;
+
+    // 1. Check math_flags
+    if (math_flags.includes('spend_zero_with_signals')) {
+        issues.push({
+            severity: 'critical',
+            field: 'min_spend',
+            issue: 'Min spend is 0 but text suggests requirements exist',
+            suggestion: 'Review text for "ve üzeri" or "harcamaya" phrases'
+        });
+    }
+
+    if (math_flags.includes('spend_missing_but_reward_exists')) {
+        issues.push({
+            severity: 'warning',
+            field: 'min_spend',
+            issue: 'No min spend found but reward exists',
+            suggestion: 'Check if this is a "first spend" or "no-minimum" campaign'
+        });
+    }
+
+    if (math_flags.includes('reward_le_spend_collision')) {
+        issues.push({
+            severity: 'warning',
+            field: 'earning',
+            issue: 'Reward value exceeds or matches min spend',
+            suggestion: 'Check if reward and spend values are swapped'
+        });
+    }
+
+    // 2. Metric Sanity Checks
+    if (max_discount && discount_percentage && !required_spend_for_max_benefit) {
+        issues.push({
+            severity: 'warning',
+            field: 'required_spend_for_max_benefit',
+            issue: 'Max benefit spend requirement not calculated',
+            suggestion: 'Check if % and Max values are correctly extracted'
+        });
+    }
+
+    // 3. AI Suggestion Info
+    if (ai_suggested_math) {
+        issues.push({
+            severity: 'info',
+            field: 'ai_suggested_math',
+            issue: 'AI Math Referee provided suggestions',
+            suggestion: 'Review and apply AI suggestions if deterministic data is questionable'
+        });
+    }
+
+    return issues;
 }
 
 export function generateValidationReport(validations: CampaignValidation[]): string {

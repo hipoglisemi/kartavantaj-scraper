@@ -17,8 +17,10 @@ interface ExtractedData {
     sector_slug?: string | null;
     category?: string | null;
     description?: string | null;
-    valid_cards?: string[];
-    join_method?: string | null;
+    eligible_cards?: string[]; // Replacing valid_cards
+    participation_method?: 'AUTO' | 'SMS' | 'JUZDAN' | 'MOBILE_APP' | 'CALL_CENTER' | 'WEB' | null;
+    spend_channel?: 'IN_STORE_POS' | 'ONLINE' | 'IN_APP' | 'MERCHANT_SPECIFIC' | 'MEMBER_MERCHANT' | 'UNKNOWN' | null;
+    spend_channel_detail?: string | null;
     date_flags?: string[];
     math_flags?: string[];
     required_spend_for_max_benefit?: number | null;
@@ -172,8 +174,8 @@ export async function extractDirectly(
     // 2. Date & Math Extraction (Deterministic - Phase 7.5 & 8)
     const dates = parseDates(cleanText);
     const math = extractMathDetails(title, cleanText);
-    const valid_cards = extractValidCards(cleanText);
-    const join_method = extractJoinMethod(cleanText);
+    const eligible_cards = extractValidCards(cleanText);
+    const participation_method = extractJoinMethod(cleanText);
 
     // 3. Date & Math Referee Check (Referee Mode - Restricted)
     let ai_suggested_valid_until: string | null = null;
@@ -233,9 +235,16 @@ export async function extractDirectly(
     if (sector_slug === 'diger') needs_manual_sector = true;
 
     // 6. Snippet AI Labeler (Minimal Token) - Triggered on Uncertainty
+    const { channel: spend_channel, detail: spend_channel_detail } = extractSpendChannel(cleanText, classification.brand);
+
     let needs_manual_reward = false;
     const perkSignalRegex = /ücretsiz|bedava|kupon|promosyon\s*kodu|kod:|voucher|otopark|vale|geçiş|hgs|ogs|fast|bilet|hediye|çekiliş\s*katılım\s*kodu/i;
-    const isUncertainReward = math.reward_type === 'unknown' || (perkSignalRegex.test(cleanText) && !math.perk_text);
+
+    // Trigger on missing essential operation/perk info
+    const isUncertainReward = math.reward_type === 'unknown' ||
+        (perkSignalRegex.test(cleanText) && !math.perk_text) ||
+        !participation_method ||
+        (spend_channel === 'UNKNOWN');
 
     if (isUncertainReward) {
         try {
@@ -247,6 +256,11 @@ export async function extractDirectly(
                 if (!math.coupon_code) math.coupon_code = aiReward.coupon_code;
 
                 if (aiReward.reward_type === 'unknown') needs_manual_reward = true;
+
+                // New: Field labeling for operation info
+                if (!participation_method && aiReward.participation_method) (math as any).participation_method = aiReward.participation_method;
+                if (!spend_channel && aiReward.spend_channel) (math as any).spend_channel = aiReward.spend_channel;
+                if (!eligible_cards.length && aiReward.eligible_cards) (math as any).eligible_cards = aiReward.eligible_cards;
             }
         } catch (e) {
             console.warn('   ⚠️ AI Reward Labeler failed.');
@@ -280,8 +294,10 @@ export async function extractDirectly(
         math_method,
         needs_manual_math,
         description: cleanText,
-        valid_cards,
-        join_method,
+        eligible_cards: (math as any).eligible_cards || eligible_cards,
+        participation_method: (math as any).participation_method || participation_method,
+        spend_channel: (math as any).spend_channel || spend_channel,
+        spend_channel_detail,
         perk_text: math.perk_text,
         coupon_code: math.coupon_code,
         reward_type: math.reward_type,
@@ -717,13 +733,10 @@ export function extractValidCards(text: string): string[] {
     const found: string[] = [];
     const lowerText = text.toLowerCase();
 
-    // Check positive statements "Axess ve Wings ile"
     cards.forEach(card => {
         if (lowerText.includes(card.toLowerCase())) {
-            // Check for nearby "dahil değildir" negation (heuristic: within next 50 chars)
-            // e.g. "Free kartlar kampanyaya dahil değildir"
             const index = lowerText.indexOf(card.toLowerCase());
-            const context = lowerText.substring(index, index + 60); // look ahead
+            const context = lowerText.substring(index, index + 60);
 
             if (!context.includes('dahil değil') && !context.includes('geçerli değil')) {
                 found.push(card);
@@ -733,21 +746,56 @@ export function extractValidCards(text: string): string[] {
     return found;
 }
 
-export function extractJoinMethod(text: string): string | null {
+export type ParticipationMethod = 'AUTO' | 'SMS' | 'JUZDAN' | 'MOBILE_APP' | 'CALL_CENTER' | 'WEB';
+
+export function extractJoinMethod(text: string): ParticipationMethod | null {
     const lowerText = text.toLowerCase();
 
-    // Priority order matters (specific to generic)
-    if (lowerText.includes('juzdan') || lowerText.includes('juzdan ile')) return 'Juzdan ile Katıl';
-
-    if (lowerText.includes('sms') || /kayıt\s+yazıp/.test(lowerText) || /\d{4}'e\s+gönder/.test(lowerText)) return 'SMS ile Katıl';
-
-    if (lowerText.includes('müşteri hizmetleri') || lowerText.includes('çağrı merkezi') || lowerText.includes('444 25 25')) return 'Müşteri Hizmetleri';
-
-    if (lowerText.includes('mobil şube') || lowerText.includes('akbank mobil') || lowerText.includes('mobil uygulama')) return 'Mobil Uygulama';
-
-    if (lowerText.includes('otomatik')) return 'Otomatik Katılım';
+    if (lowerText.includes('juzdan') || lowerText.includes('juzdan ile')) return 'JUZDAN';
+    if (lowerText.includes('sms') || /kayıt\s+yazıp/.test(lowerText) || /\d{4}'e\s+gönder/.test(lowerText)) return 'SMS';
+    if (lowerText.includes('müşteri hizmetleri') || lowerText.includes('çağrı merkezi') || lowerText.includes('444 25 25')) return 'CALL_CENTER';
+    if (lowerText.includes('mobil şube') || lowerText.includes('akbank mobil') || lowerText.includes('mobil uygulama')) return 'MOBILE_APP';
+    if (lowerText.includes('otomatik') || lowerText.includes('başvuru gerekmez')) return 'AUTO';
+    if (lowerText.includes('web') || lowerText.includes('internet şube')) return 'WEB';
 
     return null;
+}
+
+export type SpendChannel = 'IN_STORE_POS' | 'ONLINE' | 'IN_APP' | 'MERCHANT_SPECIFIC' | 'MEMBER_MERCHANT' | 'UNKNOWN';
+
+export function extractSpendChannel(text: string, brand?: string | null): { channel: SpendChannel, detail: string | null } {
+    const lowerText = text.toLowerCase();
+    let detail: string | null = null;
+
+    // 1. IN_APP (Priority - Juzdan/App specific shopping)
+    if (lowerText.includes('juzdan üzerinden') || lowerText.includes('juzdan ile öde') || (lowerText.includes('mobil uygulama') && lowerText.includes('üzerinden'))) {
+        return { channel: 'IN_APP', detail: null };
+    }
+
+    // 2. MERCHANT_SPECIFIC (brand + "mağazalarında/şubelerinde")
+    if (brand) {
+        const brandLower = brand.toLowerCase();
+        if (lowerText.includes(`${brandLower} mağaza`) || lowerText.includes(`${brandLower} şube`) || lowerText.includes(`${brandLower} restoran`)) {
+            return { channel: 'MERCHANT_SPECIFIC', detail: `${brand} Şubeleri` };
+        }
+    }
+
+    // 3. ONLINE
+    if (lowerText.includes('online') || lowerText.includes('internet site') || lowerText.includes('e-ticaret') || lowerText.includes('.com') || lowerText.includes('mobil uygulama')) {
+        return { channel: 'ONLINE', detail: null };
+    }
+
+    // 4. IN_STORE_POS
+    if (lowerText.includes(' pos ') || lowerText.includes(' pos\'') || lowerText.includes('fiziki') || lowerText.includes('mağaza') || lowerText.includes('üye işyeri')) {
+        return { channel: 'IN_STORE_POS', detail: null };
+    }
+
+    // 5. MEMBER_MERCHANT
+    if (lowerText.includes('üye işyeri') || lowerText.includes('anlaşmalı')) {
+        return { channel: 'MEMBER_MERCHANT', detail: null };
+    }
+
+    return { channel: 'UNKNOWN', detail: null };
 }
 
 /**

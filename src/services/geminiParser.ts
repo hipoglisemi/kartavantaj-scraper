@@ -7,6 +7,39 @@ const GEMINI_API_KEY = process.env.GOOGLE_GEMINI_KEY!;
 
 const CRITICAL_FIELDS = ['valid_until', 'eligible_customers', 'min_spend', 'category', 'bank', 'earning'];
 
+/**
+ * Removes legal boilerplate and generic bank disclaimers from text.
+ * Used to clean input before sending to AI for summarization.
+ * IMPORTANT: This does NOT affect the original text stored in DB.
+ */
+function cleanLegalText(text: string): string {
+    if (!text) return "";
+
+    const legalPatterns = [
+        /banka[, ]+kampanyayı[, ]+durdurma(?:[\s,]+değiştirme)?[, ]+hakkını[, ]+saklı[, ]+tutar/gi,
+        /yasal[, ]+mevzuat[, ]+gereği/gi,
+        /6698[, ]+sayılı[, ]+kişisel[, ]+verilerin[, ]+korunması[, ]+kanunu/gi,
+        /kvkk[, ]+kapsamında/gi,
+        /vergi[, ]+ve[, ]+fonlar[, ]+dahildir/gi,
+        /bsmv[, ]+ve[, ]+kkdf/gi,
+        /bankamız[, ]+tek[, ]+taraflı[, ]+olarak/gi,
+        /kampanya[, ]+koşullarında[, ]+değişiklik[, ]+yapma[, ]+hakkı/gi,
+        /önceden[, ]+haber[, ]+vermeksizin/gi,
+        /sorumluluk[, ]+kabul[, ]+edilmez/gi,
+        /yasal[, ]+uyarı:?/gi,
+        /tüm[, ]+hakları[, ]+saklıdır/gi,
+        /ayrıntılı[, ]+bilgi[, ]+için/gi
+    ];
+
+    let cleaned = text;
+    legalPatterns.forEach(pattern => {
+        cleaned = cleaned.replace(pattern, '');
+    });
+
+    // Remove empty lines and double spaces resulting from cleaning
+    return cleaned.replace(/\s+/g, ' ').trim();
+}
+
 interface MasterData {
     categories: string[];
     brands: string[];
@@ -336,7 +369,10 @@ Return ONLY JSON:
 {
   "reward_type": "perk" | "points" | "cashback" | "discount_pct" | "installment" | "mixed" | "unknown",
   "perk_text": "string|null (Brief description if perk)",
-  "coupon_code": "string|null"
+  "coupon_code": "string|null",
+  "participation_method": "AUTO" | "SMS" | "JUZDAN" | "MOBILE_APP" | "CALL_CENTER" | "WEB" | null,
+  "spend_channel": "IN_STORE_POS" | "ONLINE" | "IN_APP" | "MERCHANT_SPECIFIC" | "MEMBER_MERCHANT" | "UNKNOWN" | null,
+  "eligible_cards": ["string"] | []
 }
 No extra keys, no explanation.
 
@@ -505,13 +541,16 @@ async function cleanupBrands(
 }
 
 export async function parseWithGemini(html: string, url: string, sourceBank?: string, sourceCard?: string): Promise<any> {
-    const text = html
+    const rawText = html
         .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
         .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
         .replace(/<[^>]+>/g, ' ')
         .replace(/\s+/g, ' ')
-        .trim()
-        .substring(0, 15000);
+        .trim();
+
+    // Pre-filter legal boilerplate before sending to AI
+    const filteredText = cleanLegalText(rawText);
+    const text = filteredText.substring(0, 15000);
 
     const masterData = await fetchMasterData();
 
@@ -524,7 +563,7 @@ Extract campaign data into JSON matching this EXACT schema:
 
 {
   "title": "string (catchy campaign title, clear and concise)",
-  "description": "string (Rich marketing text. Focus on benefits. Max 4-5 sentences. Do NOT include boring legal terms here.)",
+  "description": "string (ONLY summarize and simplify the given text. Do NOT add, infer, or assume any new conditions. Rich marketing text. Focus on benefits. Max 4-5 sentences. Do NOT include boring legal terms here.)",
   "conditions": ["string (Rule 1)", "string (Rule 2)"],
   "category": "string (MUST be one of: ${masterData.categories.join(', ')})",
   "discount": "string (Use ONLY for installment info, e.g. '9 Taksit', '+3 Taksit'. FORMAT: '{Number} Taksit'. NEVER mention fees/interest.)",

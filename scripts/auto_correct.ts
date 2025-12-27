@@ -32,59 +32,68 @@ async function autoCorrect() {
     for (const campaign of campaigns || []) {
         console.log(`\n🧐 Kampanya inceleniyor [${campaign.id}]: ${campaign.title}`);
 
-        // Karmaşık Kalite Kontrolü
-        const minSpend = parseFloat(campaign.min_spend) || 0;
-        const earningValue = parseFloat(campaign.earning) || 0;
-        const hasMathError = earningValue >= minSpend && minSpend > 10;
+        const mathFlags = campaign.math_flags || [];
+        const hasMathError = mathFlags.length > 0;
         const isIncomplete = campaign.ai_parsing_incomplete;
+        const aiSuggestedMath = campaign.ai_suggested_math;
+        const aiSuggestedDates = campaign.ai_suggested_valid_until;
 
-        // YENİ: Kazanç Standartı Kontrolü
-        const titleL = (campaign.title || '').toLowerCase();
-        const earningL = (campaign.earning || '').toLowerCase();
-        const discountL = (campaign.discount || '').toLowerCase();
-
-        // Kategori bazlı çakışma kontrolü (Frontend'deki mantıkla paralel)
-        const categories = ['taksit', 'mil', 'puan', 'chip', 'para', 'indirim', 'lira'];
-        const isCategoryRedundant = categories.some(cat =>
-            earningL.includes(cat) && discountL.includes(cat) && earningL !== discountL
-        );
-
-        const titleHasTaksit = titleL.includes('taksit');
-        const fieldsHaveTaksit = earningL.includes('taksit') || discountL.includes('taksit');
-        const isRedundant = earningL === discountL && earningL !== '';
-        const hasEarningError = (titleHasTaksit && !fieldsHaveTaksit) || isRedundant || isCategoryRedundant;
-
-        if (hasMathError || isIncomplete || hasEarningError || !campaign.slug) {
-            console.log(`   🛠  Hata saptandı (Matematik: ${hasMathError}, Eksik: ${isIncomplete}, Kazanç Standartı: ${hasEarningError}). Yeniden işleniyor...`);
+        if (hasMathError || isIncomplete || aiSuggestedMath || aiSuggestedDates || !campaign.slug) {
+            console.log(`   🛠  İşlem gereksinimi saptandı (Matematik Bayrağı: ${hasMathError}, Eksik: ${isIncomplete}, AI Önerisi: ${!!aiSuggestedMath}).`);
 
             try {
-                // Gelişmiş Gemini promptları ile yeniden analiz
-                const baseText = campaign.raw_content || `${campaign.title} ${campaign.description}`;
-                const result = await parseWithGemini(baseText, campaign.url || '', campaign.bank);
+                let updateData: any = {
+                    auto_corrected: true,
+                    ai_parsing_incomplete: false,
+                    quality_score: 100
+                };
 
-                if (result) {
-                    if (result.valid_until === 'YYYY-MM-DD' || result.valid_until === '') delete result.valid_until;
-                    if (result.valid_from === 'YYYY-MM-DD' || result.valid_from === '') delete result.valid_from;
+                // SUGGEST-ONLY MERGE POLICY (Phase 8)
+                if (aiSuggestedMath) {
+                    console.log('   🤖 AI Math Referee önerileri uygulanıyor (Suggest-Only)...');
+                    // AI suggestions only fill missing or flagged deterministic fields
+                    if (mathFlags.includes('spend_zero_with_signals') || campaign.min_spend === 0) {
+                        updateData.min_spend = aiSuggestedMath.min_spend;
+                    }
+                    if (!campaign.earning || mathFlags.includes('reward_le_spend_collision')) {
+                        updateData.earning = aiSuggestedMath.earning;
+                        updateData.max_discount = aiSuggestedMath.max_discount;
+                        updateData.discount_percentage = aiSuggestedMath.discount_percentage;
+                    }
+                    // Clear the suggestion once applied/evaluated
+                    updateData.ai_suggested_math = null;
+                    updateData.math_flags = [];
+                }
 
-                    // Satırı güncelle
-                    const { error: updateError } = await supabase
-                        .from('campaigns')
-                        .update({
-                            ...result,
-                            ai_parsing_incomplete: false,
-                            auto_corrected: true,
-                            quality_score: 100 // AI düzelttiğinde kalite skorunu sıfırla
-                        })
-                        .eq('id', campaign.id);
+                if (aiSuggestedDates && !campaign.valid_until) {
+                    console.log('   📅 AI Date Referee önerisi uygulanıyor...');
+                    updateData.valid_until = aiSuggestedDates;
+                    updateData.ai_suggested_valid_until = null;
+                }
 
-                    if (updateError) {
-                        console.error(`   ❌ Güncelleme başarısız [${campaign.id}]:`, updateError.message);
-                    } else {
-                        console.log(`   ✅ Başarıyla düzeltildi [${campaign.id}]`);
+                // If still incomplete and no suggestions, or if slug is missing, do full parse
+                if ((isIncomplete && !aiSuggestedMath) || !campaign.slug) {
+                    console.log('   🔄 Tam re-parse gerekiyor...');
+                    const baseText = campaign.raw_content || `${campaign.title} ${campaign.description}`;
+                    const result = await parseWithGemini(baseText, campaign.url || '', campaign.bank);
+                    if (result) {
+                        updateData = { ...updateData, ...result };
                     }
                 }
+
+                // Satırı güncelle
+                const { error: updateError } = await supabase
+                    .from('campaigns')
+                    .update(updateData)
+                    .eq('id', campaign.id);
+
+                if (updateError) {
+                    console.error(`   ❌ Güncelleme başarısız [${campaign.id}]:`, updateError.message);
+                } else {
+                    console.log(`   ✅ Başarıyla işlendi/düzeltildi [${campaign.id}]`);
+                }
             } catch (err) {
-                console.error(`   ❌ Yeniden işleme sırasında hata [${campaign.id}]:`, err);
+                console.error(`   ❌ İşlem sırasında hata [${campaign.id}]:`, err);
             }
 
             // Rate limitlerden kaçınmak için bekle
