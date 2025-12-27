@@ -320,12 +320,10 @@ SNIPPET: "${snippet}"
 
 RETURN JSON ONLY:
 {
-  "min_spend": number,
-  "reward_value": number,
-  "reward_unit": "tl" | "%" | "taksit",
-  "reward_type": "puan" | "indirim" | "taksit",
   "max_discount": number,
-  "discount_percentage": number
+  "discount_percentage": number,
+  "conditions": ["string (Tier 1: 500 TL harca 50 TL kazan)", "string (Tier 2: ...)", "string (Usage limit)"],
+  "participation_method": "string (Natural language participation explanation in Turkish)"
 }
 
 RULES:
@@ -334,6 +332,7 @@ RULES:
 - discount_percentage is the rate like 10 for %10. If not found, return 0.
 - max_discount is the absolute cap like 500 for "500 TL'ye kadar". If not found, return 0.
 - Be precise. Turkish suffixes like "TL'ye" mean "to TL".
+- RETURN ALL TEXT IN TURKISH. No English allowed.
 `;
 
     try {
@@ -348,7 +347,9 @@ RULES:
             discount: aiMath.reward_type === 'taksit' ? `${aiMath.reward_value} Taksit` : null,
             reward_type: aiMath.reward_type,
             reward_value: aiMath.reward_value,
-            reward_unit: aiMath.reward_unit
+            reward_unit: aiMath.reward_unit,
+            conditions: aiMath.conditions || [],
+            participation_method: aiMath.participation_method
         };
     } catch (err) {
         console.error('   ❌ Math Referee failed:', err);
@@ -370,14 +371,16 @@ Return ONLY JSON:
   "reward_type": "perk" | "points" | "cashback" | "discount_pct" | "installment" | "mixed" | "unknown",
   "perk_text": "string|null (Brief description if perk)",
   "coupon_code": "string|null",
-  "participation_method": "AUTO" | "SMS" | "JUZDAN" | "MOBILE_APP" | "CALL_CENTER" | "WEB" | null,
+  "participation_method": "string (Natural language explanation of how to participate in Turkish)",
   "spend_channel": "IN_STORE_POS" | "ONLINE" | "IN_APP" | "MERCHANT_SPECIFIC" | "MEMBER_MERCHANT" | "UNKNOWN" | null,
-  "eligible_cards": ["string"] | []
+  "eligible_cards": ["string"] | [],
+  "conditions": ["string"]
 }
 No extra keys, no explanation.
 
 TITLE: ${title}
 TEXT: "${snippet}"
+RETURN ALL TEXT VALUES IN TURKISH. No English.
 `;
 
     try {
@@ -579,10 +582,13 @@ Your task is to READ, CALCULATE, and STRUCTURE campaign data with MATHEMATICAL A
 CONTEXT: Today is ${today}. Use this date to resolve relative dates like "31 Aralık" to the correct year (${today.split('-')[0]}).
 
 ### 🛑 ULTRA-STRICT RULES (Failure is NOT an option):
-1. **BRAND & CARD DISTINCTION:**
-   - Merchant / Brand = place where shopping is done (e.g. Tatilsepeti, Teknosa).
-   - Card names (Axess, World, Bonus, Maximum, Paraf, Akbank) are NOT merchants. NEVER return card names as merchant/brand.
    - Match brands against: [${masterData.brands.slice(0, 50).join(', ')} ... and others].
+
+2. **CLEAN & STRUCTURED CONTENT:**
+   - **description**: Keep it vibrant and focused on "What's in it for the user?". AVOID legal phrases.
+   - **conditions**: Use bullet points for TIERS (barem barem). (e.g., "500 TL'ye 50 TL, 1000 TL'ye 150 TL").
+   - **NO LEGAL JARGON**: COMPLETELY REMOVE sentences like "X bankası kampanyayı durdurma hakkını saklı tutar", "KVKK kapsamında...", "Vergi ve fonlar dahildir" etc.
+   - **EXCLUSIONS**: If something is NOT valid (e.g., "E-ticaret harcamaları dahil değildir"), list it clearly in conditions.
 
 2. **MATHEMATICAL CALCULATION (CRITICAL):**
    - You MUST calculate the spending required to achieve the MAXIMUM POSSIBLE REWARD.
@@ -599,7 +605,8 @@ Extract campaign data into JSON matching this EXACT schema:
 
 {
   "title": "string (original campaign title)",
-  "description": "string (Professional summary for marketing, focus on benefits, 1-2 emojis, Turkish)",
+  "description": "string (A catchy marketing summary, 1-2 sentences. Focus on THE CHANCE/BENEFIT. Use 1-2 emojis. Turkish.)",
+  "conditions": ["string (Tier 1: 1000 TL harca 100 TL kazan)", "string (Tier 2: ...)", "string (Date/Usage limit constraint)", "string (Participation summary)"],
   "category": "string (MUST be exactly one of: ${masterData.categories.join(', ')})",
   "min_spend": number,
   "reward_text": "string (FORMAT: '100 TL Puan', '50 TL İndirim' or '%10 İndirim'. Max 20 chars)",
@@ -649,7 +656,7 @@ TEXT TO PROCESS:
                 ...(stage1Data.conditions || []),
                 ...(stage1Data.excluded_conditions || []),
                 stage1Data.tiers && stage1Data.tiers.length > 0 ? `MARKDOWN_TIERS: ${JSON.stringify(stage1Data.tiers)}` : null
-            ].filter(Boolean)
+            ].filter(Boolean),
         };
 
         // Ensure brand is properly formatted as a string/json for DB
@@ -689,6 +696,7 @@ FIELD DEFINITIONS (V5 STANDARDS):
 - brand: Array of strings representing ALL mentioned merchants/brands.
 - participation_method: Natural language explanation of how to participate.
 - eligible_cards: Array of eligible card names.
+- conditions: Array of structured campaign rules/tiers (barem barem).
 
 TEXT:
 "${text.replace(/"/g, '\\"')}"

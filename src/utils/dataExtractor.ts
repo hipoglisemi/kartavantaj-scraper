@@ -18,9 +18,10 @@ interface ExtractedData {
     category?: string | null;
     description?: string | null;
     eligible_cards?: string[]; // Replacing valid_cards
-    participation_method?: 'AUTO' | 'SMS' | 'JUZDAN' | 'MOBILE_APP' | 'CALL_CENTER' | 'WEB' | null;
+    participation_method?: string | null;
     spend_channel?: 'IN_STORE_POS' | 'ONLINE' | 'IN_APP' | 'MERCHANT_SPECIFIC' | 'MEMBER_MERCHANT' | 'UNKNOWN' | null;
     spend_channel_detail?: string | null;
+    conditions?: string[] | null;
     date_flags?: string[];
     math_flags?: string[];
     required_spend_for_max_benefit?: number | null;
@@ -182,6 +183,7 @@ export async function extractDirectly(
     let ai_suggested_math: any = null;
     let math_method = 'deterministic';
     let needs_manual_math = false;
+    let conditions: string[] = [];
 
     // AI Math Referee Trigger Logic
     const hasMathSignal = /(?:tl|%|puan|chip|bonus|indirim|maxipuan|parafpara|kazan)/i.test(normalizedText);
@@ -216,6 +218,10 @@ export async function extractDirectly(
 
                 // Rule 1: Always re-calculate requirement deterministically (AI never overrides it directly)
                 recalculateMathRequirement(math, cleanText);
+
+                if (aiMath.conditions) {
+                    conditions = [...new Set([...conditions, ...aiMath.conditions])];
+                }
             }
         } catch (e) {
             console.warn('   ⚠️ AI Math Referee failed.');
@@ -261,6 +267,10 @@ export async function extractDirectly(
                 if (!participation_method && aiReward.participation_method) (math as any).participation_method = aiReward.participation_method;
                 if (!spend_channel && aiReward.spend_channel) (math as any).spend_channel = aiReward.spend_channel;
                 if (!eligible_cards.length && aiReward.eligible_cards) (math as any).eligible_cards = aiReward.eligible_cards;
+
+                if (aiReward.conditions) {
+                    conditions = [...new Set([...conditions, ...aiReward.conditions])];
+                }
             }
         } catch (e) {
             console.warn('   ⚠️ AI Reward Labeler failed.');
@@ -301,7 +311,8 @@ export async function extractDirectly(
         perk_text: math.perk_text,
         coupon_code: math.coupon_code,
         reward_type: math.reward_type,
-        needs_manual_reward
+        needs_manual_reward,
+        conditions: conditions.length > 0 ? conditions : null
     };
 }
 
@@ -802,13 +813,13 @@ export function extractValidCards(text: string): string[] {
     return found;
 }
 
-export type ParticipationMethod = 'AUTO' | 'SMS' | 'JUZDAN' | 'MOBILE_APP' | 'CALL_CENTER' | 'WEB';
+export type ParticipationMethod = string;
 
 export function extractJoinMethod(text: string): ParticipationMethod | null {
     const lowerText = text.toLowerCase();
 
     // Priority order: specific signals first
-    if (lowerText.includes('juzdan') || lowerText.includes('juzdan ile')) return 'JUZDAN';
+    if (lowerText.includes('juzdan') || lowerText.includes('juzdan ile')) return 'Juzdan ile katılım';
 
     // Expanded SMS signals for audit
     const smsSignals = [
@@ -829,14 +840,16 @@ export function extractJoinMethod(text: string): ParticipationMethod | null {
 
     for (const signal of smsSignals) {
         if (typeof signal === 'string') {
-            if (lowerText.includes(signal)) return 'SMS';
+            if (lowerText.includes(signal)) return 'SMS ile katılım';
         } else {
-            if (signal.test(text)) return 'SMS';
+            if (signal.test(text)) return 'SMS ile katılım';
         }
     }
 
-    if (lowerText.includes('müşteri hizmetleri') || lowerText.includes('çağrı merkezi') || lowerText.includes('444 25 25')) return 'CALL_CENTER';
-    if (lowerText.includes('mobil şube') || lowerText.includes('akbank mobil') || lowerText.includes('mobil uygulama')) return 'MOBILE_APP';
+    if (lowerText.includes('müşteri hizmetleri') || lowerText.includes('çağrı merkezi') || lowerText.includes('444 25 25')) return 'Müşteri Hizmetleri üzerinden katılım';
+    if (lowerText.includes('mobil şube') || lowerText.includes('akbank mobil') || lowerText.includes('mobil uygulama')) return 'Mobil Uygulama üzerinden katılım';
+    if (lowerText.includes('otomatik')) return 'Otomatik katılım';
+    if (lowerText.includes('internet şubesi') || lowerText.includes('web sitesi')) return 'Web üzerinden katılım';
     if (lowerText.includes('otomatik') || lowerText.includes('başvuru gerekmez')) return 'AUTO';
     if (lowerText.includes('web') || lowerText.includes('internet şube')) return 'WEB';
 
