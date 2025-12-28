@@ -8,6 +8,9 @@ import { generateSectorSlug } from '../../utils/slugify';
 import { syncEarningAndDiscount } from '../../utils/dataFixer';
 import { normalizeBankName, normalizeCardName } from '../../utils/bankMapper';
 import { optimizeCampaigns } from '../../utils/campaignOptimizer';
+import { lookupIDs } from '../../utils/idMapper';
+import { assignBadge } from '../../services/badgeAssigner';
+import { markGenericBrand } from '../../utils/genericDetector';
 
 dotenv.config();
 
@@ -186,6 +189,22 @@ async function runAxessScraper() {
                 }
 
                 campaignData.min_spend = campaignData.min_spend || 0;
+
+                // Lookup and assign IDs from master tables
+                const ids = await lookupIDs(
+                    campaignData.bank,
+                    campaignData.card_name,
+                    campaignData.brand,
+                    campaignData.sector_slug
+                );
+                Object.assign(campaignData, ids);
+
+                // Assign badge based on campaign content
+                const badge = assignBadge(campaignData);
+                campaignData.badge_text = badge.text;
+                campaignData.badge_color = badge.color;
+                // Mark as generic if it's a non-brand-specific campaign
+                markGenericBrand(campaignData);
 
                 const { error } = await supabase
                     .from('campaigns')

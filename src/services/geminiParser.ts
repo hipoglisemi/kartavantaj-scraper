@@ -2,6 +2,7 @@ import * as dotenv from 'dotenv';
 import { generateSectorSlug } from '../utils/slugify';
 import { syncEarningAndDiscount } from '../utils/dataFixer';
 import { supabase } from '../utils/supabase';
+import { cleanCampaignText } from '../utils/textCleaner';
 
 const GEMINI_API_KEY = process.env.GOOGLE_GEMINI_KEY!;
 
@@ -359,13 +360,19 @@ async function cleanupBrands(brandInput: any, masterData: MasterData): Promise<{
 }
 
 export async function parseWithGemini(html: string, url: string, sourceBank?: string, sourceCard?: string): Promise<any> {
-    const text = html
-        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-        .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
-        .replace(/<[^>]+>/g, ' ')
-        .replace(/\s+/g, ' ')
-        .trim()
-        .substring(0, 15000);
+    // Intelligent HTML to Clean Text conversion
+    const rawText = html
+        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '') // Remove scripts
+        .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')   // Remove styles
+        .replace(/<(?:br|p|div|li|h1|h2|h3|h4|h5|h6)[^>]*>/gi, '\n')       // Block elements to newlines
+        .replace(/<[^>]+>/g, ' ')                                           // Remove other tags
+        .replace(/[ \t]+/g, ' ')                                            // Standardize horizontal spaces
+        .replace(/\n\s*\n/g, '\n')                                          // Remove double newlines
+        .trim();
+
+    // Clean junk banking legal text to save tokens
+    const text = cleanCampaignText(rawText)
+        .substring(0, 12000); // 12k chars is enough for most campaigns after cleaning
 
     const masterData = await fetchMasterData();
 
@@ -378,7 +385,7 @@ Extract campaign data into JSON matching this EXACT schema:
 
 {
   "title": "string (catchy campaign title, clear and concise)",
-  "description": "string (Rich marketing text. Focus on benefits. Max 4-5 sentences. Do NOT include boring legal terms here.)",
+  "description": "string (Short, exciting, marketing-style summary. Max 2 sentences. Use 1-2 relevant emojis. Language: Turkish. Do NOT include boring legal terms.)",
   "conditions": ["string (List of important campaign terms, limits, and exclusions. Extract key rules as separate items.)"],
   "category": "string (MUST be one of: ${masterData.categories.join(', ')})",
   "discount": "string (Use ONLY for installment info, e.g. '9 Taksit', '+3 Taksit'. FORMAT: '{Number} Taksit'. NEVER mention fees/interest.)",
@@ -388,7 +395,20 @@ Extract campaign data into JSON matching this EXACT schema:
   "discount_percentage": number (If % based reward, e.g. 15 for %15),
   "valid_from": "YYYY-MM-DD",
   "valid_until": "YYYY-MM-DD",
-  "participation_method": "string (brief: e.g. 'Mobil Uygulama', 'SMS', 'Katılım gerekmez')",
+  "eligible_customers": ["array of strings (Simple card names: Axess, World, Platinum, etc. or Tüm Kartlar)"],
+  "eligible_cards_detail": {
+    "variants": ["array of strings (ONLY if text mentions: Gold, Platinum, Business, Classic, etc.)"],
+    "exclude": ["array of strings (ONLY if text says: X hariç, X geçerli değil)"],
+    "notes": "string (ONLY if text has special notes: Ticari kartlar hariç, etc.)"
+  } | null,
+  "participation_method": "string (TAM KATILIM TALİMATI: 2-5 cümle. Nereden + Nasıl + Ne zaman + Şartlar. Örn: 'CarrefourSA mağazalarında elektronik ürün almadan önce Juzdandan Hemen Katıla tıklayın veya MARKET yazıp 4566ya SMS gönderin.')",
+  "participation_detail": {
+    "sms_to": "string (ONLY if SMS number in text: 4442525, etc.)",
+    "sms_keyword": "string (ONLY if keyword in text: KATIL, KAMPANYA, etc.)",
+    "wallet_name": "string (ONLY if app name in text: Jüzdan, BonusFlaş, etc.)",
+    "instructions": "string (ONLY if detailed steps in text: 1-2 sentences)",
+    "constraints": ["array of strings (ONLY if conditions: Harcamadan önce katıl, etc.)"]
+  } | null,
   "merchant": "string (Primary shop/brand name)",
   "bank": "string (AUTHORITY: MUST be exactly '${sourceBank || 'the one in text'}'. Allowed: ${masterData.banks.join(', ')})",
   "card_name": "string (AUTHORITY: MUST be exactly '${sourceCard || 'the one in text'}')",
@@ -396,25 +416,87 @@ Extract campaign data into JSON matching this EXACT schema:
   "ai_enhanced": true
 }
 
+
 ### 🛑 ULTRA-STRICT RULES (Failure is NOT an option):
 
 1. **BANK & CARD AUTHORITY (HIGHEST PRIORITY):**
    - If sourceBank is provided as "${sourceBank}", you MUST use it. DO NOT hallucinate other banks.
    - If sourceCard is provided as "${sourceCard}", you MUST use it. DO NOT change it to something else.
    
-2. **REWARD CONSOLIDATION (Single Box Standard):**
-   - If the campaign has BOTH installments and points:
-     - Installment (e.g., "9 Taksit") goes to "discount" field.
-     - Points (e.g., "500 TL Puan") goes to "earning" field.
-   - FORMAL FORMATTING: "500 TL Puan" (NOT 500 Bonus/Chip), "9 Taksit" (NOT Vade farksız 9 taksit).
+2. **HARCAMA-KAZANÇ KURALLARI (ULTRA-STRICT):**
+
+   A) FORMAT KİLİDİ:
+      - discount: SADECE "{N} Taksit" veya "+{N} Taksit" (başka kelime YASAK)
+      - earning: Max 20 karakter
+        İzinli şablonlar: "{AMOUNT} TL Puan" | "{AMOUNT} TL İndirim" | "{AMOUNT} TL İade" | "%{P} İndirim"
+        Yasak kelimeler: Bonus, Chip-para, Worldpuan, Paracık, MaxiPuan, Axess, banka isimleri
+        → Yasak kelime varsa standarda çevir (örn: "500 Bonus" → "500 TL Puan")
+
+   B) TAKSİT KURALI:
+      - Taksit finansal kazanç DEĞİLDİR
+      - discount = "{N} Taksit" (örn: "9 Taksit")
+      - earning bundan etkilenmez
+      - min_spend taksite göre hesaplanmaz (null kalır)
+
+   C) MIN SPEND HESAPLAMA:
+      1. Açık threshold: "500 TL ve üzeri" → min_spend = 500
+      2. % + max_discount: min_spend = max_discount / (discount_percentage/100)
+         Örnek: %20 indirim + max 500 TL → min_spend = 2500
+      3. Oran + max: "Her 1000 TL'ye 100 TL puan" + max 500 TL
+         → gerekli_adet = 500/100 = 5
+         → min_spend = 5 * 1000 = 5000
+      4. Çoklu adım: "İlk A'ya X, sonraki B'ye Y"
+         → min_spend = A+B
+         → earning = X+Y (toplam kazanç)
+      5. Bilinmiyorsa: null (ASLA 0 yazma)
+
+   D) FAIL-SAFE:
+      IF earning_amount > min_spend:
+        - Önce "max_discount" olma ihtimalini kontrol et
+        - Hâlâ tutarsızsa: earning=null, min_spend=null, max_discount=null
+
+   E) ÖRNEKLER:
+      - "Peşin fiyatına 9 taksit" → discount="9 Taksit", earning=null, min_spend=null
+      - "500 TL ve üzeri alışverişlerde 100 Bonus" → earning="100 TL Puan", min_spend=500
+      - "9 taksit + 500 puan" → discount="9 Taksit", earning="500 TL Puan", min_spend=null
+      - "%20 indirim, maksimum 500 TL" → earning="%20 İndirim", discount_percentage=20, max_discount=500, min_spend=2500
+      - "İlk 500 TL'ye 50 puan, sonraki 500 TL'ye 100 puan" → earning="150 TL Puan", min_spend=1000
    
-3. **MATHEMATICAL SANITY CHECK:**
-   - Earning vs Min_Spend: Earning MUST be significantly lower than min_spend (e.g., spending 10,000 to get 500 is normal).
-   - If you see "1.000 TL indirim" for a "150 TL" purchase, you are wrong. Check if it means "1.000 TL'ye kadar" or "%10".
-   
-4. **BRAND MATCHING:**
+3. **BRAND MATCHING:**
    - Match brands against: [${masterData.brands.slice(0, 50).join(', ')} ... and others].
    - NORMALIZE: Remove ".com", "Market", "Notebook" suffixes. Use "Migros" instead of "Migros Sanal Market".
+
+4. **ELIGIBLE_CUSTOMERS & PARTICIPATION (Hibrit Yaklaşım):**
+
+   A) ELIGIBLE_CUSTOMERS (Basit Array - Zorunlu):
+      - Format: ["Axess", "World", "Platinum"] (Title Case)
+      - "Tüm kartlar" → ["Tüm Kartlar"]
+      - Varyantları ayırma: "Axess Gold" → ["Axess"] (varyant detayı aşağıda)
+      - Belirtilmemiş → null
+   
+   B) ELIGIBLE_CARDS_DETAIL (Detaylı Obje - Opsiyonel):
+      SADECE ŞUNLAR VARSA DOLDUR:
+      - variants: ["Gold", "Platinum"] (metinde açıkça geçiyorsa)
+      - exclude: ["Classic"] (metinde "X hariç" varsa)
+      - notes: "Ticari kartlar hariç" (özel not varsa)
+      Hiçbiri yoksa: null
+   
+   C) PARTICIPATION_METHOD (Zorunlu String):
+       Buraya sadece 'SMS' gibi kısa ibareler DEĞİL, tam katılım talimatını yazın.
+       Format: Nereden + Nasıl + Ne zaman + Şartlar.
+       Örn: "Harcamadan önce Juzdan uygulamasından Hemen Katıla tıklayın veya MARKET yazıp 4566ya SMS gönderin."
+       Eğer katılım gerekmiyorsa: "Katılım Gerekmez" yazın.
+   
+   D) PARTICIPATION_DETAIL (Detaylı Obje - Opsiyonel):
+      SADECE ŞUNLAR VARSA DOLDUR:
+      - sms_to: "4442525" (SMS numarası varsa)
+      - sms_keyword: "KATIL" (SMS keyword varsa)
+      - wallet_name: "Jüzdan" (uygulama adı varsa)
+      - instructions: "KATIL yazıp 4442525'e gönderin" (detaylı talimat varsa)
+      - constraints: ["Harcamadan önce katılım gereklidir"] (şart varsa)
+      Hiçbiri yoksa: null
+      
+      KRİTİK: Eğer sms_to veya sms_keyword doluysa, participation_method = "SMS" olmalı!
    
 5. **DATES:** If no year is mentioned, assume 2024/2025 based on current context. Format: YYYY-MM-DD.
 
