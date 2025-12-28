@@ -197,6 +197,7 @@ async function runAxessScraper() {
                     campaignData.brand,
                     campaignData.sector_slug
                 );
+                console.log(`      🆔 Debug IDs:`, JSON.stringify(ids));
                 Object.assign(campaignData, ids);
 
                 // Assign badge based on campaign content

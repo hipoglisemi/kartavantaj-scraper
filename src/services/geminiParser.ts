@@ -415,14 +415,15 @@ Extract campaign data into JSON matching this EXACT schema:
   "max_discount": number (Max reward limit per customer/campaign),
   "discount_percentage": number (If % based reward, e.g. 15 for %15),
   "valid_from": "YYYY-MM-DD",
+  "valid_from": "YYYY-MM-DD",
   "valid_until": "YYYY-MM-DD",
-  "eligible_customers": ["array of strings (Simple card names: Axess, Wings, etc. IMPORTANT: ALWAYS include 'TROY' if specifically mentioned for these cards, e.g. 'Axess TROY', 'Akbank Kart TROY')"],
+  "eligible_customers": ["array of strings (Simple card names: Axess, Wings, Business, Free etc. IMPORTANT: ALWAYS include 'TROY' if specifically mentioned for these cards, e.g. 'Axess TROY', 'Akbank Kart TROY')"],
   "eligible_cards_detail": {
     "variants": ["array of strings (ONLY if text mentions: Gold, Platinum, Business, Classic, etc.)"],
     "exclude": ["array of strings (ONLY if text says: X hariç, X geçerli değil)"],
     "notes": "string (ONLY if text has special notes: Ticari kartlar hariç, etc.)"
   } | null,
-  "participation_method": "string (TAM KATILIM TALİMATI: 2-5 cümle. Nereden + Nasıl + Ne zaman + Şartlar. Örn: 'CarrefourSA mağazalarında elektronik ürün almadan önce Juzdandan Hemen Katıla tıklayın veya MARKET yazıp 4566ya SMS gönderin.')",
+  "participation_method": "string (TAM KATILIM TALİMATI: SADECE NASIL ve NEREDEN (SMS/Uygulama). Tarih veya Harcama Miktarı GİRMEYİN. Örn: 'Juzdan uygulamasından Hemen Katıla tıklayın veya MARKET yazıp 4566ya SMS gönderin.')",
   "participation_detail": {
     "sms_to": "string (ONLY if SMS number in text: 4442525, etc.)",
     "sms_keyword": "string (ONLY if keyword in text: KATIL, KAMPANYA, etc.)",
@@ -442,15 +443,35 @@ Extract campaign data into JSON matching this EXACT schema:
 1. **BANK & CARD AUTHORITY:**
    - Use the provided Bank and Card Name. DO NOT hallucinate.
    
-2. **HARCAMA-KAZANÇ KURALLARI:**
+2. **HARCAMA-KAZANÇ KURALLARI (MATHEMATIC LOGIC):**
    - discount: SADECE "{N} Taksit" veya "+{N} Taksit"
    - earning: Max 20 karakter. "{AMOUNT} TL Puan" | "{AMOUNT} TL İndirim" | "{AMOUNT} TL İade" | "%{P} İndirim"
-   - min_spend: Total required spend.
+   - min_spend: KESİNLİKLE KAZANCI ELDE ETMEK İÇİN GEREKEN "TOPLAM" HARCAMA.
+     - Örnek 1: "4 kez 1.000 TL harcamaya" -> min_spend = 4000 (1000 x 4)
+     - Örnek 2: "İkinci 500 TL harcamaya" -> min_spend = 1000 (500 + 500)
+     - Örnek 3: "Tek seferde 2.000 TL" -> min_spend = 2000
+     - Örnek 4: "Her 2000 TL'ye 100 TL chip-para, toplam 500 TL" -> min_spend = 10000 (Max kazanç 500 / 100 = 5 kere. 5 x 2000 = 10000)
+   - max_discount: Kampanyadan kazanılabilecek EN YÜKSEK (TOPLAM) tutar. Eğer "toplamda 500 TL" diyorsa, bu değer 500 olmalı.
 
-3. **BRAND MATCHING:**
+3. **KATILIM ŞEKLİ (participation_method):**
+   - **TAM VE NET TALİMAT.** Ne çok kısa ne çok uzun.
+   - GEREKSİZ SÖZCÜKLERİ ("Kampanyaya katılmak için", "Harcama yapmadan önce", "tarihlerinde") ATIN.
+   - SADECE EYLEMİ DETAYLANDIRIN (Hangi buton? Hangi SMS kodu?).
+   - YASAK (Çok Kısa): "Juzdan'dan katılın." (Hangi buton?)
+   - YASAK (Çok Uzun): "Alışveriş yapmadan önce Juzdan uygulamasındaki kampanyalar menüsünden Hemen Katıl butonuna tıklayarak katılım sağlayabilirsiniz."
+   - DOĞRU (İDEAL): "Juzdan'dan 'Hemen Katıl' butonuna tıklayın veya '[ANAHTAR_KELİME]' yazıp 4566'ya SMS gönderin."
+   - DOĞRU (İDEAL): "Juzdan üzerinden 'Hemen Katıl' deyin."
+   - **SMS VARSA ZORUNLU KURAL:** Asla "SMS ile katılın" yazıp bırakma! Metinde GÖRDÜĞÜN anahtar kelimeyi (örn: TEKNOSA, TATIL, MARKET) ve numarayı yaz.
+   - **YASAK (HALÜSİNASYON):** Metinde SMS kodu yoksa ASLA uydurma (özellikle 'A101' gibi başka kodları YAZMA).
+   - YANLIŞ: "SMS ile kayıt olun." (NUMARA VE KOD NEREDE?)
+
+4. **KART TESPİTİ (eligible_customers):**
+   - Metin içinde "Ticari", "Business", "KOBİ" geçiyorsa, eligible_customers listesine ilgili kartları (Axess Business, Wings Business vb.) MUTLAKA ekle. Bireysel kartları EKSİK ETME.
+
+5. **BRAND MATCHING:**
    - Match brands against: [${sortedBrands} ... and others].
 
-4. **ABSOLUTE NO-HALLUCINATION RULE:**
+6. **ABSOLUTE NO-HALLUCINATION RULE:**
    - IF not explicitly found -> return null.
    - NEVER use placeholder numbers.
 `;
