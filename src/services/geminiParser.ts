@@ -339,6 +339,38 @@ SNIPPET: "${snippet}"
 5. **NATURAL LANGUAGE**: Participation method must be a natural Turkish sentence.
 6. **RETURN ALL TEXT IN TURKISH.**
 
+### 📊 MATHEMATICAL CALCULATION (CRITICAL):
+You MUST calculate the spending required to achieve the MAXIMUM POSSIBLE REWARD.
+
+**Tier Rules:**
+- If campaign has tiers (baremli): Identify ALL tiers
+- For EACH tier, calculate required minimum spend
+- The global min_spend MUST equal the tier that gives MAXIMUM reward
+- Example: "1.000 TL harcamaya 100 TL" → Calculate: min_spend = 10.000 (for max reward)
+- Example: "45.000 – 69.999 TL → 2.500 TL" → min_spend = 45.000 for that tier
+- If "ve üzeri": Use stated minimum as min_spend
+- NEVER include excluded amounts (e.g. "ön ödeme hariç")
+
+**"Varan/Kadar" Expressions:**
+- If campaign uses "…e varan" or "…e kadar"
+- Calculate the MAXIMUM THEORETICAL value
+- Mark reward_type as "max_possible"
+
+**Maximum Total Gain:**
+- If text includes: "toplamda en fazla", "bir müşteri en çok", "üst limit"
+- Return max_total_gain: number
+
+**Confidence Flag (MANDATORY):**
+- "high" → clear numeric tiers, no ambiguity
+- "medium" → rounding or indirect math
+- "low" → ambiguous or unclear reward math
+- If math_confidence = "low", mark for review
+
+**Sanity Rules:**
+- min_spend MUST be >= max_total_gain
+- reward MUST NOT exceed realistic limits
+- If rules conflict, choose SAFETY and LOWER confidence
+
 RETURN JSON ONLY:
 {
   "min_spend": number,
@@ -350,7 +382,8 @@ RETURN JSON ONLY:
   "eligible_cards": ["string"],
   "reward_type": "puan" | "indirim" | "taksit",
   "reward_value": number,
-  "reward_unit": "tl" | "%" | "taksit"
+  "reward_unit": "tl" | "%" | "taksit",
+  "math_confidence": "high" | "medium" | "low"
 }
 `;
 
