@@ -309,7 +309,7 @@ export async function parseMathReferee(
         }
     }
 
-    const snippet = cleanContent.substring(startIndex, startIndex + 400);
+    const snippet = cleanContent.substring(startIndex, startIndex + 800);
 
     console.log(`   🤖 Math Referee: Analyzing snippet for "${title.substring(0, 30)}..."`);
 
