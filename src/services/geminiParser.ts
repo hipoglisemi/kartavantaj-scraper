@@ -322,11 +322,22 @@ TITLE: ${title}
 SNIPPET: "${snippet}"
 
 ### 🛑 ULTRA-STRICT RULES:
-1. **MATHEMATICAL CALCULATION**: Calculate the TOTAL spending required to achieve the MAXIMUM POSSIBLE REWARD.
-2. **REWARD TEXT**: Format: "100 TL Puan" or "9 Taksit". Max 20 chars.
-3. **CONDITIONS**: List ALL reward tiers and important constraints "barem barem". NO legal jargon.
-4. **NATURAL LANGUAGE**: Participation method must be a natural Turkish sentence.
-5. **RETURN ALL TEXT IN TURKISH.**
+1. **MIN_SPEND DETECTION**: 
+   - Look for phrases like: "harcama yapın", "alışveriş yapın", "TL ve üzeri", "minimum", "en az"
+   - This is the SPENDING REQUIREMENT, NOT the reward
+   - Example: "3.000 TL ve üzeri harcama" → min_spend: 3000
+   - Example: "250 TL kazanın" → This is reward, NOT min_spend
+   - If no spending requirement found, set min_spend: 0
+
+2. **REWARD DETECTION**:
+   - Look for phrases like: "kazanın", "puan", "chip-para", "indirim", "taksit"
+   - This is what customer GETS, not what they spend
+   - Example: "250 TL chip-para kazanın" → reward_text: "250 TL Puan"
+
+3. **REWARD TEXT**: Format: "100 TL Puan" or "9 Taksit". Max 20 chars.
+4. **CONDITIONS**: List ALL reward tiers and important constraints "barem barem". NO legal jargon.
+5. **NATURAL LANGUAGE**: Participation method must be a natural Turkish sentence.
+6. **RETURN ALL TEXT IN TURKISH.**
 
 RETURN JSON ONLY:
 {
