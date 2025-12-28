@@ -55,10 +55,10 @@ const originalFetch = global.fetch;
 };
 
 async function runTest() {
-    console.log('🚀 Starting token tracking test with 5 campaigns...\n');
+    console.log('🚀 Starting token tracking test with 20 campaigns...\n');
 
     // Directly run the scraper with limit
-    process.argv.push('--ai', '--limit=1');
+    process.argv.push('--ai', '--limit=20');
 
     // Import and run scraper
     await import('./scrapers/akbank/axess');

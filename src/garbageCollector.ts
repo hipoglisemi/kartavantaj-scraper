@@ -17,30 +17,35 @@ async function garbageCollect() {
     tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
     const dateStr = tenDaysAgo.toISOString().split('T')[0];
 
-    console.log(`📅 Deleting campaigns expired before: ${dateStr}`);
+    console.log(`📦 Archiving campaigns expired before: ${dateStr}`);
 
     // Count first
     const { count } = await supabase
         .from('campaigns')
         .select('*', { count: 'exact', head: true })
-        .lt('valid_until', dateStr);
+        .lt('valid_until', dateStr)
+        .neq('publish_status', 'archived');
 
-    if (count === 0) {
-        console.log('✅ No old campaigns to delete.');
+    if (!count || count === 0) {
+        console.log('✅ No new campaigns to archive.');
         return;
     }
 
-    console.log(`🗑️  Found ${count} old campaigns. Deleting...`);
+    console.log(`📂 Found ${count} expired campaigns. Archiving...`);
 
     const { error } = await supabase
         .from('campaigns')
-        .delete()
-        .lt('valid_until', dateStr);
+        .update({
+            publish_status: 'archived',
+            is_active: false
+        })
+        .lt('valid_until', dateStr)
+        .or('publish_status.neq.archived,is_active.eq.true');
 
     if (error) {
-        console.error('❌ Error deleting old campaigns:', error.message);
+        console.error('❌ Error archiving old campaigns:', error.message);
     } else {
-        console.log(`✅ Successfully cleaned up ${count} expired campaigns.`);
+        console.log(`✅ Successfully archived ${count} expired campaigns.`);
     }
 }
 

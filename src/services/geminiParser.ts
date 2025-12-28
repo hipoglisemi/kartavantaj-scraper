@@ -80,7 +80,7 @@ async function callGeminiAPI(prompt: string, retryCount = 0): Promise<any> {
         lastRequestTime = Date.now();
 
         const response = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
             {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -107,6 +107,23 @@ async function callGeminiAPI(prompt: string, retryCount = 0): Promise<any> {
         }
 
         const data: any = await response.json();
+
+        // Log token usage for Caching verification
+        const usage = data.usageMetadata;
+        if (usage) {
+            const cached = usage.cachedContentTokenCount || 0;
+            const total = usage.totalTokenCount || 0;
+            const prompt = usage.promptTokenCount || 0;
+            const completion = usage.candidatesTokenCount || 0;
+            const percentage = prompt > 0 ? Math.round((cached / prompt) * 100) : 0;
+
+            if (cached > 0) {
+                console.log(`   ✨ CACHE HIT! ${cached}/${prompt} prompt tokens are cached (%${percentage} savings)`);
+            } else {
+                console.log(`   📊 AI Usage: ${total} tokens (Prompt: ${prompt}, Comp: ${completion}) - No cache hit yet.`);
+            }
+        }
+
         const responseText = data.candidates?.[0]?.content?.parts?.[0]?.text;
 
         if (!responseText) {
@@ -206,7 +223,7 @@ RETURN ONLY VALID JSON. NO MARKDOWN.
     const description = result.description || '';
 
     // STAGE 3: Bank Service Detection & "Genel" logic
-    const isBankService = /ekstre|nakit avans|kredi kartı başvurusu|limit artış|borç transferi|vade farkı|faizsiz taksit|borç erteleme|sigorta|başvuru|otomatik ödeme/i.test(title + ' ' + description);
+    const isBankService = /ekstre|nakit avans|kredi kartı başvurusu|limit artış|borç transferi|vade farkı|faizsiz taksit|borç erteleme|sigorta|başvuru|otomatik ödeme|vergi|eğitim|kira|harç|bağış/i.test(title + ' ' + description);
 
     // STAGE 4: Historical Assignment Lookup
     const { data: pastCampaign } = await supabase
@@ -295,6 +312,7 @@ async function cleanupBrands(brandInput: any, masterData: MasterData): Promise<{
         'yapı kredi', 'world', 'worldcard', 'worldpuan', 'puan', 'taksit', 'indirim',
         'kampanya', 'fırsat', 'troy', 'visa', 'mastercard', 'express', 'bonus', 'maximum',
         'axess', 'bankkart', 'paraf', 'card', 'kredi kartı', 'nakit', 'chippin', 'adios', 'play',
+        'wings', 'free', 'wings card', 'black', 'mil', 'chip-para', 'puan',
         ...masterData.banks.map(b => b.toLowerCase())
     ];
 
@@ -376,18 +394,21 @@ export async function parseWithGemini(html: string, url: string, sourceBank?: st
 
     const masterData = await fetchMasterData();
 
-    // STAGE 1: Full Parse
-    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-    const stage1Prompt = `
-CONTEXT: Today is ${today}. Use this date to resolve relative dates like "31 Aralık" to the correct year (${today.split('-')[0]}).
+    // Sort everything to ensure perfectly STABLE prefix for Caching
+    const sortedCategories = [...masterData.categories].sort().join(', ');
+    const sortedBanks = [...masterData.banks].sort().join(', ');
+    const sortedBrands = [...masterData.brands].sort((a, b) => a.localeCompare(b, 'tr')).slice(0, 300).join(', ');
 
+    const today = new Date().toISOString().split('T')[0];
+    // STAGE 1: Full Parse
+    const staticPrefix = `
 Extract campaign data into JSON matching this EXACT schema:
 
 {
   "title": "string (catchy campaign title, clear and concise)",
   "description": "string (Short, exciting, marketing-style summary. Max 2 sentences. Use 1-2 relevant emojis. Language: Turkish. Do NOT include boring legal terms.)",
   "conditions": ["string (List of important campaign terms, limits, and exclusions. Extract key rules as separate items.)"],
-  "category": "string (MUST be one of: ${masterData.categories.join(', ')})",
+  "category": "string (MUST be one of: ${sortedCategories})",
   "discount": "string (Use ONLY for installment info, e.g. '9 Taksit', '+3 Taksit'. FORMAT: '{Number} Taksit'. NEVER mention fees/interest.)",
   "earning": "string (Use ONLY for points/cashback. FORMAT: '{Amount} TL Puan' or '{Amount} TL İndirim' or '%{X} İndirim'. MAX 20 chars.)",
   "min_spend": number (CRITICAL: Total required spend. If title says '500 TL ve üzeri', min_spend is 500. Total sum if multiple steps.),
@@ -395,7 +416,7 @@ Extract campaign data into JSON matching this EXACT schema:
   "discount_percentage": number (If % based reward, e.g. 15 for %15),
   "valid_from": "YYYY-MM-DD",
   "valid_until": "YYYY-MM-DD",
-  "eligible_customers": ["array of strings (Simple card names: Axess, World, Platinum, etc. or Tüm Kartlar)"],
+  "eligible_customers": ["array of strings (Simple card names: Axess, Wings, etc. IMPORTANT: ALWAYS include 'TROY' if specifically mentioned for these cards, e.g. 'Axess TROY', 'Akbank Kart TROY')"],
   "eligible_cards_detail": {
     "variants": ["array of strings (ONLY if text mentions: Gold, Platinum, Business, Classic, etc.)"],
     "exclude": ["array of strings (ONLY if text says: X hariç, X geçerli değil)"],
@@ -410,99 +431,40 @@ Extract campaign data into JSON matching this EXACT schema:
     "constraints": ["array of strings (ONLY if conditions: Harcamadan önce katıl, etc.)"]
   } | null,
   "merchant": "string (Primary shop/brand name)",
-  "bank": "string (AUTHORITY: MUST be exactly '${sourceBank || 'the one in text'}'. Allowed: ${masterData.banks.join(', ')})",
-  "card_name": "string (AUTHORITY: MUST be exactly '${sourceCard || 'the one in text'}')",
-  "brand": ["array of strings (Official brand names)"],
+  "bank": "string (AUTHORITY: MUST be exactly as provided. Allowed: ${sortedBanks})",
+  "card_name": "string (AUTHORITY: MUST be exactly as provided.)",
+  "brand": ["array of strings (Official brand names. DO NOT include card names like Axess, Wings, Bonus or bank names.)"],
   "ai_enhanced": true
 }
 
+### 🛑 ULTRA-STRICT RULES:
 
-### 🛑 ULTRA-STRICT RULES (Failure is NOT an option):
-
-1. **BANK & CARD AUTHORITY (HIGHEST PRIORITY):**
-   - If sourceBank is provided as "${sourceBank}", you MUST use it. DO NOT hallucinate other banks.
-   - If sourceCard is provided as "${sourceCard}", you MUST use it. DO NOT change it to something else.
+1. **BANK & CARD AUTHORITY:**
+   - Use the provided Bank and Card Name. DO NOT hallucinate.
    
-2. **HARCAMA-KAZANÇ KURALLARI (ULTRA-STRICT):**
+2. **HARCAMA-KAZANÇ KURALLARI:**
+   - discount: SADECE "{N} Taksit" veya "+{N} Taksit"
+   - earning: Max 20 karakter. "{AMOUNT} TL Puan" | "{AMOUNT} TL İndirim" | "{AMOUNT} TL İade" | "%{P} İndirim"
+   - min_spend: Total required spend.
 
-   A) FORMAT KİLİDİ:
-      - discount: SADECE "{N} Taksit" veya "+{N} Taksit" (başka kelime YASAK)
-      - earning: Max 20 karakter
-        İzinli şablonlar: "{AMOUNT} TL Puan" | "{AMOUNT} TL İndirim" | "{AMOUNT} TL İade" | "%{P} İndirim"
-        Yasak kelimeler: Bonus, Chip-para, Worldpuan, Paracık, MaxiPuan, Axess, banka isimleri
-        → Yasak kelime varsa standarda çevir (örn: "500 Bonus" → "500 TL Puan")
-
-   B) TAKSİT KURALI:
-      - Taksit finansal kazanç DEĞİLDİR
-      - discount = "{N} Taksit" (örn: "9 Taksit")
-      - earning bundan etkilenmez
-      - min_spend taksite göre hesaplanmaz (null kalır)
-
-   C) MIN SPEND HESAPLAMA:
-      1. Açık threshold: "500 TL ve üzeri" → min_spend = 500
-      2. % + max_discount: min_spend = max_discount / (discount_percentage/100)
-         Örnek: %20 indirim + max 500 TL → min_spend = 2500
-      3. Oran + max: "Her 1000 TL'ye 100 TL puan" + max 500 TL
-         → gerekli_adet = 500/100 = 5
-         → min_spend = 5 * 1000 = 5000
-      4. Çoklu adım: "İlk A'ya X, sonraki B'ye Y"
-         → min_spend = A+B
-         → earning = X+Y (toplam kazanç)
-      5. Bilinmiyorsa: null (ASLA 0 yazma)
-
-   D) FAIL-SAFE:
-      IF earning_amount > min_spend:
-        - Önce "max_discount" olma ihtimalini kontrol et
-        - Hâlâ tutarsızsa: earning=null, min_spend=null, max_discount=null
-
-   E) ÖRNEKLER:
-      - "Peşin fiyatına 9 taksit" → discount="9 Taksit", earning=null, min_spend=null
-      - "500 TL ve üzeri alışverişlerde 100 Bonus" → earning="100 TL Puan", min_spend=500
-      - "9 taksit + 500 puan" → discount="9 Taksit", earning="500 TL Puan", min_spend=null
-      - "%20 indirim, maksimum 500 TL" → earning="%20 İndirim", discount_percentage=20, max_discount=500, min_spend=2500
-      - "İlk 500 TL'ye 50 puan, sonraki 500 TL'ye 100 puan" → earning="150 TL Puan", min_spend=1000
-   
 3. **BRAND MATCHING:**
-   - Match brands against: [${masterData.brands.slice(0, 50).join(', ')} ... and others].
-   - NORMALIZE: Remove ".com", "Market", "Notebook" suffixes. Use "Migros" instead of "Migros Sanal Market".
+   - Match brands against: [${sortedBrands} ... and others].
 
-4. **ELIGIBLE_CUSTOMERS & PARTICIPATION (Hibrit Yaklaşım):**
+4. **ABSOLUTE NO-HALLUCINATION RULE:**
+   - IF not explicitly found -> return null.
+   - NEVER use placeholder numbers.
+`;
 
-   A) ELIGIBLE_CUSTOMERS (Basit Array - Zorunlu):
-      - Format: ["Axess", "World", "Platinum"] (Title Case)
-      - "Tüm kartlar" → ["Tüm Kartlar"]
-      - Varyantları ayırma: "Axess Gold" → ["Axess"] (varyant detayı aşağıda)
-      - Belirtilmemiş → null
-   
-   B) ELIGIBLE_CARDS_DETAIL (Detaylı Obje - Opsiyonel):
-      SADECE ŞUNLAR VARSA DOLDUR:
-      - variants: ["Gold", "Platinum"] (metinde açıkça geçiyorsa)
-      - exclude: ["Classic"] (metinde "X hariç" varsa)
-      - notes: "Ticari kartlar hariç" (özel not varsa)
-      Hiçbiri yoksa: null
-   
-   C) PARTICIPATION_METHOD (Zorunlu String):
-       Buraya sadece 'SMS' gibi kısa ibareler DEĞİL, tam katılım talimatını yazın.
-       Format: Nereden + Nasıl + Ne zaman + Şartlar.
-       Örn: "Harcamadan önce Juzdan uygulamasından Hemen Katıla tıklayın veya MARKET yazıp 4566ya SMS gönderin."
-       Eğer katılım gerekmiyorsa: "Katılım Gerekmez" yazın.
-   
-   D) PARTICIPATION_DETAIL (Detaylı Obje - Opsiyonel):
-      SADECE ŞUNLAR VARSA DOLDUR:
-      - sms_to: "4442525" (SMS numarası varsa)
-      - sms_keyword: "KATIL" (SMS keyword varsa)
-      - wallet_name: "Jüzdan" (uygulama adı varsa)
-      - instructions: "KATIL yazıp 4442525'e gönderin" (detaylı talimat varsa)
-      - constraints: ["Harcamadan önce katılım gereklidir"] (şart varsa)
-      Hiçbiri yoksa: null
-      
-      KRİTİK: Eğer sms_to veya sms_keyword doluysa, participation_method = "SMS" olmalı!
-   
-5. **DATES:** If no year is mentioned, assume 2024/2025 based on current context. Format: YYYY-MM-DD.
+    const dynamicContent = `
+CONTEXT: Today is ${today}.
+SOURCE BANK AUTHORITY: ${sourceBank || 'Akbank'}
+SOURCE CARD AUTHORITY: ${sourceCard || 'Axess'}
 
 TEXT TO PROCESS:
 "${text.replace(/"/g, '\\"')}"
 `;
+
+    const stage1Prompt = staticPrefix + dynamicContent;
 
     console.log('   🤖 Stage 1: Full parse...');
     const stage1Data = await callGeminiAPI(stage1Prompt);
@@ -529,26 +491,33 @@ TEXT TO PROCESS:
     }
 
     // STAGE 2: Fill Missing Fields
-    console.log(`   🔄 Stage 2: Filling missing fields: ${missingFields.join(', ')}`);
+    console.log(`   🔄 Stage 2: Filling missing fields: ${missingFields.join(', ')} `);
 
     const stage2Prompt = `
-You are refining campaign data. The following fields are MISSING and MUST be extracted:
+You are refining campaign data.The following fields are MISSING and MUST be extracted:
 
 ${missingFields.map(field => `- ${field}`).join('\n')}
 
-Extract ONLY these missing fields from the text below. Return JSON with ONLY these fields.
+Extract ONLY these missing fields from the text below.Return JSON with ONLY these fields.
 
 FIELD DEFINITIONS:
-- valid_until: Campaign end date in YYYY-MM-DD format
-- eligible_customers: Array of eligible card types
-- min_spend: Minimum spending amount as a number
-- earning: Reward amount or description (e.g. "500 TL Puan")
-- category: MUST be EXACTLY one of: ${masterData.categories.join(', ')}
+    - valid_until: Campaign end date in YYYY - MM - DD format
+        - eligible_customers: Array of eligible card types
+            - min_spend: Minimum spending amount as a number
+                - earning: Reward amount or description(e.g. "500 TL Puan")
+                    - category: MUST be EXACTLY one of: ${masterData.categories.join(', ')}. If unsure, return "Diğer".
 - bank: MUST be EXACTLY one of: ${masterData.banks.join(', ')}. ${sourceBank ? `(Source: ${sourceBank})` : ''}
-- brand: Array of strings representing ALL mentioned merchants/brands.
+    - brand: Array of strings representing ALL mentioned merchants / brands.DO NOT include card names(Axess, Wings, etc.).
 
-TEXT:
-"${text.replace(/"/g, '\\"')}"
+### 🛑 CRITICAL: NO HALLUCINATION
+        - If the requested field is NOT clearly present in the text, return null. 
+        - If the requested field is NOT clearly present in the text, return null.
+- DO NOT invent numbers.
+- DO NOT use previous campaign values.
+- If it's JUST an installment campaign (taksit) and NO points/rewards mentioned, earning MUST be null.
+
+    TEXT:
+    "${text.replace(/"/g, '\\"')}"
 
 Return ONLY valid JSON with the missing fields, no markdown.
 `;
@@ -566,7 +535,7 @@ Return ONLY valid JSON with the missing fields, no markdown.
 
     // STAGE 3: Bank Service Detection & "Genel" logic
     // Detect keywords for bank-only services (not related to a specific merchant brand)
-    const isBankService = /ekstre|nakit avans|kredi kartı başvurusu|limit artış|borç transferi|vade farkı|faizsiz taksit|borç erteleme|sigorta|başvuru|otomatik ödeme/i.test(title + ' ' + description);
+    const isBankService = /ekstre|nakit avans|kredi kartı başvurusu|limit artış|borç transferi|vade farkı|faizsiz taksit|borç erteleme|sigorta|başvuru|otomatik ödeme|vergi|eğitim|kira|harç|bağış/i.test(title + ' ' + description);
 
     // STAGE 4: Historical Assignment Lookup (Learning Mechanism)
     // Check if this specific campaign was previously mapped to a brand by the user
@@ -616,6 +585,13 @@ Return ONLY valid JSON with the missing fields, no markdown.
         }
     }
 
+    // Category Validation: Ensure it's in the master list
+    const masterCategories = masterData.categories;
+    if (finalData.category && !masterCategories.includes(finalData.category)) {
+        console.warn(`   ⚠️  AI returned invalid category: "${finalData.category}", mapping to "Diğer"`);
+        finalData.category = 'Diğer';
+    }
+
     // Generate sector_slug from category
     if (finalData.category) {
         if (finalData.category === 'Diğer' || finalData.category === 'Genel') {
@@ -640,7 +616,7 @@ Return ONLY valid JSON with the missing fields, no markdown.
 
     const stillMissing = checkMissingFields(finalData);
     if (stillMissing.length > 0) {
-        console.warn(`   ⚠️  WARNING: Still missing critical fields: ${stillMissing.join(', ')}`);
+        console.warn(`   ⚠️  WARNING: Still missing critical fields: ${stillMissing.join(', ')} `);
         finalData.ai_parsing_incomplete = true;
         finalData.missing_fields = stillMissing;
     }
