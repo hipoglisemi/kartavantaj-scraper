@@ -9,13 +9,14 @@ const CRITICAL_FIELDS = ['valid_until', 'eligible_customers', 'min_spend', 'cate
 
 /**
  * Removes legal boilerplate and generic bank disclaimers from text.
- * Used to clean input before sending to AI for summarization.
+ * V11: Enhanced with aggressive cleaning for token optimization
  * IMPORTANT: This does NOT affect the original text stored in DB.
  */
 function cleanLegalText(text: string): string {
     if (!text) return "";
 
     const legalPatterns = [
+        // Existing patterns
         /banka[, ]+kampanyayı[, ]+durdurma(?:[\s,]+değiştirme)?[, ]+hakkını[, ]+saklı[, ]+tutar/gi,
         /yasal[, ]+mevzuat[, ]+gereği/gi,
         /6698[, ]+sayılı[, ]+kişisel[, ]+verilerin[, ]+korunması[, ]+kanunu/gi,
@@ -28,7 +29,22 @@ function cleanLegalText(text: string): string {
         /sorumluluk[, ]+kabul[, ]+edilmez/gi,
         /yasal[, ]+uyarı:?/gi,
         /tüm[, ]+hakları[, ]+saklıdır/gi,
-        /ayrıntılı[, ]+bilgi[, ]+için/gi
+        /ayrıntılı[, ]+bilgi[, ]+için/gi,
+
+        // V11: New aggressive patterns
+        /detaylı[, ]+bilgi[, ]+için[, ]+(?:www\.|https?:\/\/)[^\s]+/gi,
+        /kampanya[, ]+ile[, ]+ilgili[, ]+detaylı[, ]+bilgi[, ]+almak[, ]+için/gi,
+        /(?:akbank|yapı kredi|garanti|işbank)[, ]+a\.?ş\.?[, ]+tarafından/gi,
+        /(?:kampanya|promosyon)[, ]+(?:koşulları|şartları)[, ]+(?:ve|ile)[, ]+(?:detayları|bilgileri)/gi,
+        /bu[, ]+kampanya[, ]+(?:hakkında|ile ilgili)[, ]+(?:tüm|her türlü)/gi,
+        /(?:müşteri|kart)[, ]+(?:hizmetleri|temsilcisi)[, ]+ile[, ]+iletişime/gi,
+        /(?:0850|0212|0216)[, ]*\d{3}[, ]*\d{2}[, ]*\d{2}/gi, // Phone numbers
+        /www\.[a-z0-9\-]+\.com\.tr/gi, // URLs
+        /https?:\/\/[^\s]+/gi, // URLs
+        /(?:©|®|™)[, ]*\d{4}/gi, // Copyright symbols
+        /(?:akbank|yapı kredi|garanti)[, ]+(?:tüm|her türlü)[, ]+(?:hakkı|hakları)/gi,
+        /(?:kampanya|işlem)[, ]+(?:dönemi|süresi)[, ]+(?:boyunca|içerisinde)[, ]+(?:geçerli|uygulanır)/gi,
+        /(?:kredi|banka)[, ]+kartı[, ]+(?:sahipleri|müşterileri)[, ]+için/gi
     ];
 
     let cleaned = text;
@@ -36,8 +52,24 @@ function cleanLegalText(text: string): string {
         cleaned = cleaned.replace(pattern, '');
     });
 
-    // Remove empty lines and double spaces resulting from cleaning
-    return cleaned.replace(/\s+/g, ' ').trim();
+    // Remove sentences with excessive legal jargon
+    const legalSentences = [
+        /[^.!?]*(?:kvkk|bsmv|kkdf|mevzuat|yasal uyarı)[^.!?]*[.!?]/gi,
+        /[^.!?]*(?:sorumluluk kabul edilmez|hak saklıdır)[^.!?]*[.!?]/gi,
+        /[^.!?]*(?:tek taraflı olarak|önceden haber vermeksizin)[^.!?]*[.!?]/gi
+    ];
+
+    legalSentences.forEach(pattern => {
+        cleaned = cleaned.replace(pattern, '');
+    });
+
+    // Remove empty lines and excessive spaces
+    cleaned = cleaned.replace(/\s+/g, ' ').trim();
+
+    // Remove bullet points and list markers
+    cleaned = cleaned.replace(/^[\s]*[•\-\*]\s*/gm, '');
+
+    return cleaned;
 }
 
 interface MasterData {
@@ -284,32 +316,115 @@ RETURN ONLY VALID JSON. NO MARKDOWN.
 }
 
 /**
+ * V11: Smart Snippet Extraction
+ * Extracts keyword-rich sections instead of blind first-N-chars approach
+ * Prioritizes sections containing financial terms, amounts, dates
+ */
+function extractSmartSnippet(text: string, title: string, maxChars: number = 800): string {
+    if (!text) return "";
+
+    // Clean text first
+    const cleaned = cleanLegalText(text);
+
+    // If cleaned text is short enough, return it all
+    if (cleaned.length <= maxChars) return cleaned;
+
+    // Keywords that indicate important financial information
+    const keywords = [
+        // Financial amounts
+        /\d+[.,]?\d*\s*tl/gi,
+        /\d+[.,]?\d*\s*lira/gi,
+        /\d+\s*puan/gi,
+        /\d+\s*chip[\s-]?para/gi,
+        /\d+\s*taksit/gi,
+
+        // Spending requirements
+        /harcama/gi,
+        /alışveriş/gi,
+        /ödeme/gi,
+        /minimum/gi,
+        /en az/gi,
+        /ve üzeri/gi,
+
+        // Rewards
+        /kazanç/gi,
+        /kazanın/gi,
+        /kazan/gi,
+        /indirim/gi,
+        /hediye/gi,
+        /fırsat/gi,
+
+        // Dates
+        /\d{1,2}[\s-]+(?:ocak|şubat|mart|nisan|mayıs|haziran|temmuz|ağustos|eylül|ekim|kasım|aralık)/gi,
+        /\d{1,2}[.,]\d{1,2}[.,]\d{2,4}/gi,
+
+        // Participation
+        /katılım/gi,
+        /katıl/gi,
+        /juzdan/gi,
+        /sms/gi,
+        /mobil/gi
+    ];
+
+    // Split text into sentences
+    const sentences = cleaned.split(/[.!?]+/);
+
+    // Score each sentence based on keyword matches
+    const scoredSentences = sentences.map((sentence, index) => {
+        let score = 0;
+
+        // Check for keyword matches
+        keywords.forEach(keyword => {
+            const matches = sentence.match(keyword);
+            if (matches) score += matches.length;
+        });
+
+        // Boost score for sentences near the beginning (title context)
+        if (index < 3) score += 2;
+
+        // Boost score for sentences containing numbers
+        const numberMatches = sentence.match(/\d+/g);
+        if (numberMatches) score += numberMatches.length * 0.5;
+
+        return { sentence, score, index };
+    });
+
+    // Sort by score (descending)
+    scoredSentences.sort((a, b) => b.score - a.score);
+
+    // Build snippet from highest-scoring sentences
+    let snippet = title + ". ";
+    let currentLength = snippet.length;
+
+    for (const item of scoredSentences) {
+        const sentenceText = item.sentence.trim();
+        if (!sentenceText) continue;
+
+        const sentenceLength = sentenceText.length + 2; // +2 for ". "
+
+        if (currentLength + sentenceLength <= maxChars) {
+            snippet += sentenceText + ". ";
+            currentLength += sentenceLength;
+        }
+
+        if (currentLength >= maxChars * 0.9) break; // Stop at 90% capacity
+    }
+
+    return snippet.trim();
+}
+
+/**
  * Phase 8: Math Referee
- * Resolves conflicts or fills missing math fields using a 400-token-min snippet.
+ * V11: Now uses smart snippet extraction
+ * Resolves conflicts or fills missing math fields using keyword-rich snippet.
  */
 export async function parseMathReferee(
     title: string,
     content: string,
     existingData: any
 ): Promise<any> {
-    // 1. Extract token-min snippet (Title + 400 chars around numbers/keywords)
-    const textCleaner = (t: string) => t.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
-    const cleanContent = textCleaner(content);
-
-    // Strategy: Find first number or spend/reward keyword and take 400 chars from there
-    const keywords = ['harcama', 'puan', 'indirim', 'chip-para', 'bonus', 'taksit', 'tl', '%'];
-    let startIndex = 0;
-    const lowerContent = cleanContent.toLowerCase();
-
-    for (const kw of keywords) {
-        const idx = lowerContent.indexOf(kw);
-        if (idx !== -1) {
-            startIndex = Math.max(0, idx - 50);
-            break;
-        }
-    }
-
-    const snippet = cleanContent.substring(startIndex, startIndex + 800);
+    // V11: Use smart snippet extraction instead of blind substring
+    const snippet = extractSmartSnippet(content, title, 800);
 
     console.log(`   🤖 Math Referee: Analyzing snippet for "${title.substring(0, 30)}..."`);
 
