@@ -447,10 +447,13 @@ Extract campaign data into JSON matching this EXACT schema:
    - discount: SADECE "{N} Taksit" veya "+{N} Taksit"
    - earning: Max 20 karakter. "{AMOUNT} TL Puan" | "{AMOUNT} TL İndirim" | "{AMOUNT} TL İade" | "%{P} İndirim"
    - min_spend: KESİNLİKLE KAZANCI ELDE ETMEK İÇİN GEREKEN "TOPLAM" HARCAMA.
-     - Örnek 1: "4 kez 1.000 TL harcamaya" -> min_spend = 4000 (1000 x 4)
-     - Örnek 2: "İkinci 500 TL harcamaya" -> min_spend = 1000 (500 + 500)
-     - Örnek 3: "Tek seferde 2.000 TL" -> min_spend = 2000
-     - Örnek 4: "Her 2000 TL'ye 100 TL chip-para, toplam 500 TL" -> min_spend = 10000 (Max kazanç 500 / 100 = 5 kere. 5 x 2000 = 10000)
+     - 🚨 KRİTİK KURAL (KATLANAN HARCAMA): Metinde "her X TL harcamaya Y TL, toplam Z TL" veya "X TL ve üzeri her harcamaya..." kalıbı varsa, SAKIN "X" değerini yazma!
+       - FORMÜL: (Toplam Kazanç / Sefer Başı Kazanç) * Sefer Başı Harcama
+       - ÖRNEK: "5.000 TL ve üzeri her harcamaya 50 TL, toplam 300 TL" -> (300/50)*5000 = 30.000 TL. (Cevap 5000 DEĞİL, 30.000 OLMALI!)
+     - Örnek 2 (Yüzdeli İndirim): "%10 indirim, toplam 200 TL iade" -> (200 / 0.10) = 2000 TL.
+     - Örnek 3 (Tek Sefer): "Tek seferde 2.000 TL harcamanıza" -> 2000 TL.
+     - Örnek 4 (X. Harcama): "İkinci 500 TL harcamaya" -> 1000 TL (500+500).
+     - ÖNEMLİ: Eğer metinde "Tek seferde en az 500 TL harcama yapmanız gerekir" yazsa BİLE, yukarıdaki hesaplama daha yüksek bir tutar çıkarıyorsa ONU YAZ.
    - max_discount: Kampanyadan kazanılabilecek EN YÜKSEK (TOPLAM) tutar. Eğer "toplamda 500 TL" diyorsa, bu değer 500 olmalı.
 
 3. **KATILIM ŞEKLİ (participation_method):**

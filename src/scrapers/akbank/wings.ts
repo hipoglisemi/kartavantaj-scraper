@@ -48,7 +48,7 @@ async function runWingsScraper() {
             console.log(`   📄 Fetching page ${page}...`);
             const response = await axios.get(CARD_CONFIG.listApiUrl, {
                 headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                     'Referer': CARD_CONFIG.refererUrl,
                     'X-Requested-With': 'XMLHttpRequest'
                 },
@@ -102,21 +102,54 @@ async function runWingsScraper() {
 
     const campaignsToScrape = allCampaigns.filter(c => urlsToProcess.includes(c.url));
 
-    // 3. Launch Browser
+    // 3. Launch Browser with Stealth Mode
     const browser = await puppeteer.launch({
         headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox']
+        args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-blink-features=AutomationControlled',
+            '--disable-features=IsolateOrigins,site-per-process',
+            '--disable-web-security'
+        ]
     });
     const browserPage = await browser.newPage();
-    await browserPage.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36');
+
+    // Set realistic viewport
+    await browserPage.setViewport({ width: 1920, height: 1080 });
+
+    // Set comprehensive headers
+    await browserPage.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+    await browserPage.setExtraHTTPHeaders({
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+        'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Connection': 'keep-alive',
+        'Upgrade-Insecure-Requests': '1',
+        'Sec-Fetch-Dest': 'document',
+        'Sec-Fetch-Mode': 'navigate',
+        'Sec-Fetch-Site': 'none',
+        'Cache-Control': 'max-age=0'
+    });
+
+    // Remove webdriver flag
+    await browserPage.evaluateOnNewDocument(() => {
+        // @ts-ignore - navigator is available in browser context
+        Object.defineProperty(navigator, 'webdriver', {
+            get: () => false,
+        });
+    });
 
     // 4. Process Details
     for (const item of campaignsToScrape) {
         console.log(`\n   🔍 Fetching: ${item.url}`);
 
         try {
-            await browserPage.goto(item.url, { waitUntil: 'domcontentloaded', timeout: 30000 });
-            await sleep(1500); // Wait for content load
+            // Add random delay before navigation (human-like behavior)
+            await sleep(1000 + Math.random() * 1000);
+
+            await browserPage.goto(item.url, { waitUntil: 'domcontentloaded', timeout: 45000 });
+            await sleep(3000 + Math.random() * 1000); // Wait for content load with jitter
             const html = await browserPage.content();
 
             // Extract high-res image via Puppeteer
@@ -210,7 +243,7 @@ async function runWingsScraper() {
             console.error(`      ❌ Error processing: ${err.message}`);
         }
 
-        await sleep(1500);
+        await sleep(3000 + Math.random() * 2000); // Longer delay between campaigns
     }
 
     await browser.close();
