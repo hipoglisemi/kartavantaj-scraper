@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import * as dotenv from 'dotenv';
-import { parseWithGemini } from '../src/services/geminiParser';
+import { parseWithGemini, parseSurgical } from '../src/services/geminiParser';
 
 dotenv.config();
 
