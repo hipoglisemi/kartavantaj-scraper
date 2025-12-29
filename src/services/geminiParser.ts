@@ -453,6 +453,12 @@ Extract campaign data into JSON matching this EXACT schema:
      - 🚨 YÜZDE + MAX LİMİT KURALI: Eğer kampanyada yüzde bazlı kazanç VAR ve max_discount değeri VARSA, earning formatı MUTLAKA "%{P} (max {Y}TL)" olmalı.
        - ÖRNEK: "%10 indirim, maksimum 200 TL" metni → earning: "%10 (max 200TL)", max_discount: 200
        - ÖRNEK: "%5 chip-para, toplam 500 TL'ye kadar" → earning: "%5 (max 500TL)", max_discount: 500
+     - 🚨 PUAN vs İNDİRİM AYIRIMI:
+       - "Puan", "Chip-Para", "Worldpuan", "Mil" içeriyorsa → "{AMOUNT} TL Puan"
+       - "İndirim", "İade", "Cashback" içeriyorsa → "{AMOUNT} TL İndirim"
+       - ÖRNEK: "300 TL chip-para" → earning: "300 TL Puan"
+       - ÖRNEK: "500 TL indirim" → earning: "500 TL İndirim"
+       - DİKKAT: Puan ≠ İndirim! Doğru terimi kullan.
    - min_spend: KESİNLİKLE KAZANCI ELDE ETMEK İÇİN GEREKEN "TOPLAM" HARCAMA.
      - 🚨 KRİTİK KURAL (KATLANAN HARCAMA): Metinde "her X TL harcamaya Y TL, toplam Z TL" veya "X TL ve üzeri her harcamaya..." kalıbı varsa, SAKIN "X" değerini yazma!
        - FORMÜL: (Toplam Kazanç / Sefer Başı Kazanç) * Sefer Başı Harcama
