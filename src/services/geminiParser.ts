@@ -413,7 +413,10 @@ Extract campaign data into JSON matching this EXACT schema:
   "discount": "string (Use ONLY for installment info, e.g. '9 Taksit', '+3 Taksit'. FORMAT: '{Number} Taksit'. NEVER mention fees/interest.)",
   "earning": "string (Reward info. PRIORITY: '{Amount} TL Puan' | '{Amount} TL İndirim' | '%{X} (max {Y}TL)' for percentage campaigns with limits | '%{X} İndirim' for unlimited percentage. IF NO NUMERIC REWARD: Create a 2-3 word benefit summary like 'Uçak Bileti', 'Özel Menü', 'Kargo Bedava'. MAX 30 chars. NEVER RETURN NULL OR EMPTY.)",
   "min_spend": number (CRITICAL: Total required spend. If title says '500 TL ve üzeri', min_spend is 500. Total sum if multiple steps.),
+  "min_spend_currency": "string (Currency code: TRY, USD, EUR, GBP. Default: TRY. ONLY change if campaign explicitly mentions foreign currency like 'yurt dışı', 'dolar', 'USD', 'euro')",
   "max_discount": number (Max reward limit per customer/campaign),
+  "max_discount_currency": "string (Currency code: TRY, USD, EUR, GBP. Default: TRY. ONLY change if reward is in foreign currency)",
+  "earning_currency": "string (Currency code: TRY, USD, EUR, GBP. Default: TRY. Match the currency mentioned in earning)",
   "discount_percentage": number (If % based reward, e.g. 15 for %15),
   "valid_from": "YYYY-MM-DD",
   "valid_from": "YYYY-MM-DD",
@@ -459,6 +462,13 @@ Extract campaign data into JSON matching this EXACT schema:
      - Örnek 4 (X. Harcama): "İkinci 500 TL harcamaya" -> 1000 TL (500+500).
      - ÖNEMLİ: Eğer metinde "Tek seferde en az 500 TL harcama yapmanız gerekir" yazsa BİLE, yukarıdaki hesaplama daha yüksek bir tutar çıkarıyorsa ONU YAZ.
    - max_discount: Kampanyadan kazanılabilecek EN YÜKSEK (TOPLAM) tutar. Eğer "toplamda 500 TL" diyorsa, bu değer 500 olmalı.
+   - 🚨 PARA BİRİMİ TESPİTİ (CURRENCY DETECTION):
+     - Varsayılan: TRY (Türk Lirası)
+     - Eğer kampanya "yurt dışı", "abroad", "foreign", "dolar", "USD", "euro", "EUR" içeriyorsa:
+       - min_spend_currency, max_discount_currency, earning_currency alanlarını uygun para birimine çevir
+       - ÖRNEK: "Yurt dışı harcamalarınıza 15 USD indirim" → earning_currency: "USD", max_discount_currency: "USD"
+       - ÖRNEK: "Duty Free'de %15 indirim" → earning_currency: "USD" (yurt dışı olduğu için)
+     - DİKKAT: Para birimi değiştiğinde min_spend hesaplaması da o para biriminde olmalı!
 
 3. **KATILIM ŞEKLİ (participation_method):**
    - **TAM VE NET TALİMAT.** Ne çok kısa ne çok uzun.
