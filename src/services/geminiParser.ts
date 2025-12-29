@@ -223,7 +223,8 @@ RETURN ONLY VALID JSON. NO MARKDOWN.
     const description = result.description || '';
 
     // STAGE 3: Bank Service Detection & "Genel" logic
-    const isBankService = /ekstre|nakit avans|kredi kartı başvurusu|limit artış|borç transferi|vade farkı|faizsiz taksit|borç erteleme|sigorta|başvuru|otomatik ödeme|vergi|eğitim|kira|harç|bağış/i.test(title + ' ' + description);
+    // Refined: Only identify as bank service if it's strictly banking and lacks merchant markers.
+    const isBankService = /ekstre|nakit avans|kredi kartı başvurusu|limit artış|borç transferi|borç erteleme|başvuru|otomatik ödeme|kira|harç|bağış/i.test(title + ' ' + description);
 
     // STAGE 4: Historical Assignment Lookup
     const { data: pastCampaign } = await supabase
@@ -559,7 +560,7 @@ Return ONLY valid JSON with the missing fields, no markdown.
 
     // STAGE 3: Bank Service Detection & "Genel" logic
     // Detect keywords for bank-only services (not related to a specific merchant brand)
-    const isBankService = /ekstre|nakit avans|kredi kartı başvurusu|limit artış|borç transferi|vade farkı|faizsiz taksit|borç erteleme|sigorta|başvuru|otomatik ödeme|vergi|eğitim|kira|harç|bağış/i.test(title + ' ' + description);
+    const isBankService = /ekstre|nakit avans|kredi kartı başvurusu|limit artış|borç transferi|borç erteleme|başvuru|otomatik ödeme|kira|harç|bağış/i.test(title + ' ' + description);
 
     // STAGE 4: Historical Assignment Lookup (Learning Mechanism)
     // Check if this specific campaign was previously mapped to a brand by the user
@@ -626,12 +627,14 @@ Return ONLY valid JSON with the missing fields, no markdown.
     if (finalData.category) {
         if (finalData.category === 'Diğer' || finalData.category === 'Genel') {
             const titleLower = title.toLowerCase();
-            if (titleLower.includes('market') || titleLower.includes('gıda')) finalData.category = 'Market';
-            else if (titleLower.includes('giyim') || titleLower.includes('moda')) finalData.category = 'Giyim & Moda';
-            else if (titleLower.includes('akaryakıt') || titleLower.includes('benzin') || titleLower.includes('otopet') || titleLower.includes('yakıt')) finalData.category = 'Yakıt';
-            else if (titleLower.includes('restoran') || titleLower.includes('yemek')) finalData.category = 'Restoran & Kafe';
-            else if (titleLower.includes('seyahat') || titleLower.includes('tatil') || titleLower.includes('uçak') || titleLower.includes('otel')) finalData.category = 'Seyahat';
+            if (titleLower.includes('market') || titleLower.includes('gıda')) finalData.category = 'Market & Gıda';
+            else if (titleLower.includes('giyim') || titleLower.includes('moda') || titleLower.includes('aksesuar')) finalData.category = 'Giyim & Aksesuar';
+            else if (titleLower.includes('akaryakıt') || titleLower.includes('benzin') || titleLower.includes('otopet') || titleLower.includes('yakıt')) finalData.category = 'Akaryakıt';
+            else if (titleLower.includes('restoran') || titleLower.includes('yemek') || titleLower.includes('kafe')) finalData.category = 'Restoran & Kafe';
+            else if (titleLower.includes('seyahat') || titleLower.includes('tatil') || titleLower.includes('uçak') || titleLower.includes('otel') || titleLower.includes('konaklama')) finalData.category = 'Turizm & Konaklama';
             else if (titleLower.includes('elektronik') || titleLower.includes('teknoloji')) finalData.category = 'Elektronik';
+            else if (titleLower.includes('mobilya') || titleLower.includes('dekorasyon')) finalData.category = 'Mobilya & Dekorasyon';
+            else if (titleLower.includes('kozmetik') || titleLower.includes('sağlık')) finalData.category = 'Kozmetik & Sağlık';
         }
         finalData.sector_slug = generateSectorSlug(finalData.category);
     } else {
