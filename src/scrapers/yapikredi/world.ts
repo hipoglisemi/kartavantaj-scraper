@@ -86,7 +86,13 @@ export async function runWorldScraper() {
                 }
 
                 allCampaigns.push(...activeItems);
-                console.log(`   ✅ Found ${items.length} campaigns (${activeItems.length} active) on page ${page}.`);
+                console.log(`   ✅ Found ${items.length} campaigns (${activeItems.length} active) on page ${page}. Total so far: ${allCampaigns.length}`);
+
+                if (allCampaigns.length >= limit) {
+                    page = -1;
+                    break;
+                }
+
                 page++;
                 await sleep(1000);
                 break; // Success, exit retry loop
@@ -96,46 +102,43 @@ export async function runWorldScraper() {
 
                 if (retries >= maxRetries) {
                     console.error(`   ❌ Failed after ${maxRetries} attempts. Moving to next step.`);
-                    page = -1; // Flag to stop outer loop
+                    page = -1;
                     break;
                 }
-
-                // Exponential backoff: 2s, 4s, 8s
                 const backoffTime = Math.pow(2, retries) * 1000;
-                console.log(`   ⏳ Waiting ${backoffTime / 1000}s before retry...`);
                 await sleep(backoffTime);
             }
         }
-        if (page === -1) break; // Break outer loop
+        if (page === -1) break;
     }
 
-    console.log(`\n🎉 Total ${allCampaigns.length} active campaigns collected.`);
+    const campaignsToProcessRaw = allCampaigns.slice(0, limit);
+    console.log(`\n🎉 Found ${campaignsToProcessRaw.length} campaigns via API.`);
 
     // 2. Optimize: Check what needs processing
-    console.log(`\n   🔍 Optimizing campaign list via database check...`);
-    const allUrls = allCampaigns
+    console.log(`   🔍 Optimizing campaign list via database check...`);
+    const allUrls = campaignsToProcessRaw
         .map(item => item.Url ? new URL(item.Url, CARD_CONFIG.baseUrl).toString() : null)
         .filter(url => url !== null) as string[];
 
     const { urlsToProcess } = await optimizeCampaigns(allUrls, normalizedCard);
 
     // Filter campaigns based on optimization result
-    const campaignMap = new Map(allCampaigns.map(c => [new URL(c.Url, CARD_CONFIG.baseUrl).toString(), c]));
+    const campaignMap = new Map(campaignsToProcessRaw.map(c => [new URL(c.Url, CARD_CONFIG.baseUrl).toString(), c]));
 
-    // Apply limit to the list of URLs needing processing
-    const campaignsToProcess = urlsToProcess
-        .slice(0, limit)
+    const finalItems = urlsToProcess
         .map(url => campaignMap.get(url))
         .filter(Boolean);
 
-    console.log(`   🚀 Processing details for ${campaignsToProcess.length} campaigns (skipping ${allCampaigns.length - campaignsToProcess.length} complete/existing)...\n`);
+    console.log(`   🚀 Processing details for ${finalItems.length} campaigns (skipping ${campaignsToProcessRaw.length - finalItems.length} complete/existing)...\n`);
 
     // 3. Process Details
-    for (const item of campaignsToProcess) {
+    for (const item of finalItems) {
         const urlPart = item.Url;
         if (!urlPart) continue;
 
         const fullUrl = new URL(urlPart, CARD_CONFIG.baseUrl).toString();
+        // Fix Image URL: remove query params that might break things or be unnecessary
         let imageUrl = item.ImageUrl ? new URL(item.ImageUrl.split('?')[0], CARD_CONFIG.baseUrl).toString() : '';
         const title = item.SpotTitle || item.PageTitle || item.Title || 'Başlıksız Kampanya';
 
@@ -152,6 +155,7 @@ export async function runWorldScraper() {
             // AI Parsing
             let campaignData;
             if (isAIEnabled) {
+                // @ts-ignore
                 campaignData = await parseWithGemini(html, fullUrl, normalizedBank, CARD_CONFIG.cardName);
             } else {
                 campaignData = {
@@ -178,12 +182,13 @@ export async function runWorldScraper() {
                 }
 
                 // STRICT ASSIGNMENT - Prevent AI misclassification
-                campaignData.title = title;
+                campaignData.title = title; // Use API title as authority
                 campaignData.card_name = normalizedCard;
                 campaignData.bank = normalizedBank;
                 campaignData.url = fullUrl;
                 campaignData.reference_url = fullUrl;
-                campaignData.image = imageUrl;
+                if (imageUrl) campaignData.image = imageUrl; // Only override if API provided image
+
                 campaignData.category = campaignData.category || 'Diğer';
                 campaignData.sector_slug = generateSectorSlug(campaignData.category);
                 syncEarningAndDiscount(campaignData);
@@ -193,6 +198,7 @@ export async function runWorldScraper() {
 
                 // Set default min_spend
                 campaignData.min_spend = campaignData.min_spend || 0;
+
                 // Lookup and assign IDs from master tables
                 const ids = await lookupIDs(
                     campaignData.bank,
@@ -200,13 +206,27 @@ export async function runWorldScraper() {
                     campaignData.brand,
                     campaignData.sector_slug
                 );
-                Object.assign(campaignData, ids);
+
+                if (ids) {
+                    console.log(`      🆔 Debug IDs: ${JSON.stringify(ids)}`);
+                    Object.assign(campaignData, ids);
+                    // TEMP FIX: Force English slug for testing
+                    if (campaignData.bank_id === 'yapı-kredi') {
+                        campaignData.bank_id = 'yapi-kredi';
+                        console.log('      🔧 Override bank_id to yapi-kredi');
+                    }
+                }
+
                 // Assign badge based on campaign content
                 const badge = assignBadge(campaignData);
                 campaignData.badge_text = badge.text;
                 campaignData.badge_color = badge.color;
+
                 // Mark as generic if it's a non-brand-specific campaign
-                markGenericBrand(campaignData);
+                const isGeneric = markGenericBrand(campaignData);
+                if (isGeneric) {
+                    console.log(`      🏷️  Generic campaign detected: "${campaignData.title}"`);
+                }
 
                 // Upsert to Supabase
                 const { error } = await supabase

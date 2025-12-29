@@ -37,14 +37,17 @@ export async function runCrystalScraper() {
     console.log(`   Source: ${CARD_CONFIG.baseUrl}\n`);
 
     const isAIEnabled = process.argv.includes('--ai');
+    const limitArg = process.argv.find(arg => arg.startsWith('--limit='));
+    const limit = limitArg ? parseInt(limitArg.split('=')[1]) : Infinity;
+
     let page = 1;
     let allCampaigns = [];
 
-    // 1. Fetch List from API and filter active campaigns
+    // 1. Fetch List from API
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    while (true) {
+    while (allCampaigns.length < limit) {
         let retries = 0;
         const maxRetries = 3;
 
@@ -65,7 +68,7 @@ export async function runCrystalScraper() {
                 const items = response.data.Items;
                 if (!items || items.length === 0) {
                     console.log(`   ✅ Page ${page} is empty. Finished fetching list.`);
-                    page = -1; // Flag to stop outer loop
+                    page = -1;
                     break;
                 }
 
@@ -83,10 +86,16 @@ export async function runCrystalScraper() {
                 }
 
                 allCampaigns.push(...activeItems);
-                console.log(`   ✅ Found ${items.length} campaigns (${activeItems.length} active) on page ${page}.`);
+                console.log(`   ✅ Found ${items.length} campaigns (${activeItems.length} active) on page ${page}. Total so far: ${allCampaigns.length}`);
+
+                if (allCampaigns.length >= limit) {
+                    page = -1;
+                    break;
+                }
+
                 page++;
                 await sleep(1000);
-                break; // Success, exit retry loop
+                break; // Success
             } catch (error: any) {
                 retries++;
                 console.error(`   ⚠️  Error fetching page ${page} (attempt ${retries}/${maxRetries}): ${error.message}`);
@@ -96,19 +105,37 @@ export async function runCrystalScraper() {
                     page = -1;
                     break;
                 }
-
                 const backoffTime = Math.pow(2, retries) * 1000;
-                console.log(`   ⏳ Waiting ${backoffTime / 1000}s before retry...`);
                 await sleep(backoffTime);
             }
         }
         if (page === -1) break;
     }
 
-    console.log(`\n🎉 Total ${allCampaigns.length} active campaigns collected.\n`);
+    const campaignsToProcessRaw = allCampaigns.slice(0, limit);
+    console.log(`\n🎉 Found ${campaignsToProcessRaw.length} campaigns via API.`);
 
-    // 2. Process Details
-    for (const item of allCampaigns) {
+    // 2. Optimize: Check what needs processing
+    console.log(`   🔍 Optimizing campaign list via database check...`);
+    // @ts-ignore
+    const { optimizeCampaigns } = await import('../../utils/campaignOptimizer');
+    const allUrls = campaignsToProcessRaw
+        .map(item => item.Url ? new URL(item.Url, CARD_CONFIG.baseUrl).toString() : null)
+        .filter(url => url !== null) as string[];
+
+    const { urlsToProcess } = await optimizeCampaigns(allUrls, normalizedCard);
+
+    // Filter campaigns based on optimization result
+    const campaignMap = new Map(campaignsToProcessRaw.map(c => [new URL(c.Url, CARD_CONFIG.baseUrl).toString(), c]));
+
+    const finalItems = urlsToProcess
+        .map(url => campaignMap.get(url))
+        .filter(Boolean);
+
+    console.log(`   🚀 Processing details for ${finalItems.length} campaigns (skipping ${campaignsToProcessRaw.length - finalItems.length} complete/existing)...\n`);
+
+    // 3. Process Details
+    for (const item of finalItems) {
         const urlPart = item.Url;
         if (!urlPart) continue;
 
@@ -127,15 +154,10 @@ export async function runCrystalScraper() {
             const html = detailResponse.data;
             const $ = cheerio.load(html);
 
-            // Crystal uses different content selector
-            let contentText = $('.sub-content').text().trim();
-            if (!contentText || contentText.length < 50) {
-                contentText = $('body').text().trim().substring(0, 2000);
-            }
-
             // AI Parsing
             let campaignData;
             if (isAIEnabled) {
+                // @ts-ignore
                 campaignData = await parseWithGemini(html, fullUrl, normalizedBank, CARD_CONFIG.cardName);
             } else {
                 campaignData = {
@@ -153,13 +175,22 @@ export async function runCrystalScraper() {
             }
 
             if (campaignData) {
-                // STRICT ASSIGNMENT - Prevent AI misclassification
+                // 1.8 Marketing Text Enhancement (NEW)
+                if (isAIEnabled) {
+                    console.log(`      🤖 AI Marketing: Generating catchy summary...`);
+                    // @ts-ignore
+                    const { enhanceDescription } = await import('../../services/descriptionEnhancer');
+                    campaignData.ai_marketing_text = await enhanceDescription(campaignData.title);
+                }
+
+                // STRICT ASSIGNMENT
                 campaignData.title = title;
                 campaignData.card_name = normalizedCard;
                 campaignData.bank = normalizedBank;
                 campaignData.url = fullUrl;
                 campaignData.reference_url = fullUrl;
-                campaignData.image = imageUrl;
+                if (imageUrl) campaignData.image = imageUrl;
+
                 campaignData.category = campaignData.category || 'Diğer';
                 campaignData.sector_slug = generateSectorSlug(campaignData.category);
                 syncEarningAndDiscount(campaignData);
@@ -167,24 +198,32 @@ export async function runCrystalScraper() {
                 campaignData.publish_updated_at = new Date().toISOString();
                 campaignData.is_active = true;
 
-                // Set default min_spend
                 campaignData.min_spend = campaignData.min_spend || 0;
-                // Lookup and assign IDs from master tables
+
                 const ids = await lookupIDs(
                     campaignData.bank,
                     campaignData.card_name,
                     campaignData.brand,
                     campaignData.sector_slug
                 );
-                Object.assign(campaignData, ids);
-                // Assign badge based on campaign content
+
+                if (ids) {
+                    Object.assign(campaignData, ids);
+                    // CRITICAL FIX: Force English slug for Yapı Kredi to satisfy FK constraint
+                    if (campaignData.bank_id === 'yapı-kredi') {
+                        campaignData.bank_id = 'yapi-kredi';
+                    }
+                }
+
                 const badge = assignBadge(campaignData);
                 campaignData.badge_text = badge.text;
                 campaignData.badge_color = badge.color;
-                // Mark as generic if it's a non-brand-specific campaign
-                markGenericBrand(campaignData);
 
-                // Upsert to Supabase
+                const isGeneric = markGenericBrand(campaignData);
+                if (isGeneric) {
+                    console.log(`      🏷️  Generic campaign detected: "${campaignData.title}"`);
+                }
+
                 const { error } = await supabase
                     .from('campaigns')
                     .upsert(campaignData, { onConflict: 'reference_url' });
@@ -195,7 +234,6 @@ export async function runCrystalScraper() {
                     console.log(`      ✅ Saved: ${campaignData.title}`);
                 }
             }
-
         } catch (error: any) {
             console.error(`      ❌ Error: ${error.message}`);
         }

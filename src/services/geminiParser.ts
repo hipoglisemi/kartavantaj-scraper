@@ -585,7 +585,13 @@ Return ONLY valid JSON with the missing fields, no markdown.
         console.log(`   🧠 Learning: Previously mapped to brand "${pastCampaign.brand}" for "${title}"`);
         finalData.brand = pastCampaign.brand;
         finalData.brand_suggestion = ''; // Use historical data, clear suggestion
-        finalData.category = pastCampaign.category || finalData.category;
+
+        // Validate learned category against master list logic
+        if (pastCampaign.category && masterData.categories.includes(pastCampaign.category)) {
+            finalData.category = pastCampaign.category;
+        } else if (pastCampaign.category) {
+            console.log(`   ⚠️  Ignoring invalid learned category: "${pastCampaign.category}"`);
+        }
     }
 
     // 🔗 Generic Brand Fallback (Genel) if still empty
