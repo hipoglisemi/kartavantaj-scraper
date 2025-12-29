@@ -1,77 +1,111 @@
-
 import { supabase } from '../src/utils/supabase';
-import { parseSurgical } from '../src/services/geminiParser';
-import { syncEarningAndDiscount } from '../src/utils/dataFixer';
 
-async function fixEmptyEarnings() {
-    console.log('🔍 Boş kazanç alanına sahip kampanyalar taranıyor...');
+/**
+ * Fix campaigns with empty earning field
+ * For installment campaigns: copy discount to earning
+ * For others: set to "Özel Fırsat"
+ */
 
-    // EARNING, DISCOUNT veya BADGE_TEXT boş olan aktif kampanyaları bul
-    const { data: campaigns, error: fetchError } = await supabase
+async function fixEmptyEarnings(dryRun: boolean = true) {
+    console.log('🔍 Boş earning alanlarını düzeltiyorum...\n');
+
+    const { data: campaigns, error } = await supabase
         .from('campaigns')
-        .select('id, title, description, conditions, category, bank, url, earning, discount, badge_text')
-        .or('earning.is.null,earning.eq."",earning.eq."-",badge_text.is.null,badge_text.eq."-",badge_text.eq.""')
-        .limit(50); // Batch size
+        .select('id, title, earning, discount, category')
+        .or('earning.is.null,earning.eq.')
+        .order('id', { ascending: false });
 
-    if (fetchError) {
-        console.error('❌ Kampanyalar çekilirken hata:', fetchError.message);
+    if (error) {
+        console.error('❌ Error:', error);
         return;
     }
 
-    if (!campaigns || campaigns.length === 0) {
-        console.log('✅ Düzelecek kampanya bulunamadı.');
+    if (campaigns.length === 0) {
+        console.log('✅ Tüm kampanyalarda earning alanı dolu!\n');
         return;
     }
 
-    console.log(`🚀 ${campaigns.length} kampanya düzeltilecek...`);
+    console.log(`📊 ${campaigns.length} kampanya düzeltilecek\n`);
 
-    for (const campaign of campaigns) {
-        try {
-            console.log(`   🛠  İşleniyor: "${campaign.title}" (${campaign.id})`);
+    const fixes: Array<{ id: number, title: string, newEarning: string }> = [];
 
-            // Context için başlık ve açıklamayı birleştir
-            const mockHtml = `
-                <h1>${campaign.title}</h1>
-                <p>${campaign.description}</p>
-                <ul>${(campaign.conditions || []).map((c: string) => `<li>${c}</li>`).join('')}</ul>
-            `;
+    for (const c of campaigns) {
+        let newEarning = '';
 
-            // Surgical Parse ile sadece earning ve discount alanlarını tekrar çek
-            const fixedData = await parseSurgical(
-                mockHtml,
-                campaign,
-                ['earning', 'discount'],
-                campaign.url || '',
-                campaign.bank
-            );
+        // If discount has taksit info, use it
+        if (c.discount && c.discount.includes('Taksit')) {
+            newEarning = c.discount;
+        } else {
+            // Default fallback
+            newEarning = 'Özel Fırsat';
+        }
 
-            // Sync ile badge_text'i de güncelle
-            const finalData = syncEarningAndDiscount(fixedData);
+        fixes.push({
+            id: c.id,
+            title: c.title,
+            newEarning
+        });
+    }
 
-            // DB Güncelleme
-            const { error: updateError } = await supabase
-                .from('campaigns')
-                .update({
-                    earning: finalData.earning,
-                    discount: finalData.discount,
-                    badge_text: finalData.badge_text,
-                    badge_color: finalData.badge_color,
-                    auto_corrected: true
-                })
-                .eq('id', campaign.id);
+    // Print preview
+    console.log('═'.repeat(60));
+    console.log('DÜZELTMELER');
+    console.log('═'.repeat(60));
 
-            if (updateError) {
-                console.error(`      ❌ Güncelleme hatası (${campaign.id}):`, updateError.message);
-            } else {
-                console.log(`      ✅ Başarıyla güncellendi: [${finalData.earning || finalData.discount || '-'}]`);
-            }
+    fixes.forEach((fix, idx) => {
+        console.log(`\n${idx + 1}. ID ${fix.id}: ${fix.title.substring(0, 50)}`);
+        console.log(`   Yeni earning: "${fix.newEarning}"`);
+    });
 
-        } catch (err) {
-            console.error(`      💥 İşlem hatası (${campaign.id}):`, err);
+    if (dryRun) {
+        console.log('\n🔒 DRY RUN MODE - No changes made to database.');
+        console.log('   Run with --execute flag to apply fixes.\n');
+        return;
+    }
+
+    // Execute fixes
+    console.log('\n💾 Applying fixes...\n');
+    let successCount = 0;
+    let errorCount = 0;
+
+    for (const fix of fixes) {
+        const { error } = await supabase
+            .from('campaigns')
+            .update({ earning: fix.newEarning })
+            .eq('id', fix.id);
+
+        if (error) {
+            console.error(`❌ Error fixing ID ${fix.id}:`, error.message);
+            errorCount++;
+        } else {
+            console.log(`✅ Fixed ID ${fix.id}`);
+            successCount++;
         }
     }
 
-    console.log('🏁 İşlem tamamlandı.');
+    console.log(`\n═'.repeat(60)`);
+    console.log(`✅ Fix complete!`);
+    console.log(`   Success: ${successCount}`);
+    console.log(`   Errors: ${errorCount}`);
+    console.log('═'.repeat(60));
 }
 
-fixEmptyEarnings();
+// Parse command line arguments
+const args = process.argv.slice(2);
+const dryRun = !args.includes('--execute');
+
+if (dryRun) {
+    console.log('🔍 Running in DRY RUN mode...\n');
+} else {
+    console.log('⚡ Running in EXECUTE mode...\n');
+}
+
+fixEmptyEarnings(dryRun)
+    .then(() => {
+        console.log('\n✨ Script finished.');
+        process.exit(0);
+    })
+    .catch(err => {
+        console.error('\n❌ Fatal error:', err);
+        process.exit(1);
+    });

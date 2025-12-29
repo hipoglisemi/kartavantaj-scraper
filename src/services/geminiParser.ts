@@ -411,8 +411,8 @@ Extract campaign data into JSON matching this EXACT schema:
   "conditions": ["string (List of important campaign terms, limits, and exclusions. Extract key rules as separate items.)"],
   "category": "string (MUST be one of: ${sortedCategories})",
   "discount": "string (Use ONLY for installment info, e.g. '9 Taksit', '+3 Taksit'. FORMAT: '{Number} Taksit'. NEVER mention fees/interest.)",
-  "earning": "string (Reward info. PRIORITY: '{Amount} TL Puan' | '{Amount} TL İndirim' | '%{X} (max {Y}TL)' for percentage campaigns with limits | '%{X} İndirim' for unlimited percentage. IF NO NUMERIC REWARD: Create a 2-3 word benefit summary like 'Uçak Bileti', 'Özel Menü', 'Kargo Bedava'. MAX 30 chars. NEVER RETURN NULL OR EMPTY.)",
-  "min_spend": number (CRITICAL: Total required spend. If title says '500 TL ve üzeri', min_spend is 500. Total sum if multiple steps.),
+  "earning": "string (🚨 ASLA BOŞ BIRAKMA! Reward info. PRIORITY: '{Amount} TL Puan' | '{Amount} TL İndirim' | '%{X} (max {Y}TL)' for percentage campaigns with limits | '%{X} İndirim' for unlimited percentage. IF NO NUMERIC REWARD: Create a 2-3 word benefit summary like 'Uçak Bileti', 'Özel Menü', 'Kargo Bedava', 'Taksit İmkanı', 'Özel Fırsat'. MAX 30 chars. NEVER RETURN NULL, EMPTY STRING, OR UNDEFINED!)",
+  "min_spend": number (CRITICAL: Total required spend. If title says '500 TL ve üzeri', min_spend is 500. Total sum if multiple steps. 🚨 ARALIK KURALI: Eğer "1.000 TL - 20.000 TL arası" gibi aralık varsa, min_spend = MİNİMUM değer (1.000), ASLA maksimum değer (20.000) KULLANMA!),
   "min_spend_currency": "string (Currency code: TRY, USD, EUR, GBP. Default: TRY. ONLY change if campaign explicitly mentions foreign currency like 'yurt dışı', 'dolar', 'USD', 'euro')",
   "max_discount": number (Max reward limit per customer/campaign),
   "max_discount_currency": "string (Currency code: TRY, USD, EUR, GBP. Default: TRY. ONLY change if reward is in foreign currency)",
@@ -459,7 +459,18 @@ Extract campaign data into JSON matching this EXACT schema:
        - ÖRNEK: "300 TL chip-para" → earning: "300 TL Puan"
        - ÖRNEK: "500 TL indirim" → earning: "500 TL İndirim"
        - DİKKAT: Puan ≠ İndirim! Doğru terimi kullan.
+     - 🚨 KATLANAN KAMPANYA - TOPLAM KAZANÇ KURALI:
+       - "Her X TL'ye Y TL, toplam Z TL" formatında kampanyalarda:
+       - earning: "Z TL Puan" veya "Z TL İndirim" (TOPLAM kazanç, işlem başı Y değil!)
+       - max_discount: Z (TOPLAM kazanç)
+       - ÖRNEK: "Her 100 TL'ye 20 TL, toplam 100 TL puan" → earning: "100 TL Puan" (20 DEĞİL!)
+       - ÖRNEK: "Her 500 TL'ye 50 TL, toplam 300 TL indirim" → earning: "300 TL İndirim" (50 DEĞİL!)
    - min_spend: KESİNLİKLE KAZANCI ELDE ETMEK İÇİN GEREKEN "TOPLAM" HARCAMA.
+     - 🚨 ARALIK KURALI (MIN-MAX): 
+       - Eğer "1.000 TL - 20.000 TL arası" gibi aralık varsa:
+       - min_spend = MİNİMUM değer (1.000)
+       - ASLA maksimum değer (20.000) KULLANMA!
+       - ÖRNEK: "2.000 TL - 500.000 TL arası 3 taksit" → min_spend: 2000 (500000 DEĞİL!)
      - 🚨 KRİTİK KURAL (KATLANAN HARCAMA): Metinde "her X TL harcamaya Y TL, toplam Z TL" veya "X TL ve üzeri her harcamaya..." kalıbı varsa, SAKIN "X" değerini yazma!
        - FORMÜL: (Toplam Kazanç / Sefer Başı Kazanç) * Sefer Başı Harcama
        - ÖRNEK: "5.000 TL ve üzeri her harcamaya 50 TL, toplam 300 TL" -> (300/50)*5000 = 30.000 TL. (Cevap 5000 DEĞİL, 30.000 OLMALI!)
