@@ -6,6 +6,10 @@ import { parseWithGemini } from '../../services/geminiParser';
 import { generateSectorSlug } from '../../utils/slugify';
 import { syncEarningAndDiscount } from '../../utils/dataFixer';
 import { normalizeBankName, normalizeCardName } from '../../utils/bankMapper';
+import { optimizeCampaigns } from '../../utils/campaignOptimizer';
+import { lookupIDs } from '../../utils/idMapper';
+import { assignBadge } from '../../services/badgeAssigner';
+import { markGenericBrand } from '../../utils/genericDetector';
 
 dotenv.config();
 
@@ -26,15 +30,22 @@ const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 async function runBusinessScraper() {
     const normalizedBank = await normalizeBankName(CARD_CONFIG.bankName);
     const normalizedCard = await normalizeCardName(normalizedBank, CARD_CONFIG.cardName);
-    console.log(`\n💳 ${CARD_CONFIG.name} (${normalizedBank} - ${normalizedCard})\n`);
+    console.log(`\n💳 Starting ${CARD_CONFIG.name} Card Scraper...`);
+    console.log(`   Bank: ${normalizedBank}`);
+    console.log(`   Card: ${normalizedCard}`);
+    console.log(`   Source: ${CARD_CONFIG.baseUrl}\n`);
+
     const isAIEnabled = process.argv.includes('--ai');
     const limitArg = process.argv.find(arg => arg.startsWith('--limit='));
     const limit = limitArg ? parseInt(limitArg.split('=')[1]) : Infinity;
 
-    let page = 1, allCampaigns: any[] = [];
+    let page = 1;
+    let allCampaigns: any[] = [];
 
+    // 1. Fetch List from API
     while (allCampaigns.length < limit) {
         try {
+            console.log(`   📄 Fetching page ${page}...`);
             const response = await axios.get(CARD_CONFIG.listApiUrl, {
                 headers: {
                     'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -43,41 +54,71 @@ async function runBusinessScraper() {
                 },
                 params: { ...CARD_CONFIG.apiParams, 'page': page.toString() }
             });
+
             const html = response.data;
-            if (!html || html.trim() === '') break;
+            if (!html || html.trim() === '') {
+                console.log(`   ✅ Page ${page} is empty. Finished.`);
+                break;
+            }
+
             const $ = cheerio.load(html);
             const links = $('.campaingBox a.dLink');
-            if (links.length === 0) break;
 
-            let newCount = 0;
+            if (links.length === 0) {
+                console.log(`   ✅ No more campaigns. Finished.`);
+                break;
+            }
+
+            let foundNew = false;
             links.each((_: number, el: any) => {
                 const href = $(el).attr('href');
-                if (href && !allCampaigns.some((c: any) => c.href === href) && allCampaigns.length < limit) {
-                    allCampaigns.push({ href });
-                    newCount++;
+                if (href && allCampaigns.length < limit) {
+                    if (!allCampaigns.some((c: any) => c.href === href)) {
+                        allCampaigns.push({ href });
+                        foundNew = true;
+                    }
                 }
             });
-            console.log(`   ✅ Page ${page}: ${links.length} campaigns (${newCount} new). Total: ${allCampaigns.length}`);
+
+            console.log(`   ✅ Found ${links.length} campaigns on page ${page}. Total so far: ${allCampaigns.length}`);
+
+            if (!foundNew && page > 1) {
+                console.log('   ⚠️ No new campaigns. Stopping.');
+                break;
+            }
 
             if (allCampaigns.length >= limit) break;
 
             page++;
             await sleep(1000);
-
-            // Limit pages to prevent infinite loops if something goes wrong, but usually it breaks on empty html or no links
-            if (page > 10) break;
         } catch (error: any) {
-            console.error(`   ❌ ${error.message}`);
+            console.error(`   ❌ Error: ${error.message}`);
             break;
         }
     }
 
     const campaignsToProcess = allCampaigns.slice(0, limit);
-    console.log(`\n🎉 ${campaignsToProcess.length} campaigns. Processing...\n`);
+    console.log(`\n🎉 Found ${campaignsToProcess.length} campaigns via scraping.`);
 
-    for (const item of campaignsToProcess) {
+    // 2. Optimize
+    const allUrls = campaignsToProcess.map(c => new URL(c.href, CARD_CONFIG.baseUrl).toString());
+
+    console.log(`   🔍 Optimizing campaign list via database check...`);
+    const { urlsToProcess } = await optimizeCampaigns(allUrls, normalizedCard);
+
+    // Filter original objects based on optimization
+    const finalItems = campaignsToProcess.filter(c => {
+        const fullUrl = new URL(c.href, CARD_CONFIG.baseUrl).toString();
+        return urlsToProcess.includes(fullUrl);
+    });
+
+    console.log(`   🚀 Processing details for ${finalItems.length} campaigns (skipping ${campaignsToProcess.length - finalItems.length} complete/existing)...\n`);
+
+    // 3. Process Details
+    for (const item of finalItems) {
         const fullUrl = new URL(item.href, CARD_CONFIG.baseUrl).toString();
-        console.log(`   🔍 ${fullUrl}`);
+        console.log(`   🔍 Fetching: ${fullUrl}`);
+
         try {
             const detailResponse = await axios.get(fullUrl, {
                 headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' }
@@ -92,20 +133,23 @@ async function runBusinessScraper() {
 
             let campaignData;
             if (isAIEnabled) {
+                console.log(`   🤖 Stage 1: Full parse...`);
                 campaignData = await parseWithGemini(html, fullUrl, normalizedBank, normalizedCard);
+                console.log(`   ✅ Stage 1: Complete (all fields extracted)`);
             } else {
                 campaignData = {
                     title,
                     description: title,
                     category: 'Diğer',
                     sector_slug: 'diger',
-                    card_name: CARD_CONFIG.cardName,
+                    card_name: normalizedCard,
                     bank: normalizedBank,
                     url: fullUrl,
                     reference_url: fullUrl,
                     is_active: true
                 };
             }
+
             if (campaignData) {
                 // 1.8 Marketing Text Enhancement (NEW)
                 if (isAIEnabled) {
@@ -116,7 +160,9 @@ async function runBusinessScraper() {
                 }
 
                 campaignData.title = title;
-                campaignData.image = imageUrl;
+                if (!campaignData.image && imageUrl) {
+                    campaignData.image = imageUrl;
+                }
                 campaignData.card_name = normalizedCard;
                 campaignData.bank = normalizedBank;
                 campaignData.url = fullUrl;
@@ -138,24 +184,38 @@ async function runBusinessScraper() {
                     }
                 }
 
-                // Ensure min_spend has a default value to prevent DB constraint errors
                 campaignData.min_spend = campaignData.min_spend || 0;
+
+                // Lookup and assign IDs from master tables
+                const ids = await lookupIDs(
+                    campaignData.bank,
+                    campaignData.card_name,
+                    campaignData.brand,
+                    campaignData.sector_slug
+                );
+                console.log(`      🆔 Debug IDs:`, JSON.stringify(ids));
+                Object.assign(campaignData, ids);
+
+                // Assign badge based on campaign content
+                const badge = assignBadge(campaignData);
+                campaignData.badge_text = badge.text;
+                campaignData.badge_color = badge.color;
+                // Mark as generic if it's a non-brand-specific campaign
+                markGenericBrand(campaignData);
 
                 const { error } = await supabase.from('campaigns').upsert(campaignData, { onConflict: 'reference_url' });
                 if (error) {
-                    console.error(`      ❌ Upsert Error for "${title}":`, JSON.stringify(error, null, 2));
-                    console.error(`      Start of Failed Payload:`, JSON.stringify(campaignData, null, 2).substring(0, 200) + '...');
+                    console.error(`      ❌ Error: ${error.message}`);
                 } else {
-                    console.log(`      🖼️  Image: ${imageUrl}`);
                     console.log(`      ✅ Saved: ${title}`);
                 }
             }
         } catch (error: any) {
-            console.error(`      ❌ ${error.message}`);
+            console.error(`      ❌ Error: ${error.message}`);
         }
         await sleep(1500);
     }
-    console.log(`\n✅ Done!`);
+    console.log(`\n✅ ${CARD_CONFIG.name} scraper completed!`);
 }
 
 runBusinessScraper();

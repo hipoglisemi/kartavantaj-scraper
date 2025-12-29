@@ -2,75 +2,11 @@ import * as dotenv from 'dotenv';
 import { generateSectorSlug } from '../utils/slugify';
 import { syncEarningAndDiscount } from '../utils/dataFixer';
 import { supabase } from '../utils/supabase';
+import { cleanCampaignText } from '../utils/textCleaner';
 
 const GEMINI_API_KEY = process.env.GOOGLE_GEMINI_KEY!;
 
 const CRITICAL_FIELDS = ['valid_until', 'eligible_customers', 'min_spend', 'category', 'bank', 'earning'];
-
-/**
- * Removes legal boilerplate and generic bank disclaimers from text.
- * V11: Enhanced with aggressive cleaning for token optimization
- * IMPORTANT: This does NOT affect the original text stored in DB.
- */
-function cleanLegalText(text: string): string {
-    if (!text) return "";
-
-    const legalPatterns = [
-        // Existing patterns
-        /banka[, ]+kampanyayı[, ]+durdurma(?:[\s,]+değiştirme)?[, ]+hakkını[, ]+saklı[, ]+tutar/gi,
-        /yasal[, ]+mevzuat[, ]+gereği/gi,
-        /6698[, ]+sayılı[, ]+kişisel[, ]+verilerin[, ]+korunması[, ]+kanunu/gi,
-        /kvkk[, ]+kapsamında/gi,
-        /vergi[, ]+ve[, ]+fonlar[, ]+dahildir/gi,
-        /bsmv[, ]+ve[, ]+kkdf/gi,
-        /bankamız[, ]+tek[, ]+taraflı[, ]+olarak/gi,
-        /kampanya[, ]+koşullarında[, ]+değişiklik[, ]+yapma[, ]+hakkı/gi,
-        /önceden[, ]+haber[, ]+vermeksizin/gi,
-        /sorumluluk[, ]+kabul[, ]+edilmez/gi,
-        /yasal[, ]+uyarı:?/gi,
-        /tüm[, ]+hakları[, ]+saklıdır/gi,
-        /ayrıntılı[, ]+bilgi[, ]+için/gi,
-
-        // V11: New aggressive patterns
-        /detaylı[, ]+bilgi[, ]+için[, ]+(?:www\.|https?:\/\/)[^\s]+/gi,
-        /kampanya[, ]+ile[, ]+ilgili[, ]+detaylı[, ]+bilgi[, ]+almak[, ]+için/gi,
-        /(?:akbank|yapı kredi|garanti|işbank)[, ]+a\.?ş\.?[, ]+tarafından/gi,
-        /(?:kampanya|promosyon)[, ]+(?:koşulları|şartları)[, ]+(?:ve|ile)[, ]+(?:detayları|bilgileri)/gi,
-        /bu[, ]+kampanya[, ]+(?:hakkında|ile ilgili)[, ]+(?:tüm|her türlü)/gi,
-        /(?:müşteri|kart)[, ]+(?:hizmetleri|temsilcisi)[, ]+ile[, ]+iletişime/gi,
-        /(?:0850|0212|0216)[, ]*\d{3}[, ]*\d{2}[, ]*\d{2}/gi, // Phone numbers
-        /www\.[a-z0-9\-]+\.com\.tr/gi, // URLs
-        /https?:\/\/[^\s]+/gi, // URLs
-        /(?:©|®|™)[, ]*\d{4}/gi, // Copyright symbols
-        /(?:akbank|yapı kredi|garanti)[, ]+(?:tüm|her türlü)[, ]+(?:hakkı|hakları)/gi,
-        /(?:kampanya|işlem)[, ]+(?:dönemi|süresi)[, ]+(?:boyunca|içerisinde)[, ]+(?:geçerli|uygulanır)/gi,
-        /(?:kredi|banka)[, ]+kartı[, ]+(?:sahipleri|müşterileri)[, ]+için/gi
-    ];
-
-    let cleaned = text;
-    legalPatterns.forEach(pattern => {
-        cleaned = cleaned.replace(pattern, '');
-    });
-
-    // Remove sentences with excessive legal jargon
-    const legalSentences = [
-        /[^.!?]*(?:kvkk|bsmv|kkdf|mevzuat|yasal uyarı)[^.!?]*[.!?]/gi,
-        /[^.!?]*(?:sorumluluk kabul edilmez|hak saklıdır)[^.!?]*[.!?]/gi,
-        /[^.!?]*(?:tek taraflı olarak|önceden haber vermeksizin)[^.!?]*[.!?]/gi
-    ];
-
-    legalSentences.forEach(pattern => {
-        cleaned = cleaned.replace(pattern, '');
-    });
-
-    // Remove empty lines and excessive spaces
-    cleaned = cleaned.replace(/\s+/g, ' ').trim();
-
-    // Remove bullet points and list markers
-    cleaned = cleaned.replace(/^[\s]*[•\-\*]\s*/gm, '');
-
-    return cleaned;
-}
 
 interface MasterData {
     categories: string[];
@@ -123,22 +59,14 @@ async function fetchMasterData(): Promise<MasterData> {
 
 // Rate limiting: Track last request time
 let lastRequestTime = 0;
-const MIN_REQUEST_INTERVAL_MS = 10000;
-
-// SAFETY SWITCH: Set to true to completely block AI calls during testing
-const DISABLE_AI_COMPLETELY = false; // AI ENABLED for backend scraper
+const MIN_REQUEST_INTERVAL_MS = 1000; // Minimum 1 second between requests (unlimited RPM with 2.5-flash)
 
 // Sleep utility
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 async function callGeminiAPI(prompt: string, retryCount = 0): Promise<any> {
     const MAX_RETRIES = 3;
-    const BASE_DELAY_MS = 2000;
-
-    if (DISABLE_AI_COMPLETELY) {
-        console.log('   🛑 AI BLOCKED: DISABLE_AI_COMPLETELY is set to true.');
-        throw new Error('AI_CALL_BLOCKED');
-    }
+    const BASE_DELAY_MS = 2000; // Start with 2 seconds
 
     try {
         // Rate limiting: Ensure minimum interval between requests
@@ -152,7 +80,7 @@ async function callGeminiAPI(prompt: string, retryCount = 0): Promise<any> {
         lastRequestTime = Date.now();
 
         const response = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}`,
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
             {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -179,6 +107,23 @@ async function callGeminiAPI(prompt: string, retryCount = 0): Promise<any> {
         }
 
         const data: any = await response.json();
+
+        // Log token usage for Caching verification
+        const usage = data.usageMetadata;
+        if (usage) {
+            const cached = usage.cachedContentTokenCount || 0;
+            const total = usage.totalTokenCount || 0;
+            const prompt = usage.promptTokenCount || 0;
+            const completion = usage.candidatesTokenCount || 0;
+            const percentage = prompt > 0 ? Math.round((cached / prompt) * 100) : 0;
+
+            if (cached > 0) {
+                console.log(`   ✨ CACHE HIT! ${cached}/${prompt} prompt tokens are cached (%${percentage} savings)`);
+            } else {
+                console.log(`   📊 AI Usage: ${total} tokens (Prompt: ${prompt}, Comp: ${completion}) - No cache hit yet.`);
+            }
+        }
+
         const responseText = data.candidates?.[0]?.content?.parts?.[0]?.text;
 
         if (!responseText) {
@@ -278,7 +223,7 @@ RETURN ONLY VALID JSON. NO MARKDOWN.
     const description = result.description || '';
 
     // STAGE 3: Bank Service Detection & "Genel" logic
-    const isBankService = /ekstre|nakit avans|kredi kartı başvurusu|limit artış|borç transferi|vade farkı|faizsiz taksit|borç erteleme|sigorta|başvuru|otomatik ödeme/i.test(title + ' ' + description);
+    const isBankService = /ekstre|nakit avans|kredi kartı başvurusu|limit artış|borç transferi|vade farkı|faizsiz taksit|borç erteleme|sigorta|başvuru|otomatik ödeme|vergi|eğitim|kira|harç|bağış/i.test(title + ' ' + description);
 
     // STAGE 4: Historical Assignment Lookup
     const { data: pastCampaign } = await supabase
@@ -291,8 +236,8 @@ RETURN ONLY VALID JSON. NO MARKDOWN.
         .limit(1)
         .maybeSingle();
 
-    // Strict Brand Cleanup (with AI validation for unknown brands)
-    const brandCleaned = await cleanupBrands(result.brand, masterData, description);
+    // Strict Brand Cleanup
+    const brandCleaned = await cleanupBrands(result.brand, masterData);
     result.brand = brandCleaned.brand;
     result.brand_suggestion = brandCleaned.suggestion;
 
@@ -313,263 +258,6 @@ RETURN ONLY VALID JSON. NO MARKDOWN.
     }
 
     return result;
-}
-
-/**
- * V11: Smart Snippet Extraction
- * Extracts keyword-rich sections instead of blind first-N-chars approach
- * Prioritizes sections containing financial terms, amounts, dates
- */
-function extractSmartSnippet(text: string, title: string, maxChars: number = 800): string {
-    if (!text) return "";
-
-    // Clean text first
-    const cleaned = cleanLegalText(text);
-
-    // If cleaned text is short enough, return it all
-    if (cleaned.length <= maxChars) return cleaned;
-
-    // Keywords that indicate important financial information
-    const keywords = [
-        // Financial amounts
-        /\d+[.,]?\d*\s*tl/gi,
-        /\d+[.,]?\d*\s*lira/gi,
-        /\d+\s*puan/gi,
-        /\d+\s*chip[\s-]?para/gi,
-        /\d+\s*taksit/gi,
-
-        // Spending requirements
-        /harcama/gi,
-        /alışveriş/gi,
-        /ödeme/gi,
-        /minimum/gi,
-        /en az/gi,
-        /ve üzeri/gi,
-
-        // Rewards
-        /kazanç/gi,
-        /kazanın/gi,
-        /kazan/gi,
-        /indirim/gi,
-        /hediye/gi,
-        /fırsat/gi,
-
-        // Dates
-        /\d{1,2}[\s-]+(?:ocak|şubat|mart|nisan|mayıs|haziran|temmuz|ağustos|eylül|ekim|kasım|aralık)/gi,
-        /\d{1,2}[.,]\d{1,2}[.,]\d{2,4}/gi,
-
-        // Participation
-        /katılım/gi,
-        /katıl/gi,
-        /juzdan/gi,
-        /sms/gi,
-        /mobil/gi
-    ];
-
-    // Split text into sentences
-    const sentences = cleaned.split(/[.!?]+/);
-
-    // Score each sentence based on keyword matches
-    const scoredSentences = sentences.map((sentence, index) => {
-        let score = 0;
-
-        // Check for keyword matches
-        keywords.forEach(keyword => {
-            const matches = sentence.match(keyword);
-            if (matches) score += matches.length;
-        });
-
-        // Boost score for sentences near the beginning (title context)
-        if (index < 3) score += 2;
-
-        // Boost score for sentences containing numbers
-        const numberMatches = sentence.match(/\d+/g);
-        if (numberMatches) score += numberMatches.length * 0.5;
-
-        return { sentence, score, index };
-    });
-
-    // Sort by score (descending)
-    scoredSentences.sort((a, b) => b.score - a.score);
-
-    // Build snippet from highest-scoring sentences
-    let snippet = title + ". ";
-    let currentLength = snippet.length;
-
-    for (const item of scoredSentences) {
-        const sentenceText = item.sentence.trim();
-        if (!sentenceText) continue;
-
-        const sentenceLength = sentenceText.length + 2; // +2 for ". "
-
-        if (currentLength + sentenceLength <= maxChars) {
-            snippet += sentenceText + ". ";
-            currentLength += sentenceLength;
-        }
-
-        if (currentLength >= maxChars * 0.9) break; // Stop at 90% capacity
-    }
-
-    return snippet.trim();
-}
-
-/**
- * Phase 8: Math Referee
- * V11: Now uses smart snippet extraction
- * Resolves conflicts or fills missing math fields using keyword-rich snippet.
- */
-export async function parseMathReferee(
-    title: string,
-    content: string,
-    existingData: any
-): Promise<any> {
-    // V11: Use smart snippet extraction instead of blind substring
-    const snippet = extractSmartSnippet(content, title, 800);
-
-    console.log(`   🤖 Math Referee: Analyzing snippet for "${title.substring(0, 30)}..."`);
-
-    const mathPrompt = `
-You are a FINANCIAL CAMPAIGN PARSER.
-Your task is to READ, CALCULATE, and STRUCTURE technical data with MATHEMATICAL ACCURACY.
-
-Analyze this bank campaign snippet and extract EXACT financial math.
-TITLE: ${title}
-SNIPPET: "${snippet}"
-
-### 🛑 ULTRA-STRICT RULES:
-1. **MIN_SPEND DETECTION**: 
-   - Look for phrases like: "harcama yapın", "alışveriş yapın", "TL ve üzeri", "minimum", "en az"
-   - This is the SPENDING REQUIREMENT, NOT the reward
-   - Example: "3.000 TL ve üzeri harcama" → min_spend: 3000
-   - Example: "250 TL kazanın" → This is reward, NOT min_spend
-   - If no spending requirement found, set min_spend: 0
-
-2. **REWARD DETECTION**:
-   - Look for phrases like: "kazanın", "puan", "chip-para", "indirim", "taksit"
-   - This is what customer GETS, not what they spend
-   - Example: "250 TL chip-para kazanın" → reward_text: "250 TL Puan"
-
-3. **REWARD TEXT**: Format: "100 TL Puan" or "9 Taksit". Max 20 chars.
-4. **CONDITIONS**: List ALL reward tiers and important constraints "barem barem". NO legal jargon.
-5. **NATURAL LANGUAGE**: Participation method must be a natural Turkish sentence.
-6. **RETURN ALL TEXT IN TURKISH.**
-
-### 📊 MATHEMATICAL CALCULATION (CRITICAL):
-You MUST calculate the spending required to achieve the MAXIMUM POSSIBLE REWARD.
-
-**Tier Rules:**
-- If campaign has tiers (baremli): Identify ALL tiers
-- For EACH tier, calculate required minimum spend
-- The global min_spend MUST equal the tier that gives MAXIMUM reward
-- Example: "1.000 TL harcamaya 100 TL" → Calculate: min_spend = 10.000 (for max reward)
-- Example: "45.000 – 69.999 TL → 2.500 TL" → min_spend = 45.000 for that tier
-- If "ve üzeri": Use stated minimum as min_spend
-- NEVER include excluded amounts (e.g. "ön ödeme hariç")
-
-**"Varan/Kadar" Expressions:**
-- If campaign uses "…e varan" or "…e kadar"
-- Calculate the MAXIMUM THEORETICAL value
-- Mark reward_type as "max_possible"
-
-**Maximum Total Gain:**
-- If text includes: "toplamda en fazla", "bir müşteri en çok", "üst limit"
-- Return max_total_gain: number
-
-**Confidence Flag (MANDATORY):**
-- "high" → clear numeric tiers, no ambiguity
-- "medium" → rounding or indirect math
-- "low" → ambiguous or unclear reward math
-- If math_confidence = "low", mark for review
-
-**Sanity Rules:**
-- min_spend MUST be >= max_total_gain
-- reward MUST NOT exceed realistic limits
-- If rules conflict, choose SAFETY and LOWER confidence
-
-RETURN JSON ONLY:
-{
-  "min_spend": number,
-  "reward_text": "string",
-  "installment_text": "string|null",
-  "max_total_gain": number,
-  "conditions": ["string"],
-  "participation_method": "string",
-  "eligible_cards": ["string"],
-  "reward_type": "puan" | "indirim" | "taksit",
-  "reward_value": number,
-  "reward_unit": "tl" | "%" | "taksit",
-  "math_confidence": "high" | "medium" | "low"
-}
-`;
-
-    try {
-        const aiMath = await callGeminiAPI(mathPrompt);
-
-        // Normalize AI response to match our internal suggestion structure
-        return {
-            min_spend: aiMath.min_spend || aiMath.min_spend_total || 0,
-            earning: aiMath.reward_text || (aiMath.reward_value ? `${aiMath.reward_value} ${aiMath.reward_unit?.toUpperCase() || ''} ${aiMath.reward_type || ''}`.trim() : null),
-            max_discount: aiMath.max_total_gain || aiMath.max_discount || 0,
-            discount: aiMath.installment_text || (aiMath.reward_type === 'taksit' ? `${aiMath.reward_value} Taksit` : null),
-            reward_type: aiMath.reward_type,
-            reward_value: aiMath.reward_value,
-            reward_unit: aiMath.reward_unit,
-            conditions: aiMath.conditions || [],
-            participation_method: aiMath.participation_method,
-            eligible_cards: aiMath.eligible_cards
-        };
-    } catch (err) {
-        console.error('   ❌ Math Referee failed:', err);
-        return null; // Don't crash the whole process
-    }
-}
-
-/**
- * Minimal Reward Type Labeler (Snippet AI) - Ultra-min token usage
- */
-export async function parseRewardTypeAI(title: string, cleanText: string): Promise<any> {
-    const snippet = (title + ' ' + cleanText).substring(0, 400);
-
-    console.log(`   🤖 Reward Labeler: Analyzing snippet for type classification...`);
-
-    const prompt = `
-You are a FINANCIAL CAMPAIGN PARSER.
-Categorize this campaign and extract operational metadata.
-
-### RULES:
-- **participation_method**: Natural Turkish sentence.
-- **conditions**: List specific reward tiers barem-barem.
-- **marketing_summary**: 1 catchy line focused on benefit.
-- **RETURN ALL TEXT IN TURKISH.**
-
-Return ONLY JSON:
-{
-  "reward_type": "points" | "cashback" | "discount" | "installment" | "mixed" | "unknown",
-  "reward_text": "string",
-  "participation_method": "string",
-  "eligible_cards": ["string"],
-  "conditions": ["string"],
-  "ai_marketing_text": "string",
-  "perk_text": "string|null",
-  "coupon_code": "string|null"
-}
-TITLE: ${title}
-TEXT: "${snippet}"
-`;
-
-    try {
-        const result = await callGeminiAPI(prompt);
-        return {
-            ...result,
-            participation_method: result.participation_method,
-            eligible_cards: result.eligible_cards || [],
-            conditions: result.conditions || [],
-            ai_marketing_text: result.ai_marketing_text
-        };
-    } catch (err) {
-        console.error('   ❌ Reward Labeler failed:', err);
-        return null;
-    }
 }
 
 /**
@@ -601,13 +289,9 @@ function normalizeBrandName(name: string): string {
 
 /**
  * Normalizes and cleans brand data to ensure it's a flat string and matches master data.
- * NEW: Uses AI brand validator for unknown brands (with minimal context snippet).
+ * Automatically adds new brands to master_brands if they are valid and not existing.
  */
-async function cleanupBrands(
-    brandInput: any,
-    masterData: MasterData,
-    campaignText: string = '' // NEW: Full campaign text for snippet extraction
-): Promise<{ brand: string, suggestion: string }> {
+async function cleanupBrands(brandInput: any, masterData: MasterData): Promise<{ brand: string, suggestion: string }> {
     let brands: string[] = [];
 
     // 1. Normalize input to array
@@ -628,6 +312,7 @@ async function cleanupBrands(
         'yapı kredi', 'world', 'worldcard', 'worldpuan', 'puan', 'taksit', 'indirim',
         'kampanya', 'fırsat', 'troy', 'visa', 'mastercard', 'express', 'bonus', 'maximum',
         'axess', 'bankkart', 'paraf', 'card', 'kredi kartı', 'nakit', 'chippin', 'adios', 'play',
+        'wings', 'free', 'wings card', 'black', 'mil', 'chip-para', 'puan',
         ...masterData.banks.map(b => b.toLowerCase())
     ];
 
@@ -652,13 +337,9 @@ async function cleanupBrands(
         }
     }
 
-    // Process new brands: AI Validation (NEW!)
+    // Process new brands: Add to DB if they don't exist
     if (unmatched.length > 0) {
         console.log(`   🆕 New brands detected: ${unmatched.join(', ')}`);
-
-        // Import validator (lazy load to avoid circular dependencies)
-        const { validateBrand } = await import('./brandValidator');
-
         for (const newBrand of unmatched) {
             try {
                 // Double check if it exists in DB (case insensitive)
@@ -669,148 +350,142 @@ async function cleanupBrands(
                     .single();
 
                 if (!existing) {
-                    // NEW: Check Brand Aliases first
-                    const normalizedAlias = newBrand.toLowerCase().trim();
-                    const { data: aliasMatch } = await supabase
-                        .from('brand_aliases')
-                        .select('master_brands(name)')
-                        .eq('alias_norm', normalizedAlias)
-                        .maybeSingle();
+                    const { error } = await supabase
+                        .from('master_brands')
+                        .insert([{ name: newBrand }]);
 
-                    if (aliasMatch && (aliasMatch as any).master_brands) {
-                        const canonicalName = (aliasMatch as any).master_brands.name;
-                        console.log(`   🔗 Alias Match: "${newBrand}" -> "${canonicalName}"`);
-                        matched.push(canonicalName);
-                        continue; // Skip AI validation
-                    }
-
-                    // Extract context snippet (300-400 chars around brand mention)
-                    let snippet = '';
-                    if (campaignText) {
-                        const brandIndex = campaignText.toLowerCase().indexOf(newBrand.toLowerCase());
-                        if (brandIndex !== -1) {
-                            const start = Math.max(0, brandIndex - 150);
-                            const end = Math.min(campaignText.length, brandIndex + 250);
-                            snippet = campaignText.substring(start, end).trim();
-                        } else {
-                            // Brand not found in text, use first 400 chars
-                            snippet = campaignText.substring(0, 400);
-                        }
+                    if (!error) {
+                        console.log(`   ✅ Added new brand: ${newBrand}`);
+                        matched.push(newBrand);
+                        // Update cache to include this new brand for future matches in this run
+                        masterData.brands.push(newBrand);
                     } else {
-                        snippet = `Brand: ${newBrand}`;
-                    }
-
-                    // 🤖 AI Validation (200 tokens vs 4,500)
-                    const validation = await validateBrand(newBrand, snippet);
-
-                    if (validation.decision === 'AUTO_ADD') {
-                        console.log(`   ✅ AI Verified & Adding: ${newBrand} (${validation.reason})`);
-
-                        const { error } = await supabase
-                            .from('master_brands')
-                            .insert([{ name: newBrand }]);
-
-                        if (!error) {
-                            matched.push(newBrand);
-                            masterData.brands.push(newBrand);
-                        } else {
-                            console.error(`   ❌ DB Error adding ${newBrand}:`, error.message);
-                        }
-                    } else if (validation.decision === 'PENDING_REVIEW') {
-                        console.log(`   ⏸️ Pending Review: ${newBrand} (${validation.reason})`);
-                        // Don't add to matched, but don't reject either
-                        // Could add to brand_suggestions table here
-                    } else {
-                        console.log(`   🚫 AI Rejected: ${newBrand} (${validation.reason})`);
-                        // Don't add to matched
+                        console.error(`   ❌ Error adding brand ${newBrand}:`, error.message);
                     }
                 } else {
                     matched.push(existing.name);
                 }
             } catch (err) {
-                console.error(`   ❌ Failed to validate brand ${newBrand}:`, err);
+                console.error(`   ❌ Failed to process brand ${newBrand}`);
             }
         }
     }
 
     return {
         brand: [...new Set(matched)].join(', '),
-        suggestion: ''
+        suggestion: '' // Suggestions are now automatically added to matched if verified/added
     };
 }
 
 export async function parseWithGemini(html: string, url: string, sourceBank?: string, sourceCard?: string): Promise<any> {
+    // Intelligent HTML to Clean Text conversion
     const rawText = html
-        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-        .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
-        .replace(/<[^>]+>/g, ' ')
-        .replace(/\s+/g, ' ')
+        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '') // Remove scripts
+        .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')   // Remove styles
+        .replace(/<(?:br|p|div|li|h1|h2|h3|h4|h5|h6)[^>]*>/gi, '\n')       // Block elements to newlines
+        .replace(/<[^>]+>/g, ' ')                                           // Remove other tags
+        .replace(/[ \t]+/g, ' ')                                            // Standardize horizontal spaces
+        .replace(/\n\s*\n/g, '\n')                                          // Remove double newlines
         .trim();
 
-    // Pre-filter legal boilerplate before sending to AI
-    const filteredText = cleanLegalText(rawText);
-    const text = filteredText.substring(0, 15000);
+    // Clean junk banking legal text to save tokens
+    const text = cleanCampaignText(rawText)
+        .substring(0, 12000); // 12k chars is enough for most campaigns after cleaning
 
     const masterData = await fetchMasterData();
 
+    // Sort everything to ensure perfectly STABLE prefix for Caching
+    const sortedCategories = [...masterData.categories].sort().join(', ');
+    const sortedBanks = [...masterData.banks].sort().join(', ');
+    const sortedBrands = [...masterData.brands].sort((a, b) => a.localeCompare(b, 'tr')).slice(0, 300).join(', ');
+
+    const today = new Date().toISOString().split('T')[0];
     // STAGE 1: Full Parse
-    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-    const stage1Prompt = `
-You are a FINANCIAL CAMPAIGN PARSER.
-Your task is NOT to write marketing text.
-Your task is to READ, CALCULATE, and STRUCTURE campaign data with MATHEMATICAL ACCURACY.
-
-CONTEXT: Today is ${today}. Use this date to resolve relative dates like "31 Aralık" to the correct year (${today.split('-')[0]}).
-
-### 🛑 ULTRA-STRICT RULES (Failure is NOT an option):
-   - Match brands against: [${masterData.brands.slice(0, 50).join(', ')} ... and others].
-
-2. **CLEAN & STRUCTURED CONTENT:**
-   - **description**: Keep it vibrant and focused on "What's in it for the user?". AVOID legal phrases.
-   - **conditions**: Use bullet points for TIERS (barem barem). (e.g., "500 TL'ye 50 TL, 1000 TL'ye 150 TL").
-   - **NO LEGAL JARGON**: COMPLETELY REMOVE sentences like "X bankası kampanyayı durdurma hakkını saklı tutar", "KVKK kapsamında...", "Vergi ve fonlar dahildir" etc.
-   - **EXCLUSIONS**: If something is NOT valid (e.g., "E-ticaret harcamaları dahil değildir"), list it clearly in conditions.
-
-2. **MATHEMATICAL CALCULATION (CRITICAL):**
-   - You MUST calculate the spending required to achieve the MAXIMUM POSSIBLE REWARD.
-   - If tiered: Use the tier that gives the MAXIMUM reward.
-   - If incremental ("1.000 TL harcamaya 100 TL"): Calculate min_spend for total max reward (e.g., if max is 500, min_spend = 5.000).
-   - "Varan/Kadar" expressions: Calculate the MAXIMUM THEORETICAL value.
-   - min_spend MUST be >= max_total_gain.
-
-3. **BANK & CARD AUTHORITY:**
-   - Bank MUST beExactly '${sourceBank || 'specified in text'}'. Allowed: ${masterData.banks.join(', ')}.
-   - Card MUST be exactly '${sourceCard || 'specified in text'}'.
-
+    const staticPrefix = `
 Extract campaign data into JSON matching this EXACT schema:
 
 {
-  "title": "string (original campaign title)",
-  "description": "string (A catchy marketing summary, 1-2 sentences. Focus on THE CHANCE/BENEFIT. Use 1-2 emojis. Turkish.)",
-  "conditions": ["string (Tier 1: 1000 TL harca 100 TL kazan)", "string (Tier 2: ...)", "string (Date/Usage limit constraint)", "string (Participation summary)"],
-  "category": "string (MUST be exactly one of: ${masterData.categories.join(', ')})",
-  "min_spend": number,
-  "reward_text": "string (FORMAT: '100 TL Puan', '50 TL İndirim' or '%10 İndirim'. Max 20 chars)",
-  "installment_text": "string (FORMAT: '9 Taksit' or '+3 Taksit')",
-  "max_total_gain": number,
-  "tiers": [
-    { "min_spend": number, "reward": number }
-  ],
-  "reward_type": "exact" | "max_possible",
-  "math_confidence": "high" | "medium" | "low",
-  "excluded_conditions": ["string"],
+  "title": "string (catchy campaign title, clear and concise)",
+  "description": "string (Short, exciting, marketing-style summary. Max 2 sentences. Use 1-2 relevant emojis. Language: Turkish. Do NOT include boring legal terms.)",
+  "conditions": ["string (List of important campaign terms, limits, and exclusions. Extract key rules as separate items.)"],
+  "category": "string (MUST be one of: ${sortedCategories})",
+  "discount": "string (Use ONLY for installment info, e.g. '9 Taksit', '+3 Taksit'. FORMAT: '{Number} Taksit'. NEVER mention fees/interest.)",
+  "earning": "string (Use ONLY for points/cashback. FORMAT: '{Amount} TL Puan' or '{Amount} TL İndirim' or '%{X} İndirim'. MAX 20 chars.)",
+  "min_spend": number (CRITICAL: Total required spend. If title says '500 TL ve üzeri', min_spend is 500. Total sum if multiple steps.),
+  "max_discount": number (Max reward limit per customer/campaign),
+  "discount_percentage": number (If % based reward, e.g. 15 for %15),
+  "valid_from": "YYYY-MM-DD",
   "valid_from": "YYYY-MM-DD",
   "valid_until": "YYYY-MM-DD",
-  "participation_method": "string (Natural Turkish explanation of HOW to participate, as found in text. e.g. 'Juzdan uygulamasından Hemen Katıl butonuna basarak' or 'KAYIT yazıp 4566\'ya mesaj göndererek'. AVOID short codes like 'SMS' or 'APP'.)",
-  "eligible_cards": ["array of strings (List all specific eligible cards mentioned in the text, e.g. ['Axess', 'Wings', 'Akbank Kart'])"],
-  "brand": ["array of strings (Official brand names)"],
-  "ai_marketing_text": "string (A warm, catchy summary in Turkish, 1 line)",
+  "eligible_customers": ["array of strings (Simple card names: Axess, Wings, Business, Free etc. IMPORTANT: ALWAYS include 'TROY' if specifically mentioned for these cards, e.g. 'Axess TROY', 'Akbank Kart TROY')"],
+  "eligible_cards_detail": {
+    "variants": ["array of strings (ONLY if text mentions: Gold, Platinum, Business, Classic, etc.)"],
+    "exclude": ["array of strings (ONLY if text says: X hariç, X geçerli değil)"],
+    "notes": "string (ONLY if text has special notes: Ticari kartlar hariç, etc.)"
+  } | null,
+  "participation_method": "string (TAM KATILIM TALİMATI: SADECE NASIL ve NEREDEN (SMS/Uygulama). Tarih veya Harcama Miktarı GİRMEYİN. Örn: 'Juzdan uygulamasından Hemen Katıla tıklayın veya MARKET yazıp 4566ya SMS gönderin.')",
+  "participation_detail": {
+    "sms_to": "string (ONLY if SMS number in text: 4442525, etc.)",
+    "sms_keyword": "string (ONLY if keyword in text: KATIL, KAMPANYA, etc.)",
+    "wallet_name": "string (ONLY if app name in text: Jüzdan, BonusFlaş, etc.)",
+    "instructions": "string (ONLY if detailed steps in text: 1-2 sentences)",
+    "constraints": ["array of strings (ONLY if conditions: Harcamadan önce katıl, etc.)"]
+  } | null,
+  "merchant": "string (Primary shop/brand name)",
+  "bank": "string (AUTHORITY: MUST be exactly as provided. Allowed: ${sortedBanks})",
+  "card_name": "string (AUTHORITY: MUST be exactly as provided.)",
+  "brand": ["array of strings (Official brand names. DO NOT include card names like Axess, Wings, Bonus or bank names.)"],
   "ai_enhanced": true
 }
+
+### 🛑 ULTRA-STRICT RULES:
+
+1. **BANK & CARD AUTHORITY:**
+   - Use the provided Bank and Card Name. DO NOT hallucinate.
+   
+2. **HARCAMA-KAZANÇ KURALLARI (MATHEMATIC LOGIC):**
+   - discount: SADECE "{N} Taksit" veya "+{N} Taksit"
+   - earning: Max 20 karakter. "{AMOUNT} TL Puan" | "{AMOUNT} TL İndirim" | "{AMOUNT} TL İade" | "%{P} İndirim"
+   - min_spend: KESİNLİKLE KAZANCI ELDE ETMEK İÇİN GEREKEN "TOPLAM" HARCAMA.
+     - Örnek 1: "4 kez 1.000 TL harcamaya" -> min_spend = 4000 (1000 x 4)
+     - Örnek 2: "İkinci 500 TL harcamaya" -> min_spend = 1000 (500 + 500)
+     - Örnek 3: "Tek seferde 2.000 TL" -> min_spend = 2000
+     - Örnek 4: "Her 2000 TL'ye 100 TL chip-para, toplam 500 TL" -> min_spend = 10000 (Max kazanç 500 / 100 = 5 kere. 5 x 2000 = 10000)
+   - max_discount: Kampanyadan kazanılabilecek EN YÜKSEK (TOPLAM) tutar. Eğer "toplamda 500 TL" diyorsa, bu değer 500 olmalı.
+
+3. **KATILIM ŞEKLİ (participation_method):**
+   - **TAM VE NET TALİMAT.** Ne çok kısa ne çok uzun.
+   - GEREKSİZ SÖZCÜKLERİ ("Kampanyaya katılmak için", "Harcama yapmadan önce", "tarihlerinde") ATIN.
+   - SADECE EYLEMİ DETAYLANDIRIN (Hangi buton? Hangi SMS kodu?).
+   - YASAK (Çok Kısa): "Juzdan'dan katılın." (Hangi buton?)
+   - YASAK (Çok Uzun): "Alışveriş yapmadan önce Juzdan uygulamasındaki kampanyalar menüsünden Hemen Katıl butonuna tıklayarak katılım sağlayabilirsiniz."
+   - DOĞRU (İDEAL): "Juzdan'dan 'Hemen Katıl' butonuna tıklayın veya '[ANAHTAR_KELİME]' yazıp 4566'ya SMS gönderin."
+   - DOĞRU (İDEAL): "Juzdan üzerinden 'Hemen Katıl' deyin."
+   - **SMS VARSA ZORUNLU KURAL:** Asla "SMS ile katılın" yazıp bırakma! Metinde GÖRDÜĞÜN anahtar kelimeyi (örn: TEKNOSA, TATIL, MARKET) ve numarayı yaz.
+   - **YASAK (HALÜSİNASYON):** Metinde SMS kodu yoksa ASLA uydurma (özellikle 'A101' gibi başka kodları YAZMA).
+   - YANLIŞ: "SMS ile kayıt olun." (NUMARA VE KOD NEREDE?)
+
+4. **KART TESPİTİ (eligible_customers):**
+   - Metin içinde "Ticari", "Business", "KOBİ" geçiyorsa, eligible_customers listesine ilgili kartları (Axess Business, Wings Business vb.) MUTLAKA ekle. Bireysel kartları EKSİK ETME.
+
+5. **BRAND MATCHING:**
+   - Match brands against: [${sortedBrands} ... and others].
+
+6. **ABSOLUTE NO-HALLUCINATION RULE:**
+   - IF not explicitly found -> return null.
+   - NEVER use placeholder numbers.
+`;
+
+    const dynamicContent = `
+CONTEXT: Today is ${today}.
+SOURCE BANK AUTHORITY: ${sourceBank || 'Akbank'}
+SOURCE CARD AUTHORITY: ${sourceCard || 'Axess'}
 
 TEXT TO PROCESS:
 "${text.replace(/"/g, '\\"')}"
 `;
+
+    const stage1Prompt = staticPrefix + dynamicContent;
 
     console.log('   🤖 Stage 1: Full parse...');
     const stage1Data = await callGeminiAPI(stage1Prompt);
@@ -820,67 +495,50 @@ TEXT TO PROCESS:
 
     if (missingFields.length === 0) {
         console.log('   ✅ Stage 1: Complete (all fields extracted)');
-
-        // MAP V5 FIELDS TO LEGACY SCHEMA FOR DB COMPATIBILITY
-        const mappedData = {
-            ...stage1Data,
-            earning: stage1Data.reward_text,
-            discount: stage1Data.installment_text,
-            max_discount: stage1Data.max_total_gain,
-            math_flags: [
-                ...(stage1Data.math_flags || []),
-                `confidence_${stage1Data.math_confidence}`,
-                `reward_${stage1Data.reward_type}`
-            ],
-            // Store tiers as JSON string in conditions or specialized field if exists
-            conditions: [
-                ...(stage1Data.conditions || []),
-                ...(stage1Data.excluded_conditions || []),
-                stage1Data.tiers && stage1Data.tiers.length > 0 ? `MARKDOWN_TIERS: ${JSON.stringify(stage1Data.tiers)}` : null
-            ].filter(Boolean),
-        };
-
         // Ensure brand is properly formatted as a string/json for DB
-        if (Array.isArray(mappedData.brand)) {
-            mappedData.brand = mappedData.brand.join(', ');
+        if (Array.isArray(stage1Data.brand)) {
+            stage1Data.brand = stage1Data.brand.join(', ');
         }
 
         // STRICT OVERRIDE: Source Bank/Card TRUMPS AI
         if (sourceBank) {
-            mappedData.bank = sourceBank;
+            stage1Data.bank = sourceBank;
         }
         if (sourceCard) {
-            mappedData.card_name = sourceCard;
+            stage1Data.card_name = sourceCard;
         }
 
-        return mappedData;
+        return stage1Data;
     }
 
     // STAGE 2: Fill Missing Fields
-    console.log(`   🔄 Stage 2: Filling missing fields: ${missingFields.join(', ')}`);
+    console.log(`   🔄 Stage 2: Filling missing fields: ${missingFields.join(', ')} `);
 
     const stage2Prompt = `
-You are refining campaign data. The following fields are MISSING and MUST be extracted:
+You are refining campaign data.The following fields are MISSING and MUST be extracted:
 
 ${missingFields.map(field => `- ${field}`).join('\n')}
 
-Extract ONLY these missing fields from the text below. Return JSON with ONLY these fields.
+Extract ONLY these missing fields from the text below.Return JSON with ONLY these fields.
 
-FIELD DEFINITIONS (V5 STANDARDS):
-- valid_until: Campaign end date in YYYY-MM-DD format
-- reward_text: Reward amount (e.g. "500 TL Puan")
-- installment_text: Installment info (e.g. "9 Taksit")
-- min_spend: Total spend required for MAXIMUM reward (Number)
-- max_total_gain: Max reward limit (Number)
-- category: MUST be EXACTLY one of: ${masterData.categories.join(', ')}
+FIELD DEFINITIONS:
+    - valid_until: Campaign end date in YYYY - MM - DD format
+        - eligible_customers: Array of eligible card types
+            - min_spend: Minimum spending amount as a number
+                - earning: Reward amount or description(e.g. "500 TL Puan")
+                    - category: MUST be EXACTLY one of: ${masterData.categories.join(', ')}. If unsure, return "Diğer".
 - bank: MUST be EXACTLY one of: ${masterData.banks.join(', ')}. ${sourceBank ? `(Source: ${sourceBank})` : ''}
-- brand: Array of strings representing ALL mentioned merchants/brands.
-- participation_method: Natural language explanation of how to participate.
-- eligible_cards: Array of eligible card names.
-- conditions: Array of structured campaign rules/tiers (barem barem).
+    - brand: Array of strings representing ALL mentioned merchants / brands.DO NOT include card names(Axess, Wings, etc.).
 
-TEXT:
-"${text.replace(/"/g, '\\"')}"
+### 🛑 CRITICAL: NO HALLUCINATION
+        - If the requested field is NOT clearly present in the text, return null. 
+        - If the requested field is NOT clearly present in the text, return null.
+- DO NOT invent numbers.
+- DO NOT use previous campaign values.
+- If it's JUST an installment campaign (taksit) and NO points/rewards mentioned, earning MUST be null.
+
+    TEXT:
+    "${text.replace(/"/g, '\\"')}"
 
 Return ONLY valid JSON with the missing fields, no markdown.
 `;
@@ -888,28 +546,9 @@ Return ONLY valid JSON with the missing fields, no markdown.
     const stage2Data = await callGeminiAPI(stage2Prompt);
 
     // Merge stage 1 and stage 2 data
-    const mergedData = {
+    const finalData = {
         ...stage1Data,
         ...stage2Data
-    };
-
-    // MAP V5 FIELDS TO LEGACY SCHEMA (Stage 2 Fallback)
-    const finalData = {
-        ...mergedData,
-        earning: mergedData.reward_text || mergedData.earning,
-        discount: mergedData.installment_text || mergedData.discount,
-        max_discount: mergedData.max_total_gain || mergedData.max_discount,
-        math_flags: [
-            ...(mergedData.math_flags || []),
-            mergedData.math_confidence ? `confidence_${mergedData.math_confidence}` : null,
-            mergedData.reward_type ? `reward_${mergedData.reward_type}` : null
-        ].filter(Boolean),
-        conditions: [
-            ...(mergedData.conditions || []),
-            ...(mergedData.excluded_conditions || []),
-            mergedData.tiers && mergedData.tiers.length > 0 ? `MARKDOWN_TIERS: ${JSON.stringify(mergedData.tiers)}` : null
-        ].filter(Boolean),
-        eligible_cards: mergedData.eligible_cards || []
     };
 
     const title = finalData.title || '';
@@ -917,7 +556,7 @@ Return ONLY valid JSON with the missing fields, no markdown.
 
     // STAGE 3: Bank Service Detection & "Genel" logic
     // Detect keywords for bank-only services (not related to a specific merchant brand)
-    const isBankService = /ekstre|nakit avans|kredi kartı başvurusu|limit artış|borç transferi|vade farkı|faizsiz taksit|borç erteleme|sigorta|başvuru|otomatik ödeme/i.test(title + ' ' + description);
+    const isBankService = /ekstre|nakit avans|kredi kartı başvurusu|limit artış|borç transferi|vade farkı|faizsiz taksit|borç erteleme|sigorta|başvuru|otomatik ödeme|vergi|eğitim|kira|harç|bağış/i.test(title + ' ' + description);
 
     // STAGE 4: Historical Assignment Lookup (Learning Mechanism)
     // Check if this specific campaign was previously mapped to a brand by the user
@@ -931,9 +570,9 @@ Return ONLY valid JSON with the missing fields, no markdown.
         .limit(1)
         .maybeSingle();
 
-    // Use unified brand cleanup (with AI validation for unknown brands)
+    // Use unified brand cleanup
     const masterDataForFinal = await fetchMasterData();
-    const brandCleaned = await cleanupBrands(finalData.brand, masterDataForFinal, description);
+    const brandCleaned = await cleanupBrands(finalData.brand, masterDataForFinal);
 
     finalData.brand = brandCleaned.brand;
     finalData.brand_suggestion = brandCleaned.suggestion;
@@ -967,6 +606,13 @@ Return ONLY valid JSON with the missing fields, no markdown.
         }
     }
 
+    // Category Validation: Ensure it's in the master list
+    const masterCategories = masterData.categories;
+    if (finalData.category && !masterCategories.includes(finalData.category)) {
+        console.warn(`   ⚠️  AI returned invalid category: "${finalData.category}", mapping to "Diğer"`);
+        finalData.category = 'Diğer';
+    }
+
     // Generate sector_slug from category
     if (finalData.category) {
         if (finalData.category === 'Diğer' || finalData.category === 'Genel') {
@@ -991,7 +637,7 @@ Return ONLY valid JSON with the missing fields, no markdown.
 
     const stillMissing = checkMissingFields(finalData);
     if (stillMissing.length > 0) {
-        console.warn(`   ⚠️  WARNING: Still missing critical fields: ${stillMissing.join(', ')}`);
+        console.warn(`   ⚠️  WARNING: Still missing critical fields: ${stillMissing.join(', ')} `);
         finalData.ai_parsing_incomplete = true;
         finalData.missing_fields = stillMissing;
     }

@@ -1,8 +1,8 @@
 name: Periyodik Tarayıcı & Otomatik Düzeltme
 
 on:
-  schedule:
-    - cron: '1 0 1,15 * *'  # Her ayın 1 ve 15'inde 03:01 TR
+#  schedule:
+#    - cron: '1 0 * * *'  # Her gün 03:01 TR (Her gece otomatik tarama - Şimdilik Pasif)
   workflow_dispatch:
     inputs:
       run_all:
