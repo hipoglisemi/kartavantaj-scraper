@@ -36,9 +36,8 @@ export async function autoFixCampaign(
         return await fixBadge(campaign);
     }
 
-    // NEW: If AI is disabled, we cannot do Strategy 2 or 3
-    // We import the flag from geminiParser if possible, or assume it's true based on our global policy
-    const AI_DISABLED = true; // Hardcoded safety for now as per user request
+    // AI strategies check (allow by default unless specifically disabled)
+    const AI_DISABLED = process.env.DISABLE_AI_AUTOFIX === 'true';
     if (AI_DISABLED) {
         console.log('   🛑 AI Strategies skipped: AI is disabled.');
         return {

@@ -38,7 +38,7 @@ export function standardizeBenefit(text: string): string {
 
     clean = clean
         .replace(/['’](?:ye|ya|e|a)(?=\s)/gi, '') // Remove suffixes like TL'ye -> TL
-        .replace(/peşin fiyatına|vade farksız|ücretsiz|toplamda|varan|değerinde|hediye|fırsatı|imkanı|kazanma|özel|ayrıcalığı/gi, '')
+        .replace(/peşin fiyatına|vade farksız|toplamda|varan|değerinde|hediye|fırsatı|imkanı|kazanma|ayrıcalığı/gi, '')
         .replace(/worldpuan|bonus|chip-?para|maxipuan|bankkart lira|parafpara/gi, 'Puan')
         .replace(/\s+/g, ' ')
         .trim();
@@ -69,14 +69,14 @@ export function standardizeBenefit(text: string): string {
         }
     }
 
-    // 5. Cleanup Junk (0% Puan, 0 TL)
-    if (clean === '0% Puan' || clean === '0 TL Puan' || clean.startsWith('0 TL') || clean.startsWith('0%')) {
+    // 5. Cleanup Junk (Only truly empty/zero values)
+    if (clean === '0% Puan' || clean === '0 TL Puan' || clean === '0 TL' || clean === '0%') {
         return '';
     }
 
-    // 6. Final max length truncation
-    if (clean.length > 30) {
-        clean = clean.substring(0, 27) + '...';
+    // 6. Final max length truncation (be careful not to break meaningful summaries)
+    if (clean.length > 25) {
+        clean = clean.substring(0, 22) + '...';
     }
 
     return clean;

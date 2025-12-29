@@ -18,7 +18,7 @@ async function autoCorrect() {
     const { data: campaigns, error } = await supabase
         .from('campaigns')
         .select('*')
-        .or('ai_parsing_incomplete.eq.true,quality_score.lt.70,earning.ilike.%taksit%,discount.ilike.%taksit%') // Taksit özelinde daha geniş tarama
+        .or('ai_parsing_incomplete.eq.true,quality_score.lt.70,earning.eq.-,earning.is.null,badge_text.eq.-,badge_text.is.null,category.eq.Diğer')
         .order('id', { ascending: false })
         .limit(100);
 
@@ -71,13 +71,24 @@ async function autoCorrect() {
                     updateData.ai_suggested_valid_until = null;
                 }
 
-                // If still incomplete and no suggestions, or if slug is missing, do full parse
-                if ((isIncomplete && !aiSuggestedMath) || !campaign.slug) {
-                    console.log('   🔄 Tam re-parse gerekiyor...');
-                    const baseText = campaign.raw_content || `${campaign.title} ${campaign.description}`;
-                    const result = await parseWithGemini(baseText, campaign.url || '', campaign.bank);
-                    if (result) {
-                        updateData = { ...updateData, ...result };
+                // If still incomplete, missing earnings, or missing slug, do targeted surgical parse
+                if ((isIncomplete && !aiSuggestedMath) || !campaign.slug || !campaign.earning || campaign.earning === '-') {
+                    console.log('   🔄 Cerrahi (Surgical) iyileştirme gerekiyor...');
+                    const baseText = campaign.raw_content || `${campaign.title} ${campaign.description} ${campaign.conditions?.join(' ')}`;
+
+                    // Determine which fields are actually missing/bad
+                    const fieldsToFix = [];
+                    if (!campaign.earning || campaign.earning === '-') fieldsToFix.push('earning');
+                    if (!campaign.category || campaign.category === 'Diğer') fieldsToFix.push('category');
+                    if (!campaign.valid_until) fieldsToFix.push('valid_until');
+
+                    if (fieldsToFix.length > 0) {
+                        const result = await parseSurgical(baseText, campaign, fieldsToFix, campaign.url || '', campaign.bank);
+                        if (result) {
+                            // Badge re-assignment is handled by syncEarningAndDiscount inside surgical if needed, 
+                            // but let's be explicit
+                            updateData = { ...updateData, ...result };
+                        }
                     }
                 }
 

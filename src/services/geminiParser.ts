@@ -204,7 +204,7 @@ FIELD DEFINITIONS:
 - valid_until: YYYY-MM-DD
 - eligible_customers: Array of strings
 - min_spend: Number
-- earning: String (e.g. "500 TL Puan")
+- earning: String (e.g. "500 TL Puan"). CRITICAL: DO NOT return null. If no numeric reward, summarize the main benefit in 2-3 words (e.g., "Uçak Bileti Fırsatı", "3 Taksit Ayrıcalığı", "Özel İndirim").
 - category: MUST be one of [${masterData.categories.join(', ')}]
 - bank: MUST be one of [${masterData.banks.join(', ')}]
 - brand: ARRAY of brand names mentioned. E.g. ["Burger King", "Migros"]. Match to: ${masterData.brands.slice(0, 100).join(', ')}
@@ -411,7 +411,7 @@ Extract campaign data into JSON matching this EXACT schema:
   "conditions": ["string (List of important campaign terms, limits, and exclusions. Extract key rules as separate items.)"],
   "category": "string (MUST be one of: ${sortedCategories})",
   "discount": "string (Use ONLY for installment info, e.g. '9 Taksit', '+3 Taksit'. FORMAT: '{Number} Taksit'. NEVER mention fees/interest.)",
-  "earning": "string (Use ONLY for points/cashback. FORMAT: '{Amount} TL Puan' or '{Amount} TL İndirim' or '%{X} İndirim'. MAX 20 chars.)",
+  "earning": "string (Reward info. PRIORITY: '{Amount} TL Puan' | '{Amount} TL İndirim' | '%{X} İndirim'. IF NO NUMERIC REWARD: Create a 2-3 word benefit summary like 'Uçak Bileti', 'Özel Menü', 'Kargo Bedava'. MAX 20 chars. NEVER RETURN NULL OR EMPTY.)",
   "min_spend": number (CRITICAL: Total required spend. If title says '500 TL ve üzeri', min_spend is 500. Total sum if multiple steps.),
   "max_discount": number (Max reward limit per customer/campaign),
   "discount_percentage": number (If % based reward, e.g. 15 for %15),
@@ -539,7 +539,7 @@ FIELD DEFINITIONS:
         - If the requested field is NOT clearly present in the text, return null.
 - DO NOT invent numbers.
 - DO NOT use previous campaign values.
-- If it's JUST an installment campaign (taksit) and NO points/rewards mentioned, earning MUST be null.
+- If it's JUST an installment campaign (taksit) and NO points/rewards mentioned, earning MUST be a 2-3 word summary of the installment benefit (e.g. "Vade Farksız").
 
     TEXT:
     "${text.replace(/"/g, '\\"')}"
