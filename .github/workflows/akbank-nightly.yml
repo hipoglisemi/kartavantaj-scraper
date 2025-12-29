@@ -76,4 +76,4 @@ jobs:
         run: |
           echo "## 🚀 Akbank Nightly Batch Results" >> $GITHUB_STEP_SUMMARY
           echo "✅ Scrapers executed: Free, Axess, Wings, Business" >> $GITHUB_STEP_SUMMARY
-          echo "💰 **Total AI Token Usage:** ${{ env.BATCH_TOKEN_USAGE }}" >> $GITHUB_STEP_SUMMARY
+          echo "💰 **Total AI Token Usage:** $BATCH_TOKEN_USAGE" >> $GITHUB_STEP_SUMMARY
