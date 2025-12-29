@@ -438,7 +438,9 @@ Extract campaign data into JSON matching this EXACT schema:
   "merchant": "string (Primary shop/brand name)",
   "bank": "string (AUTHORITY: MUST be exactly as provided. Allowed: ${sortedBanks})",
   "card_name": "string (AUTHORITY: MUST be exactly as provided.)",
-  "brand": ["array of strings (Official brand names. DO NOT include card names like Axess, Wings, Bonus or bank names.)"],
+  "brand": [
+    "array of strings (🚨 SADECE GERÇEK MARKA İSİMLERİ! Official brand names. YASAK: Kart isimleri (Axess, Wings, Bonus, Free, Juzdan, World, Play, Crystal), Banka isimleri (Akbank, Yapı Kredi, vb.), Genel terimler. ÖRNEK: ['CarrefourSA'], ['Teknosa'], ['Nespresso']. MAX 3 marka. Her marka max 40 karakter.)"
+  ],
   "ai_enhanced": true
 }
 
@@ -446,6 +448,21 @@ Extract campaign data into JSON matching this EXACT schema:
 
 1. **BANK & CARD AUTHORITY:**
    - Use the provided Bank and Card Name. DO NOT hallucinate.
+
+1.5. **KATEGORİ SEÇİMİ (CATEGORY SELECTION):**
+   - 🚨 MERCHANT/BRAND'E GÖRE DOĞRU KATEGORİ SEÇ!
+   - Koçtaş, Bauhaus, Karaca, Özdilek, İdaş, Korkmaz → "Mobilya & Dekorasyon"
+   - Teknosa, MediaMarkt, Vatan, Apple, Samsung, Vestel, Arçelik, Nespresso, Dyson → "Elektronik"
+   - CarrefourSA, Migros, A101, BİM, ŞOK → "Market & Gıda"
+   - H&M, Zara, LC Waikiki, Mango, Koton, Nike, Adidas, FLO, Desa → "Giyim & Aksesuar"
+   - Enuygun, Tatilsepeti, Pegasus, THY, LoungeMe → "Seyahat"
+   - Shell, Opet, BP, Lassa, Pirelli, Vale, Otopark → "Otomotiv"
+   - Trendyol, Hepsiburada, Amazon, Pazarama → "E-Ticaret"
+   - Yemeksepeti, Getir, Starbucks → "Restoran & Kafe"
+   - Sağlık, Hastane, Klinik → "Sağlık"
+   - Sigorta → "Sigorta"
+   - Vergi → "Vergi & Kamu"
+   - DİKKAT: "Diğer" kategorisini SADECE yukarıdakilere uymayan kampanyalar için kullan!
    
 2. **HARCAMA-KAZANÇ KURALLARI (MATHEMATIC LOGIC):**
    - discount: SADECE "{N} Taksit" veya "+{N} Taksit"
