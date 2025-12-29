@@ -1,5 +1,5 @@
 import * as dotenv from 'dotenv';
-import { generateSectorSlug } from '../utils/slugify';
+import { generateSectorSlug, generateCampaignSlug } from '../utils/slugify';
 import { syncEarningAndDiscount } from '../utils/dataFixer';
 import { supabase } from '../utils/supabase';
 import { cleanCampaignText } from '../utils/textCleaner';
@@ -708,6 +708,11 @@ Return ONLY valid JSON with the missing fields, no markdown.
     }
     if (sourceCard) {
         finalData.card_name = sourceCard;
+    }
+
+    // GENERATE SEO SLUG
+    if (finalData.title) {
+        finalData.slug = generateCampaignSlug(finalData.title);
     }
 
     return finalData;

@@ -1,66 +1,44 @@
-
 import { supabase } from '../src/utils/supabase';
+import { generateCampaignSlug } from '../src/utils/slugify';
 
-function slugify(text: string): string {
-    const trMap: { [key: string]: string } = {
-        'ç': 'c', 'ğ': 'g', 'ı': 'i', 'ö': 'o', 'ş': 's', 'ü': 'u',
-        'Ç': 'c', 'Ğ': 'g', 'İ': 'i', 'Ö': 'o', 'Ş': 's', 'Ü': 'u'
-    };
+async function backfillSlugs() {
+    console.log('🚀 Starting slug backfill (Batched)...');
 
-    return text
-        .replace(/[çğıöşüÇĞİÖŞÜ]/g, char => trMap[char])
-        .toLowerCase()
-        .replace(/[^a-z0-9\s-]/g, '') // Remove symbols
-        .trim()
-        .replace(/\s+/g, '-') // Spaces to dashes
-        .replace(/-+/g, '-'); // Merge multiple dashes
-}
-
-async function runBackfill() {
-    console.log("Starting Slug Backfill...");
-
-    // Fetch campaigns with NULL or empty slug
+    // Fetch all campaigns that don't have a slug
     const { data: campaigns, error } = await supabase
         .from('campaigns')
         .select('id, title, slug')
-        .or('slug.is.null,slug.eq.""');
+        .is('slug', null);
 
     if (error) {
-        console.error("Error fetching campaigns:", error);
+        console.error('❌ Error fetching campaigns:', error);
         return;
     }
 
     if (!campaigns || campaigns.length === 0) {
-        console.log("No campaigns found needing backfill.");
+        console.log('✅ No campaigns missing slugs found.');
         return;
     }
 
-    console.log(`Found ${campaigns.length} campaigns to update.`);
+    console.log(`📦 Found ${campaigns.length} campaigns missing slugs.`);
 
-    let successCount = 0;
-    let failCount = 0;
+    const batchSize = 20;
+    for (let i = 0; i < campaigns.length; i += batchSize) {
+        const batch = campaigns.slice(i, i + batchSize);
 
-    for (const campaign of campaigns) {
-        if (!campaign.title) continue;
+        const updates = batch.map(campaign => {
+            const newSlug = generateCampaignSlug(campaign.title, campaign.id);
+            return supabase
+                .from('campaigns')
+                .update({ slug: newSlug })
+                .eq('id', campaign.id);
+        });
 
-        const newSlug = slugify(campaign.title);
-
-        const { error: updateError } = await supabase
-            .from('campaigns')
-            .update({ slug: newSlug })
-            .eq('id', campaign.id);
-
-        if (updateError) {
-            console.error(`Failed to update ID ${campaign.id}:`, updateError.message);
-            failCount++;
-        } else {
-            successCount++;
-            if (successCount % 50 === 0) process.stdout.write('.');
-        }
+        await Promise.all(updates);
+        console.log(`⏳ Progress: ${Math.min(i + batchSize, campaigns.length)}/${campaigns.length}...`);
     }
 
-    console.log(`\nBackfill complete. Success: ${successCount}, Failed: ${failCount}`);
-    process.exit(0);
+    console.log(`✅ Finished! Updated all campaigns.`);
 }
 
-runBackfill();
+backfillSlugs();
