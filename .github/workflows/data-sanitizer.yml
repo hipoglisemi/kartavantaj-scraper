@@ -34,3 +34,9 @@ jobs:
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
         run: npx tsx scripts/auto_correct.ts
+
+      - name: 📊 Fix Percentage Earning Format (Yüzde Formatı Düzeltme)
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: npx tsx scripts/fix_percentage_earnings.ts --execute

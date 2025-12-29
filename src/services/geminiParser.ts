@@ -411,7 +411,7 @@ Extract campaign data into JSON matching this EXACT schema:
   "conditions": ["string (List of important campaign terms, limits, and exclusions. Extract key rules as separate items.)"],
   "category": "string (MUST be one of: ${sortedCategories})",
   "discount": "string (Use ONLY for installment info, e.g. '9 Taksit', '+3 Taksit'. FORMAT: '{Number} Taksit'. NEVER mention fees/interest.)",
-  "earning": "string (Reward info. PRIORITY: '{Amount} TL Puan' | '{Amount} TL İndirim' | '%{X} İndirim'. IF NO NUMERIC REWARD: Create a 2-3 word benefit summary like 'Uçak Bileti', 'Özel Menü', 'Kargo Bedava'. MAX 20 chars. NEVER RETURN NULL OR EMPTY.)",
+  "earning": "string (Reward info. PRIORITY: '{Amount} TL Puan' | '{Amount} TL İndirim' | '%{X} (max {Y}TL)' for percentage campaigns with limits | '%{X} İndirim' for unlimited percentage. IF NO NUMERIC REWARD: Create a 2-3 word benefit summary like 'Uçak Bileti', 'Özel Menü', 'Kargo Bedava'. MAX 30 chars. NEVER RETURN NULL OR EMPTY.)",
   "min_spend": number (CRITICAL: Total required spend. If title says '500 TL ve üzeri', min_spend is 500. Total sum if multiple steps.),
   "max_discount": number (Max reward limit per customer/campaign),
   "discount_percentage": number (If % based reward, e.g. 15 for %15),
@@ -446,7 +446,10 @@ Extract campaign data into JSON matching this EXACT schema:
    
 2. **HARCAMA-KAZANÇ KURALLARI (MATHEMATIC LOGIC):**
    - discount: SADECE "{N} Taksit" veya "+{N} Taksit"
-   - earning: Max 20 karakter. "{AMOUNT} TL Puan" | "{AMOUNT} TL İndirim" | "{AMOUNT} TL İade" | "%{P} İndirim"
+   - earning: Max 30 karakter. "{AMOUNT} TL Puan" | "{AMOUNT} TL İndirim" | "{AMOUNT} TL İade" | "%{P} (max {Y}TL)" | "%{P} İndirim"
+     - 🚨 YÜZDE + MAX LİMİT KURALI: Eğer kampanyada yüzde bazlı kazanç VAR ve max_discount değeri VARSA, earning formatı MUTLAKA "%{P} (max {Y}TL)" olmalı.
+       - ÖRNEK: "%10 indirim, maksimum 200 TL" metni → earning: "%10 (max 200TL)", max_discount: 200
+       - ÖRNEK: "%5 chip-para, toplam 500 TL'ye kadar" → earning: "%5 (max 500TL)", max_discount: 500
    - min_spend: KESİNLİKLE KAZANCI ELDE ETMEK İÇİN GEREKEN "TOPLAM" HARCAMA.
      - 🚨 KRİTİK KURAL (KATLANAN HARCAMA): Metinde "her X TL harcamaya Y TL, toplam Z TL" veya "X TL ve üzeri her harcamaya..." kalıbı varsa, SAKIN "X" değerini yazma!
        - FORMÜL: (Toplam Kazanç / Sefer Başı Kazanç) * Sefer Başı Harcama
