@@ -1,4 +1,4 @@
-name: Veri Temizleyici (Sanitizer)
+name: Veri Temizleyici & Otomatik İyileştirme (Sanitizer)
 
 on:
   schedule:
@@ -6,7 +6,8 @@ on:
   workflow_dispatch: # Manuel tetikleme izni
 
 jobs:
-  sanitize:
+  maintenance:
+    name: Sytem Maintenance & Data Quality
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -21,8 +22,15 @@ jobs:
       - name: Install dependencies
         run: npm ci
         
-      - name: Run Sanitizer
+      - name: 🧹 Run Campaign Sanitizer (Genel Temizlik)
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: npx tsx scripts/campaign_sanitizer.ts
+
+      - name: 🤖 Run AI Auto-Correction (Eksik Metin & Hata Düzeltme)
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
+        run: npx tsx scripts/auto_correct.ts
