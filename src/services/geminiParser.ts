@@ -427,7 +427,7 @@ Extract campaign data into JSON matching this EXACT schema:
     "exclude": ["array of strings (ONLY if text says: X hariç, X geçerli değil)"],
     "notes": "string (ONLY if text has special notes: Ticari kartlar hariç, etc.)"
   } | null,
-  "participation_method": "string (TAM KATILIM TALİMATI: SADECE NASIL ve NEREDEN (SMS/Uygulama). Tarih veya Harcama Miktarı GİRMEYİN. Örn: 'Juzdan uygulamasından Hemen Katıla tıklayın veya MARKET yazıp 4566ya SMS gönderin.')",
+  "participation_method": "string (TAM KATILIM TALİMATI: SADECE NASIL ve NEREDEN (SMS/Uygulama). Tarih veya Harcama Miktarı GİRMEYİN. 🚨 YASAK: 'Juzdan'ı indirin', 'Uygulamayı yükleyin' gibi genel ifadeler KULLANMA! DOĞRU FORMAT: 'Harcamadan önce Juzdan'dan Hemen Katıl butonuna tıklayın' veya 'MARKET yazıp 4566ya SMS gönderin'. Örn: 'Juzdan uygulamasından Hemen Katıla tıklayın veya MARKET yazıp 4566ya SMS gönderin.')",
   "participation_detail": {
     "sms_to": "string (ONLY if SMS number in text: 4442525, etc.)",
     "sms_keyword": "string (ONLY if keyword in text: KATIL, KAMPANYA, etc.)",
