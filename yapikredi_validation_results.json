@@ -1,0 +1,662 @@
+{
+  "summary": {
+    "total_campaigns": 211,
+    "total_issues": 41,
+    "high_confidence": 5,
+    "medium_confidence": 26,
+    "low_confidence": 10
+  },
+  "high_confidence_issues": [
+    {
+      "id": 15079,
+      "title": "Metal Crystal ile yeni yılda yurt dışındaki fiziki ve online harcamalarınıza 3.000 TL’ye varan indirim!",
+      "card_name": "Crystal",
+      "url": "https://www.crystalcard.com.tr/kampanyalar/metal-crystal-ile-yurt-disindaki-fiziki-ve-online-harcamalariniza-3000-tlye-varan-indirim-aralik",
+      "current_min_spend": 7500,
+      "current_max_discount": 3000,
+      "current_earning": "3000 TL Puan",
+      "current_discount_percentage": null,
+      "campaign_text": ";\nSon Gün 14.01.2026\nMetal Crystal ile yeni yılda yurt dışındaki fiziki ve online harcamalarınıza 3.000 TL’ye varan indirim!\n15 Aralık 2025 - 14 Ocak 2026 tarihleri arasında fiziki ve online olarak tek seferde yapacağınız her 7.500 TL ve üzeri yurt dışı harcamanıza 750 TL, toplamda 3.000 TL indirim ayrıcalığını kaçırmayın!\nBaşlangıç - Bitiş Tarihi\n15.12.2025 - 14.01.2026\nKampanya Başvuru Kanalları\nWorld Mobil uygulamasından katılın\n\nKampanya Koşulları\n\nKampanya 15 Aralık 2025 - 14 Ocak 2026 tari",
+      "issues": [
+        "Katlanan kampanya: Her 7500 TL'ye 750 TL, toplam 3000 TL → min_spend 30000 olmalı (mevcut: 7500)"
+      ],
+      "confidence": "HIGH",
+      "suggested_min_spend": 30000
+    },
+    {
+      "id": 15002,
+      "title": "Seyahat Satın Al üzerinden yapacağınız seçili yurt içi otel ve Kıbrıs otel harcamalarınıza 2.500 TL’ye varan Worldpuan ve seçili yurt içi otel rezervasyonlarınızda %5 indirim fırsatı!",
+      "card_name": "World",
+      "url": "https://www.worldcard.com.tr/kampanyalar/seyahat-satin-al-uzerinden-yapacaginiz-secili-yurt-ici-otel-ve-kibris-otel-harcamalar",
+      "current_min_spend": 50000,
+      "current_max_discount": 2500,
+      "current_earning": "%5 (max 2500TL)",
+      "current_discount_percentage": 5,
+      "campaign_text": "Son Gün 31.12.2025\nHemen Başvur\nSeyahat Satın Al üzerinden yapacağınız seçili yurt içi otel ve Kıbrıs otel harcamalarınıza 2.500 TL’ye varan Worldpuan ve seçili yurt içi otel rezervasyonlarınızda %5 indirim fırsatı!\nAna Sayfa\nKampanyalar\nSeyahat Satın Al üzerinden yapacağınız seçili yurt içi otel ve Kıbrıs otel harcamalarınıza 2.500 TL’ye varan Worldpuan ve seçili yurt içi otel rezervasyonlarınızda %5 indirim fırsatı!\n11-31 Aralık 2025 tarihleri arasında Yapı Kredi Mobil Seyahat Satın Al üzerind",
+      "issues": [
+        "Metinde \"30.000 tl ve üzeri\" yazıyor ama min_spend: 50000",
+        "Aralık kampanyası: 15000 TL - 29999 TL arası → min_spend 15000 olmalı (29999 değil!). Mevcut: 50000"
+      ],
+      "confidence": "HIGH",
+      "suggested_min_spend": 15000
+    },
+    {
+      "id": 14954,
+      "title": "Opet Worldcard ile 800 TL ve üzeri akaryakıt veya otogaz alımında 40 TL, toplamda 120 TL’ye varan Opet Puan!",
+      "card_name": "World",
+      "url": "https://www.worldcard.com.tr/kampanyalar/opet-worldcard-ile-800-tl-ve-uzeri-akaryakit-veya-otogaz-aliminda-40-tl,-toplamda-120-tl%E2%80%99ye-varan-ar",
+      "current_min_spend": 800,
+      "current_max_discount": 120,
+      "current_earning": "120 TL Puan",
+      "current_discount_percentage": null,
+      "campaign_text": "Son Gün 31.12.2025\nHemen Başvur\nOpet Worldcard ile 800 TL ve üzeri akaryakıt veya otogaz alımında 40 TL, toplamda 120 TL’ye varan Opet Puan!\nAna Sayfa\nKampanyalar\nOpet Worldcard ile 800 TL ve üzeri akaryakıt veya otogaz alımında 40 TL, toplamda 120 TL’ye varan Opet Puan!\nOpet Worldcard ile her ay Opet istasyonlarından tek seferde yapacağınız her 800 TL ve üzeri akaryakıt veya otogaz alımlarınızda anında 40 TL, toplamda 120 TL Opet istasyonlarında harcanabilir Opet Puan kazanabilirsiniz.\nBaşlangı",
+      "issues": [
+        "Katlanan kampanya: Her 800 TL'ye 40 TL, toplam 120 TL → min_spend 2400 olmalı (mevcut: 800)"
+      ],
+      "confidence": "HIGH",
+      "suggested_min_spend": 2400
+    },
+    {
+      "id": 14749,
+      "title": "Crystal ile yeni yılda yurt dışındaki fiziki ve online harcamalarınıza 3.000 TL’ye varan indirim!",
+      "card_name": "Crystal",
+      "url": "https://www.crystalcard.com.tr/kampanyalar/crystal-ile-yurt-disindaki-fiziki-ve-online-harcamalariniza-3000-tlye-varan-indirim-aralik",
+      "current_min_spend": 7500,
+      "current_max_discount": 3000,
+      "current_earning": "3000 TL Puan",
+      "current_discount_percentage": null,
+      "campaign_text": ";\nSon Gün 14.01.2026\nCrystal ile yeni yılda yurt dışındaki fiziki ve online harcamalarınıza 3.000 TL’ye varan indirim!\n15 Aralık 2025 - 14 Ocak 2026 tarihleri arasında fiziki ve online olarak tek seferde yapacağınız her 7.500 TL ve üzeri yurt dışı harcamanıza 750 TL, toplamda 3.000 TL indirim ayrıcalığını kaçırmayın!\nBaşlangıç - Bitiş Tarihi\n15.12.2025 - 14.01.2026\nKampanya Başvuru Kanalları\nWorld Mobil uygulamasından katılın\n\nKampanya Koşulları\n\nKampanya 15 Aralık 2025 - 14 Ocak 2026 tarihleri ",
+      "issues": [
+        "Katlanan kampanya: Her 7500 TL'ye 750 TL, toplam 3000 TL → min_spend 30000 olmalı (mevcut: 7500)"
+      ],
+      "confidence": "HIGH",
+      "suggested_min_spend": 30000
+    },
+    {
+      "id": 14728,
+      "title": "Yeni yıla özel yurt dışındaki Duty Free’lerde toplamda 1.500 TL’ye varan Worldpuan!",
+      "card_name": "World",
+      "url": "https://www.worldcard.com.tr/kampanyalar/yurt-disindaki-duty-freelerde-toplamda-1500-tlye-varan-worldpuan-aralik",
+      "current_min_spend": 5000,
+      "current_max_discount": 1500,
+      "current_earning": "1500 TL Puan",
+      "current_discount_percentage": null,
+      "campaign_text": "Son Gün 14.01.2026\nHemen Başvur\nYeni yıla özel yurt dışındaki Duty Free’lerde toplamda 1.500 TL’ye varan Worldpuan!\nAna Sayfa\nKampanyalar\nYeni yıla özel yurt dışındaki Duty Free’lerde toplamda 1.500 TL’ye varan Worldpuan!\n15 Aralık 2025 - 14 Ocak 2026 tarihleri arasında yurt dışındaki Duty Free'lerde tek seferde her 5.000 TL ve üzeri harcamada 750 TL, toplamda 1.500 TL Worldpuan kazanma fırsatı!\nBaşlangıç - Bitiş Tarihi\n15.12.2025 - 14.01.2026\nKampanya Başvuru Kanalları\nWorld Mobil uygulamasında",
+      "issues": [
+        "Katlanan kampanya: Her 5000 TL'ye 750 TL, toplam 1500 TL → min_spend 10000 olmalı (mevcut: 5000)"
+      ],
+      "confidence": "HIGH",
+      "suggested_min_spend": 10000
+    }
+  ],
+  "medium_confidence_issues": [
+    {
+      "id": 15060,
+      "title": "Chippin ile seçili marketlerden üç farklı günde yapacağınız 750 TL ve üzeri gıda marketi harcamanıza 250 TL Chippin’de geçerli Puan!",
+      "card_name": "Play",
+      "url": "https://www.yapikrediplay.com.tr/kampanyalar/chippin-ile-secili-marketlerden-uc-farkli-gunde-yapacaginiz-750-tl-ve-uzeri-gida-marketi-aralik",
+      "current_min_spend": 2250,
+      "current_max_discount": 250,
+      "current_earning": "250 TL Puan",
+      "current_discount_percentage": null,
+      "campaign_text": "Son Gün 31.12.2025\nHemen Başvur\nChippin ile seçili marketlerden üç farklı günde yapacağınız 750 TL ve üzeri gıda marketi harcamanıza 250 TL Chippin’de geçerli Puan!\nChippin ile seçili marketlerden üç farklı günde yapacağınız 750 TL ve üzeri gıda marketi harcamanıza 250 TL Chippin’de geçerli Puan!\nBaşlangıç - Bitiş Tarihi\n01.12.2025 - 31.12.2025\nKampanya Başvuru Kanalları\nWorld Mobil uygulamasından katılın\nKampanya Koşulları\n\nKampanya Tarihi\nKampanya 1-31 Aralık 2025 tarihleri arasında geçerlidir",
+      "issues": [
+        "Metinde \"750 tl ve üzeri\" yazıyor ama min_spend: 2250"
+      ],
+      "confidence": "MEDIUM",
+      "suggested_min_spend": 750
+    },
+    {
+      "id": 15059,
+      "title": " Seçili Chippin Üye İşyerleri’nden yapacağınız toplamda 400 TL’ye varan harcamalarınıza  100 TL Puan fırsatı!",
+      "card_name": "Play",
+      "url": "https://www.yapikrediplay.com.tr/kampanyalar/secili-chippin-uye-isyerlerinden-yapacaginiz-toplamda-400-tlye-varan-harcamalariniza-100-tl-puan-ara",
+      "current_min_spend": 400,
+      "current_max_discount": 100,
+      "current_earning": "100 TL Puan",
+      "current_discount_percentage": null,
+      "campaign_text": "Son Gün 31.12.2025\nHemen Başvur\nSeçili Chippin Üye İşyerleri’nden yapacağınız toplamda 400 TL’ye varan harcamalarınıza 100 TL Puan fırsatı!\nChippin’den farklı günlerde yapacağınız dördüncü 100 TL ve üzeri alışverişinize 100 TL Puan hediye!\nBaşlangıç - Bitiş Tarihi\n22.11.2025 - 31.12.2025\nKampanya Başvuru Kanalları\nWorld Mobil uygulamasından katılın\nKampanya Koşulları\n\nKampanya Tarihi\nKampanya 22 Kasım – 31 Aralık 2025 tarihleri arasında geçerlidir.\nKampanyaya Dahil Sektör ve Üye İşyerleri\nKampan",
+      "issues": [
+        "Metinde \"en az 100 tl\" yazıyor ama min_spend: 400"
+      ],
+      "confidence": "MEDIUM",
+      "suggested_min_spend": 100
+    },
+    {
+      "id": 15055,
+      "title": "Yapı Kredi Play ile dekk akmerkez’den yapacağın 200 TL ve üzeri harcamalarına işlem başına %20, işlem başına en fazla 100 TL, toplam 500 TL’ye varan indirim fırsatı!",
+      "card_name": "Play",
+      "url": "https://www.yapikrediplay.com.tr/kampanyalar/yapi-kredi-play-ile-dekk-akmerkezden-yapacagin-200-tl-ve-uzeri-harcamalarina-islem-basina-20-islem-b",
+      "current_min_spend": 2500,
+      "current_max_discount": 500,
+      "current_earning": "%20 (max 500TL)",
+      "current_discount_percentage": 20,
+      "campaign_text": "Son Gün 11.10.2026\nHemen Başvur\nYapı Kredi Play ile dekk akmerkez’den yapacağın 200 TL ve üzeri harcamalarına işlem başına %20, işlem başına en fazla 100 TL, toplam 500 TL’ye varan indirim fırsatı!\n11 Ekim 2025 – 11 Ekim 2026 tarihleri arasında dekk akmerkez’den yapacağın harcamalarına %20 indirim! Sen de 200 TL ve üzeri dekk akmerkez harcamalarını Yapı Kredi Play’le yap, toplam 500 TL'ye varan indirim kazan!\nBaşlangıç - Bitiş Tarihi\n11.10.2025 - 11.10.2026\nKampanya Başvuru Kanalları\nWorld Mobil",
+      "issues": [
+        "Metinde \"200 tl ve üzeri\" yazıyor ama min_spend: 2500"
+      ],
+      "confidence": "MEDIUM",
+      "suggested_min_spend": 200
+    },
+    {
+      "id": 15036,
+      "title": "Silver Logolu Mastercard'ınıza özel Yurt Dışı Duty Free’lerde %15 indirim fırsatı!",
+      "card_name": "Adios",
+      "url": "https://www.adioscard.com.tr/kampanyalar/silver-logolu-mastercardiniza-ozel-yurt-disi-duty-freelerde-15-indirim-firsati-2025",
+      "current_min_spend": 150,
+      "current_max_discount": 23,
+      "current_earning": "%15 (max 23TL)",
+      "current_discount_percentage": 15,
+      "campaign_text": "Son Gün 31.03.2026\nHemen Başvur\nSilver Logolu Mastercard'ınıza özel Yurt Dışı Duty Free’lerde %15 indirim fırsatı!\nSilver logolu Mastercard sahiplerine 150€/ 150$ ve üzeri yurt dışı Duty Free harcamalarında % 15 indirim!\nBaşlangıç - Bitiş Tarihi\n25.04.2025 - 31.03.2026\nKampanya Koşulları\nTürkiye’de ihraç edilmiş Silver logolu Mastercard’ınız ile 25 Nisan 2025 – 31 Mart 2026 tarihleri arasında tek seferde yapacağınız 150 USD ve üzeri yurt dışı duty free ödemenizde % 15 indirim kazanın!\nKampanya y",
+      "issues": [
+        "Metinde \"5.700 tl ve üzeri\" yazıyor ama min_spend: 150"
+      ],
+      "confidence": "MEDIUM",
+      "suggested_min_spend": 5700
+    },
+    {
+      "id": 15035,
+      "title": "Silver Logolu Mastercard'ınıza özel ZUBİZU anlaşmalı restoranlarda % 20'ye varan indirim fırsatı!",
+      "card_name": "Adios",
+      "url": "https://www.adioscard.com.tr/kampanyalar/silver-logolu-mastercardiniza-ozel-zubizu-anlasmali-restoranlarda-20ye-varan-indirim-firsati-2025",
+      "current_min_spend": 7500,
+      "current_max_discount": 1500,
+      "current_earning": "%20 (max 1500TL)",
+      "current_discount_percentage": 20,
+      "campaign_text": "Son Gün 31.12.2025\nHemen Başvur\nSilver Logolu Mastercard'ınıza özel ZUBİZU anlaşmalı restoranlarda % 20'ye varan indirim fırsatı!\nSilver logolu Mastercard sahipleri ZUBİZU anlaşmalı restoranlarda yapılan harcamalarda 3000 TL ve üzeri olan işlemlerde %20’ye varan indirim kazanıyor!\nBaşlangıç - Bitiş Tarihi\n24.10.2025 - 31.12.2025\nKampanya Koşulları\nSilver logolu Mastercard sahipleri ZUBİZU ile anlaşmalı restoranlarda haftanın her günü %20’ye varan indirimden faydalanabilir.\nKampanya kapsamında 31",
+      "issues": [
+        "Metinde \"3000 tl ve üzeri\" yazıyor ama min_spend: 7500"
+      ],
+      "confidence": "MEDIUM",
+      "suggested_min_spend": 3000
+    },
+    {
+      "id": 15034,
+      "title": "Silver logolu Mastercard’ınıza özel yurt dışı restoran ve kafe ödemelerinde %15 indirim!",
+      "card_name": "Adios",
+      "url": "https://www.adioscard.com.tr/kampanyalar/silver-logolu-mastercardiniza-ozel-yurt-disi-restoran-ve-kafe-odemelerinde-15-indirim-2025",
+      "current_min_spend": 153,
+      "current_max_discount": 23,
+      "current_earning": "%15 (max 23TL)",
+      "current_discount_percentage": 15,
+      "campaign_text": "Son Gün 31.03.2026\nHemen Başvur\nSilver logolu Mastercard’ınıza özel yurt dışı restoran ve kafe ödemelerinde %15 indirim!\nSilver logolu Mastercard sahiplerine 150€/ 150$ ve üzeri yurt dışı restoran ve kafe ödemelerinde % 15 indirim fırsatı!\nBaşlangıç - Bitiş Tarihi\n25.04.2025 - 31.03.2026\nKampanya Koşulları\nTürkiye’den alınmış Silver logolu Mastercard’ınız ile 25 Nisan 2025 – 31 Mart 2026 tarihleri arasında tek seferde yapacağınız 150 USD ve üzeri yurt dışı restoran ve cafe ödemenizde 15% indirim",
+      "issues": [
+        "Metinde \"5.700 tl ve üzeri\" yazıyor ama min_spend: 153"
+      ],
+      "confidence": "MEDIUM",
+      "suggested_min_spend": 5700
+    },
+    {
+      "id": 15031,
+      "title": " Seçili Chippin Üye İşyerleri’nden yapacağınız toplamda 400 TL’ye varan harcamalarınıza  100 TL Puan fırsatı!",
+      "card_name": "Adios",
+      "url": "https://www.adioscard.com.tr/kampanyalar/secili-chippin-uye-isyerlerinden-yapacaginiz-toplamda-400-tlye-varan-harcamalariniza-100-tl-puan-ara",
+      "current_min_spend": 400,
+      "current_max_discount": 100,
+      "current_earning": "100 TL Puan",
+      "current_discount_percentage": null,
+      "campaign_text": "Son Gün 31.12.2025\nHemen Başvur\nSeçili Chippin Üye İşyerleri’nden yapacağınız toplamda 400 TL’ye varan harcamalarınıza 100 TL Puan fırsatı!\nChippin’den farklı günlerde yapacağınız dördüncü 100 TL ve üzeri alışverişinize 100 TL Puan hediye!\nBaşlangıç - Bitiş Tarihi\n22.11.2025 - 31.12.2025\nKampanya Başvuru Kanalları\nWorld Mobil uygulamasından katılın\nKampanya Koşulları\n\nKampanya Tarihi\nKampanya 22 Kasım – 31 Aralık 2025 tarihleri arasında geçerlidir.\nKampanyaya Dahil Sektör ve Üye İşyerleri\nKampan",
+      "issues": [
+        "Metinde \"en az 100 tl\" yazıyor ama min_spend: 400"
+      ],
+      "confidence": "MEDIUM",
+      "suggested_min_spend": 100
+    },
+    {
+      "id": 14984,
+      "title": "World’e özel LC Waikiki mağazalarında 550 TL’ye varan Worldpuan! Üstelik Chippin uygulaması üzerinden LC Waikiki mağazalarından yapacağınız alışverişlerinize ek 200 TL’ye varan Worldpuan!",
+      "card_name": "World",
+      "url": "https://www.worldcard.com.tr/kampanyalar/worlde-ozel-lc-waikiki-magazalarinda-550-tlye-varan-worldpuan-ustelik-chippin-uygulamasi-aralik",
+      "current_min_spend": 3000,
+      "current_max_discount": 750,
+      "current_earning": "750 TL Puan",
+      "current_discount_percentage": null,
+      "campaign_text": "Son Gün 31.12.2025\nHemen Başvur\nWorld’e özel LC Waikiki mağazalarında 550 TL’ye varan Worldpuan! Üstelik Chippin uygulaması üzerinden LC Waikiki mağazalarından yapacağınız alışverişlerinize ek 200 TL’ye varan Worldpuan!\nAna Sayfa\nKampanyalar\nWorld’e özel LC Waikiki mağazalarında 550 TL’ye varan Worldpuan! Üstelik Chippin uygulaması üzerinden LC Waikiki mağazalarından yapacağınız alışverişlerinize ek 200 TL’ye varan Worldpuan!\nWorld’e özel LC Waikiki mağazalarından tek seferde yapılacak 1.500 TL ",
+      "issues": [
+        "Metinde \"1.500 tl ve üzeri\" yazıyor ama min_spend: 3000"
+      ],
+      "confidence": "MEDIUM",
+      "suggested_min_spend": 1500
+    },
+    {
+      "id": 14977,
+      "title": "TatilBudur’dan yapılacak rezervasyonlarda 9.000 TL’ye varan Worldpuan!",
+      "card_name": "World",
+      "url": "https://www.worldcard.com.tr/kampanyalar/tatilbudurdan-yapilacak-rezervasyonlarda-9000-tlye-varan-worldpuan-aralik",
+      "current_min_spend": 45000,
+      "current_max_discount": 9000,
+      "current_earning": "9000 TL Puan",
+      "current_discount_percentage": null,
+      "campaign_text": "Son Gün 31.12.2025\nHemen Başvur\nTatilBudur’dan yapılacak rezervasyonlarda 9.000 TL’ye varan Worldpuan!\nAna Sayfa\nKampanyalar\nTatilBudur’dan yapılacak rezervasyonlarda 9.000 TL’ye varan Worldpuan!\n1-31 Aralık 2025 tarihleri arasında Tatilbudur.com, TatilBudur mobil uygulaması ,TatilBudur çağrı merkezi ve acenteler üzerinden tek seferde yapılacak peşin, 3 taksitli veya 6 taksitli alışverişlerde yurt içi ve Kuzey Kıbrıs otel, yurt dışı tur rezervasyonlarında geçerli; 45.000 TL-69.999 TL arası harca",
+      "issues": [
+        "Metinde \"120.000 tl ve üzeri\" yazıyor ama min_spend: 45000"
+      ],
+      "confidence": "MEDIUM",
+      "suggested_min_spend": 120000
+    },
+    {
+      "id": 14976,
+      "title": "Setur’dan yapılacak seçili otel ve tur rezervasyonlarına 9.000 TL’ye varan Worldpuan!",
+      "card_name": "World",
+      "url": "https://www.worldcard.com.tr/kampanyalar/seturdan-yapilacak-secili-otel-ve-tur-rezervasyonlarina-9000-tlye-varan-worldpuan-aralik",
+      "current_min_spend": 45000,
+      "current_max_discount": 9000,
+      "current_earning": "9000 TL Puan",
+      "current_discount_percentage": null,
+      "campaign_text": "Son Gün 31.12.2025\nHemen Başvur\nSetur’dan yapılacak seçili otel ve tur rezervasyonlarına 9.000 TL’ye varan Worldpuan!\nAna Sayfa\nKampanyalar\nSetur’dan yapılacak seçili otel ve tur rezervasyonlarına 9.000 TL’ye varan Worldpuan!\n1-31 Aralık 2025 tarihleri arasında seçili yurt içi, Kuzey Kıbrıs otel, yurt dışı tur ve kültür turu rezervasyonlarınızda peşin, 3 taksitli veya 6 taksitli alışverişlerde 9.000 TL’ ye varan Worldpuan!\nBaşlangıç - Bitiş Tarihi\n01.12.2025 - 31.12.2025\nKampanya Başvuru Kanalla",
+      "issues": [
+        "Metinde \"120.000 tl ve üzeri\" yazıyor ama min_spend: 45000"
+      ],
+      "confidence": "MEDIUM",
+      "suggested_min_spend": 120000
+    },
+    {
+      "id": 14966,
+      "title": "Migros’ta Chippin uygulaması üzerinden 3 farklı günde yapacağınız 750 TL ve üzeri alışverişinize Chippin’de geçerli 175 TL Worldpuan!",
+      "card_name": "World",
+      "url": "https://www.worldcard.com.tr/kampanyalar/migrosta-chippin-uygulamasi-uzerinden-3-farkli-gunde-yapacaginiz-750-tl-ve-uzeri-alisverisinize-aral",
+      "current_min_spend": 2250,
+      "current_max_discount": 175,
+      "current_earning": "175 TL Puan",
+      "current_discount_percentage": null,
+      "campaign_text": "Son Gün 31.12.2025\nHemen Başvur\nMigros’ta Chippin uygulaması üzerinden 3 farklı günde yapacağınız 750 TL ve üzeri alışverişinize Chippin’de geçerli 175 TL Worldpuan!\nAna Sayfa\nKampanyalar\nMigros’ta Chippin uygulaması üzerinden 3 farklı günde yapacağınız 750 TL ve üzeri alışverişinize Chippin’de geçerli 175 TL Worldpuan!\nChippin uygulaması üzerinden 1 – 31 Aralık 2025 tarihleri arasında Migros’tan 3 farklı günde yapacağınız 750 TL ve üzeri alışverişinize Chippin’de geçerli 175 TL Worldpuan!\nBaşla",
+      "issues": [
+        "Metinde \"750 tl ve üzeri\" yazıyor ama min_spend: 2250"
+      ],
+      "confidence": "MEDIUM",
+      "suggested_min_spend": 750
+    },
+    {
+      "id": 14965,
+      "title": "Happy Center’da Chippin uygulaması üzerinden 3 farklı günde yapacağınız 500 TL ve üzeri alışverişinize Chippin’de geçerli 150 TL Worldpuan ve 100 TL ChipPuan!",
+      "card_name": "World",
+      "url": "https://www.worldcard.com.tr/kampanyalar/happy-centerda-chippin-uygulamasi-uzerinden-3-farkli-gunde-yapacaginiz-500-tl-ve-aralik",
+      "current_min_spend": 1500,
+      "current_max_discount": 250,
+      "current_earning": "250 TL Puan",
+      "current_discount_percentage": null,
+      "campaign_text": "Son Gün 31.12.2025\nHemen Başvur\nHappy Center’da Chippin uygulaması üzerinden 3 farklı günde yapacağınız 500 TL ve üzeri alışverişinize Chippin’de geçerli 150 TL Worldpuan ve 100 TL ChipPuan!\nAna Sayfa\nKampanyalar\nHappy Center’da Chippin uygulaması üzerinden 3 farklı günde yapacağınız 500 TL ve üzeri alışverişinize Chippin’de geçerli 150 TL Worldpuan ve 100 TL ChipPuan!\nChippin uygulaması üzerinden 1 – 31 Aralık 2025 tarihleri arasında Happy Center’da 3 farklı günde yapacağınız 500 TL ve üzeri al",
+      "issues": [
+        "Metinde \"en az 500 tl\" yazıyor ama min_spend: 1500"
+      ],
+      "confidence": "MEDIUM",
+      "suggested_min_spend": 500
+    },
+    {
+      "id": 14964,
+      "title": "Kim Market’te Chippin uygulaması üzerinden 3 farklı günde yapacağınız 500 TL ve üzeri alışverişinize Chippin’de geçerli 150 TL Worldpuan ve 100 TL ChipPuan!",
+      "card_name": "World",
+      "url": "https://www.worldcard.com.tr/kampanyalar/kim-markette-chippin-uygulamasi-uzerinden-3-farkli-gunde-yapacaginiz-500-tl-ve-uzeri-aralik",
+      "current_min_spend": 1500,
+      "current_max_discount": 250,
+      "current_earning": "250 TL Puan",
+      "current_discount_percentage": null,
+      "campaign_text": "Son Gün 31.12.2025\nHemen Başvur\nKim Market’te Chippin uygulaması üzerinden 3 farklı günde yapacağınız 500 TL ve üzeri alışverişinize Chippin’de geçerli 150 TL Worldpuan ve 100 TL ChipPuan!\nAna Sayfa\nKampanyalar\nKim Market’te Chippin uygulaması üzerinden 3 farklı günde yapacağınız 500 TL ve üzeri alışverişinize Chippin’de geçerli 150 TL Worldpuan ve 100 TL ChipPuan!\nChippin uygulaması üzerinden 1 – 31 Aralık 2025 tarihleri arasında Kim Market’lerinden 3 farklı günde yapacağınız 500 TL ve üzeri al",
+      "issues": [
+        "Metinde \"en az 500 tl\" yazıyor ama min_spend: 1500"
+      ],
+      "confidence": "MEDIUM",
+      "suggested_min_spend": 500
+    },
+    {
+      "id": 14963,
+      "title": "Chippin ile seçili marketlerden üç farklı günde yapacağınız 750 TL ve üzeri gıda marketi harcamanıza 250 TL Chippin’de geçerli Worldpuan!",
+      "card_name": "World",
+      "url": "https://www.worldcard.com.tr/kampanyalar/chippin-ile-secili-marketlerden-uc-farkli-gunde-yapacaginiz-750-tl-ve-uzeri-gida-marketi-harcamaniza",
+      "current_min_spend": 2250,
+      "current_max_discount": 250,
+      "current_earning": "250 TL Puan",
+      "current_discount_percentage": null,
+      "campaign_text": "Son Gün 31.12.2025\nHemen Başvur\nChippin ile seçili marketlerden üç farklı günde yapacağınız 750 TL ve üzeri gıda marketi harcamanıza 250 TL Chippin’de geçerli Worldpuan!\nAna Sayfa\nKampanyalar\nChippin ile seçili marketlerden üç farklı günde yapacağınız 750 TL ve üzeri gıda marketi harcamanıza 250 TL Chippin’de geçerli Worldpuan!\nChippin ile seçili marketlerden üç farklı günde yapacağınız 750 TL ve üzeri gıda marketi harcamanıza 250 TL Chippin’de geçerli Worldpuan!\nBaşlangıç - Bitiş Tarihi\n01.12.2",
+      "issues": [
+        "Metinde \"750 tl ve üzeri\" yazıyor ama min_spend: 2250"
+      ],
+      "confidence": "MEDIUM",
+      "suggested_min_spend": 750
+    },
+    {
+      "id": 14961,
+      "title": "Burger King®, Popeyes®, Arby's®, Usta Dönerci®, Sbarro®, Subway® ve Usta Pideci® restoranlarında Chippin'de geçerli 100 TL Worldpuan kazanma fırsatı!",
+      "card_name": "World",
+      "url": "https://www.worldcard.com.tr/kampanyalar/burger-king%C2%AE-popeyes%C2%AE-arbys%C2%AE-usta-donerci%C2%AE-sbarro%C2%AE-subway%C2%AE-ve-usta-pideci%C2%AE-restoranlarinda-tab-gida",
+      "current_min_spend": 400,
+      "current_max_discount": 100,
+      "current_earning": "100 TL Puan",
+      "current_discount_percentage": null,
+      "campaign_text": "Son Gün 31.12.2025\nHemen Başvur\nBurger King®, Popeyes®, Arby's®, Usta Dönerci®, Sbarro®, Subway® ve Usta Pideci® restoranlarında Chippin'de geçerli 100 TL Worldpuan kazanma fırsatı!\nAna Sayfa\nKampanyalar\nBurger King®, Popeyes®, Arby's®, Usta Dönerci®, Sbarro®, Subway® ve Usta Pideci® restoranlarında Chippin'de geçerli 100 TL Worldpuan kazanma fırsatı!\n1 – 31 Aralık 2025 tarihleri arasında World Mobil’e özel Chippin uygulaması üzerinden sadece Chippin ile anlaşmalı Burger King®, Popeyes®, Arby's®",
+      "issues": [
+        "Metinde \"200 tl ve üzeri\" yazıyor ama min_spend: 400"
+      ],
+      "confidence": "MEDIUM",
+      "suggested_min_spend": 200
+    },
+    {
+      "id": 14952,
+      "title": " Seçili Chippin Üye İşyerleri’nden yapacağınız toplamda 400 TL’ye varan harcamalarınıza  100 TL Worldpuan fırsatı!",
+      "card_name": "World",
+      "url": "https://www.worldcard.com.tr/kampanyalar/secili-chippin-uye-isyerlerinden-yapacaginiz-toplamda-400-tlye-varan-harcamalariniza-100-tl-aralik",
+      "current_min_spend": 400,
+      "current_max_discount": 100,
+      "current_earning": "100 TL Puan",
+      "current_discount_percentage": null,
+      "campaign_text": "Son Gün 31.12.2025\nHemen Başvur\nSeçili Chippin Üye İşyerleri’nden yapacağınız toplamda 400 TL’ye varan harcamalarınıza 100 TL Worldpuan fırsatı!\nAna Sayfa\nKampanyalar\nSeçili Chippin Üye İşyerleri’nden yapacağınız toplamda 400 TL’ye varan harcamalarınıza 100 TL Worldpuan fırsatı!\nChippin’den farklı günlerde yapacağınız dördüncü 100 TL ve üzeri alışverişinize 100 TL Worldpuan hediye!\nBaşlangıç - Bitiş Tarihi\n22.11.2025 - 31.12.2025\nKampanya Başvuru Kanalları\nWorld Mobil uygulamasından katılın\nKamp",
+      "issues": [
+        "Metinde \"en az 100 tl\" yazıyor ama min_spend: 400"
+      ],
+      "confidence": "MEDIUM",
+      "suggested_min_spend": 100
+    },
+    {
+      "id": 14940,
+      "title": "Silver Logolu Mastercard'ınıza özel Yurt Dışı Duty Free’lerde %15 indirim fırsatı!",
+      "card_name": "World",
+      "url": "https://www.worldcard.com.tr/kampanyalar/silver-logolu-mastercardiniza-ozel-yurt-disi-duty-freelerde-15-indirim-firsati",
+      "current_min_spend": 150,
+      "current_max_discount": 23,
+      "current_earning": "%15 (max 23TL)",
+      "current_discount_percentage": 15,
+      "campaign_text": "Son Gün 31.03.2026\nHemen Başvur\nSilver Logolu Mastercard'ınıza özel Yurt Dışı Duty Free’lerde %15 indirim fırsatı!\nAna Sayfa\nKampanyalar\nSilver Logolu Mastercard'ınıza özel Yurt Dışı Duty Free’lerde %15 indirim fırsatı!\nSilver logolu Mastercard sahiplerine 150€/ 150$ ve üzeri yurt dışı Duty Free harcamalarında % 15 indirim!\nBaşlangıç - Bitiş Tarihi\n25.04.2025 - 31.03.2026\nKampanya Koşulları\nTürkiye’de ihraç edilmiş Silver logolu Mastercard’ınız ile 25 Nisan 2025 – 31 Mart 2026 tarihleri arasında",
+      "issues": [
+        "Metinde \"5.700 tl ve üzeri\" yazıyor ama min_spend: 150"
+      ],
+      "confidence": "MEDIUM",
+      "suggested_min_spend": 5700
+    },
+    {
+      "id": 14938,
+      "title": "Silver Logolu Mastercard'ınıza özel ZUBİZU anlaşmalı restoranlarda %20'ye varan indirim fırsatı!",
+      "card_name": "World",
+      "url": "https://www.worldcard.com.tr/kampanyalar/silver-logolu-mastercardiniza-ozel-zubizu-anlasmali-restoranlarda-20ye-varan-indirim-firsati-2025",
+      "current_min_spend": 7500,
+      "current_max_discount": 1500,
+      "current_earning": "%20 (max 1500TL)",
+      "current_discount_percentage": 20,
+      "campaign_text": "Son Gün 31.12.2025\nHemen Başvur\nSilver Logolu Mastercard'ınıza özel ZUBİZU anlaşmalı restoranlarda %20'ye varan indirim fırsatı!\nAna Sayfa\nKampanyalar\nSilver Logolu Mastercard'ınıza özel ZUBİZU anlaşmalı restoranlarda %20'ye varan indirim fırsatı!\nSilver logolu Mastercard sahipleri ZUBİZU anlaşmalı restoranlarda yapılan harcamalarda 3000 TL ve üzeri olan işlemlerde %20’ye varan indirim kazanıyor!\nBaşlangıç - Bitiş Tarihi\n24.10.2025 - 31.12.2025\nKampanya Koşulları\nSilver logolu Mastercard sahiple",
+      "issues": [
+        "Metinde \"3000 tl ve üzeri\" yazıyor ama min_spend: 7500"
+      ],
+      "confidence": "MEDIUM",
+      "suggested_min_spend": 3000
+    },
+    {
+      "id": 14937,
+      "title": "Silver logolu Mastercard’ınıza özel yurt dışı restoran ve kafe ödemelerinde %15 indirim!",
+      "card_name": "World",
+      "url": "https://www.worldcard.com.tr/kampanyalar/silver-logolu-mastercardiniza-ozel-yurt-disi-restoran-ve-kafe-odemelerinde-15-indirim",
+      "current_min_spend": 153,
+      "current_max_discount": 23,
+      "current_earning": "%15 (max 23TL)",
+      "current_discount_percentage": 15,
+      "campaign_text": "Son Gün 31.03.2026\nHemen Başvur\nSilver logolu Mastercard’ınıza özel yurt dışı restoran ve kafe ödemelerinde %15 indirim!\nAna Sayfa\nKampanyalar\nSilver logolu Mastercard’ınıza özel yurt dışı restoran ve kafe ödemelerinde %15 indirim!\nSilver logolu Mastercard sahiplerine 150 Euro / 150 USD ve üzeri yurt dışı restoran ve kafe ödemelerinde % 15 indirim fırsatı!\nBaşlangıç - Bitiş Tarihi\n25.04.2025 - 31.03.2026\nKampanya Koşulları\nTürkiye’den alınmış Silver logolu Mastercard’ınız ile 25 Nisan 2025 – 31 ",
+      "issues": [
+        "Metinde \"5.700 tl ve üzeri\" yazıyor ama min_spend: 153"
+      ],
+      "confidence": "MEDIUM",
+      "suggested_min_spend": 5700
+    },
+    {
+      "id": 14931,
+      "title": "Opet ve Sunpet istasyonlarında 270TL’ye varan Opet Puan!",
+      "card_name": "World",
+      "url": "https://www.worldcard.com.tr/kampanyalar/opet-ve-sunpet-istasyonlarinda-270tlye-varan-opet-puan",
+      "current_min_spend": 4000,
+      "current_max_discount": 300,
+      "current_earning": "270 TL Puan",
+      "current_discount_percentage": null,
+      "campaign_text": "Son Gün 31.12.2025\nHemen Başvur\nOpet ve Sunpet istasyonlarında 270TL’ye varan Opet Puan!\nAna Sayfa\nKampanyalar\nOpet ve Sunpet istasyonlarında 270TL’ye varan Opet Puan!\nOpet ve Sunpet istasyonlarında 4 adet 1000TL ve üzeri akaryakıt alımına 270TL Opet Puan!\nBaşlangıç - Bitiş Tarihi\n16.11.2025 - 31.12.2025\nKampanya Başvuru Kanalları\nWorld Mobil uygulamasından katılın\nKampanya Koşulları\n16 Kasım– 31 Aralık 2025 tarihleri arasında, ilk alışverişten önce kampanyaya katılmak üzere SMS gönderen veya Wo",
+      "issues": [
+        "Metinde \"1000tl ve üzeri\" yazıyor ama min_spend: 4000"
+      ],
+      "confidence": "MEDIUM",
+      "suggested_min_spend": 1000
+    },
+    {
+      "id": 14915,
+      "title": "World’e özel Opet istasyonlarında Chippin uygulaması üzerinden yapacağınız alışverişinize 400TL değerinde Yapı Kredi Opet Puan!",
+      "card_name": "World",
+      "url": "https://www.worldcard.com.tr/kampanyalar/worlde-ozel-opet-istasyonlarinda-chippin-uygulamasi-uzerinden-yapacaginiz-alisverisinize-400tl-kasim",
+      "current_min_spend": 4000,
+      "current_max_discount": 400,
+      "current_earning": "400 TL Puan",
+      "current_discount_percentage": null,
+      "campaign_text": "Son Gün 31.12.2025\nHemen Başvur\nWorld’e özel Opet istasyonlarında Chippin uygulaması üzerinden yapacağınız alışverişinize 400TL değerinde Yapı Kredi Opet Puan!\nAna Sayfa\nKampanyalar\nWorld’e özel Opet istasyonlarında Chippin uygulaması üzerinden yapacağınız alışverişinize 400TL değerinde Yapı Kredi Opet Puan!\nWorld’e özel Opet istasyonlarında Chippin uygulaması üzerinden 4 farklı günde yapacağınız 1000TL ve üzeri alışverişinize 400TL değerinde Yapı Kredi Opet Puan!\nBaşlangıç - Bitiş Tarihi\n16.11.",
+      "issues": [
+        "Metinde \"1000tl ve üzeri\" yazıyor ama min_spend: 4000"
+      ],
+      "confidence": "MEDIUM",
+      "suggested_min_spend": 1000
+    },
+    {
+      "id": 14755,
+      "title": "Yapı Kredi Play ile 150 TL ve üzeri kafe ve restoran harcamalarında işlem başına %20, işlem başına en fazla 50 TL, toplam 300 TL’ye varan indirim fırsatı!",
+      "card_name": "Play",
+      "url": "https://www.yapikrediplay.com.tr/kampanyalar/yapi-kredi-play-ile-150-tl-ve-uzeri-kafe-ve-restoran-harcamalarinda-islem-basina-20-islem-basina-en",
+      "current_min_spend": 1500,
+      "current_max_discount": 300,
+      "current_earning": "%20 (max 300TL)",
+      "current_discount_percentage": 20,
+      "campaign_text": "Son Gün 31.12.2025\nHemen Başvur\nYapı Kredi Play ile 150 TL ve üzeri kafe ve restoran harcamalarında işlem başına %20, işlem başına en fazla 50 TL, toplam 300 TL’ye varan indirim fırsatı!\n1-31 Aralık tarihleri arasında kafe ve restoran harcamalarında %20 indirim! Sen de 150 TL ve üzeri kafe ve restoran harcamalarını Yapı Kredi Play’le yap, toplam 300 TL'ye varan indirim kazan!\nBaşlangıç - Bitiş Tarihi\n01.12.2025 - 31.12.2025\nKampanya Başvuru Kanalları\nWorld Mobil uygulamasından katılın\nKampanya K",
+      "issues": [
+        "Metinde \"150 tl ve üzeri\" yazıyor ama min_spend: 1500"
+      ],
+      "confidence": "MEDIUM",
+      "suggested_min_spend": 150
+    },
+    {
+      "id": 14747,
+      "title": "Silver Logolu Mastercard'ınıza özel Yurt Dışı Duty Free’lerde %15 indirim ayrıcalığı!",
+      "card_name": "Crystal",
+      "url": "https://www.crystalcard.com.tr/kampanyalar/silver-logolu-mastercardiniza-ozel-yurt-disi-duty-freelerde-15-indirim-ayricaligi-2025",
+      "current_min_spend": 153,
+      "current_max_discount": 23,
+      "current_earning": "%15 (max 23TL)",
+      "current_discount_percentage": 15,
+      "campaign_text": ";\nSon Gün 31.03.2026\nSilver Logolu Mastercard'ınıza özel Yurt Dışı Duty Free’lerde %15 indirim ayrıcalığı!\nSilver logolu Mastercard sahiplerine 150€/ 150$ ve üzeri yurt dışı Duty Free harcamalarında % 15 indirim!\nBaşlangıç - Bitiş Tarihi\n25.04.2025 - 31.03.2026\n\nKampanya Koşulları\n\nTürkiye’de ihraç edilmiş Silver logolu Mastercard’ınız ile 25 Nisan 2025 – 31 Mart 2026 tarihleri arasında tek seferde yapacağınız 150 USD ve üzeri yurt dışı duty free ödemenizde % 15 indirim kazanın!\nKampanya yurt dı",
+      "issues": [
+        "Metinde \"5.700 tl ve üzeri\" yazıyor ama min_spend: 153"
+      ],
+      "confidence": "MEDIUM",
+      "suggested_min_spend": 5700
+    },
+    {
+      "id": 14746,
+      "title": "Silver Logolu Mastercard'ınıza özel ZUBİZU anlaşmalı restoranlarda %20'ye varan indirim ayrıcalığı!",
+      "card_name": "Crystal",
+      "url": "https://www.crystalcard.com.tr/kampanyalar/silver-logolu-mastercardiniza-ozel-zubizu-anlasmali-restoranlarda-20ye-varan-indirim-ayricaligi-2025",
+      "current_min_spend": 7500,
+      "current_max_discount": 1500,
+      "current_earning": "%20 (max 1.500TL)",
+      "current_discount_percentage": 20,
+      "campaign_text": ";\nSon Gün 31.12.2025\nSilver Logolu Mastercard'ınıza özel ZUBİZU anlaşmalı restoranlarda %20'ye varan indirim ayrıcalığı!\nSilver logolu Mastercard sahipleri ZUBİZU anlaşmalı restoranlarda yapılan harcamalarda 3000 TL ve üzeri olan işlemlerde %20’ye varan indirim kazanıyor!\nBaşlangıç - Bitiş Tarihi\n24.10.2025 - 31.12.2025\n\nKampanya Koşulları\n\nSilver logolu Mastercard sahipleri ZUBİZU ile anlaşmalı restoranlarda haftanın her günü %20’ye varan indirimden faydalanabilir.\nKampanya kapsamında 31 Aralık",
+      "issues": [
+        "Metinde \"3000 tl ve üzeri\" yazıyor ama min_spend: 7500"
+      ],
+      "confidence": "MEDIUM",
+      "suggested_min_spend": 3000
+    },
+    {
+      "id": 14745,
+      "title": "Silver logolu Mastercard’ınıza özel yurt dışı restoran ve kafe ödemelerinde %15 indirim!",
+      "card_name": "Crystal",
+      "url": "https://www.crystalcard.com.tr/kampanyalar/silver-logolu-mastercardiniza-ozel-yurt-disi-restoran-ve-kafe-odemelerinde-15-indirim-2025",
+      "current_min_spend": 153,
+      "current_max_discount": 23,
+      "current_earning": "%15 (max 23TL)",
+      "current_discount_percentage": 15,
+      "campaign_text": ";\nSon Gün 31.03.2026\nSilver logolu Mastercard’ınıza özel yurt dışı restoran ve kafe ödemelerinde %15 indirim!\nSilver logolu Mastercard sahiplerine 150€/ 150$ ve üzeri yurt dışı restoran ve kafe ödemelerinde % 15 indirim ayrıcalığı!\nBaşlangıç - Bitiş Tarihi\n25.04.2025 - 31.03.2026\n\nKampanya Koşulları\n\nTürkiye’den alınmış Silver logolu Mastercard’ınız ile 25 Nisan 2025 – 31 Mart 2026 tarihleri arasında tek seferde yapacağınız 150 USD ve üzeri yurt dışı restoran ve cafe ödemenizde 15% indirim kazan",
+      "issues": [
+        "Metinde \"5.700 tl ve üzeri\" yazıyor ama min_spend: 153"
+      ],
+      "confidence": "MEDIUM",
+      "suggested_min_spend": 5700
+    },
+    {
+      "id": 14713,
+      "title": "Play karta özel 200 TL ve üzeri eğitim ve kariyer platformları ödemelerinde %50, işlem başına en fazla 250 TL, toplam 250 TL indirim kazanma fırsatı!",
+      "card_name": "Play",
+      "url": "https://www.yapikrediplay.com.tr/kampanyalar/play-karta-ozel-200-tl-ve-uzeri-egitim-ve-kariyer-platformlari-odemelerinde-50-islem-basina-en-fazla",
+      "current_min_spend": 500,
+      "current_max_discount": 250,
+      "current_earning": "%50 (max 250TL)",
+      "current_discount_percentage": 50,
+      "campaign_text": "Son Gün 31.12.2025\nHemen Başvur\nPlay karta özel 200 TL ve üzeri eğitim ve kariyer platformları ödemelerinde %50, işlem başına en fazla 250 TL, toplam 250 TL indirim kazanma fırsatı!\n1-31 Aralık tarihleri arasında eğitim platformu harcamalarında %50 indirim! Sen de 200 TL ve üzeri eğitim platformu harcamalarını Yapı Kredi Play’le yap, toplam 250 TL'ye varan indirim kazan!\nBaşlangıç - Bitiş Tarihi\n01.12.2025 - 31.12.2025\nKampanya Başvuru Kanalları\nWorld Mobil uygulamasından katılın\nKampanya Koşull",
+      "issues": [
+        "Metinde \"200 tl ve üzeri\" yazıyor ama min_spend: 500"
+      ],
+      "confidence": "MEDIUM",
+      "suggested_min_spend": 200
+    }
+  ],
+  "low_confidence_issues": [
+    {
+      "id": 15082,
+      "title": "Silver logolu Mastercard’ınıza özel Galataport’ta otopark 1 TL ayrıcalığı!",
+      "card_name": "Crystal",
+      "url": "https://www.crystalcard.com.tr/kampanyalar/silver-logolu-mastercardiniza-ozel-galataportta-otopark-1-tl-ayricaligi",
+      "current_min_spend": 0,
+      "current_max_discount": 399,
+      "current_earning": "1 TL Puan",
+      "current_discount_percentage": null,
+      "campaign_text": ";\nSon Gün 31.12.2025\nSilver logolu Mastercard’ınıza özel Galataport’ta otopark 1 TL ayrıcalığı!\nMasterpass hesabına kayıtlı Silver logolu Mastercard kredi kartı ile Galataport’ta yapacağınız otopark harcamanız 1 TL!\nBaşlangıç - Bitiş Tarihi\n13.11.2025 - 31.12.2025\n\nKampanya Koşulları\n\n13 Kasım 2025 – 31 Aralık 2025 tarihleri arasında Galataport İstanbul mobil uygulaması üzerinden Masterpass™ hesabına kayıtlı Silver logolu Mastercard® kartı ile otopark ödemelerini yapan kullanıcılar ayda bir kere",
+      "issues": [
+        "max_discount 399 TL ama min_spend: 0. Metinde minimum harcama belirtilmemiş olabilir."
+      ],
+      "confidence": "LOW"
+    },
+    {
+      "id": 15064,
+      "title": "Masterpass’a kayıtlı Mastercard logolu Yapı Kredi kart sahiplerine özel HOP sürüşlerinde 200 TL değerinde indirim kuponu fırsatı!",
+      "card_name": "Play",
+      "url": "https://www.yapikrediplay.com.tr/kampanyalar/masterpassa-kayitli-mastercard-logolu-yapi-kredi-kart-sahiplerine-ozel-hop-suruslerinde-200-tl-deger",
+      "current_min_spend": 0,
+      "current_max_discount": 200,
+      "current_earning": "200 TL Puan",
+      "current_discount_percentage": null,
+      "campaign_text": "Son Gün 31.01.2026\nHemen Başvur\nMasterpass’a kayıtlı Mastercard logolu Yapı Kredi kart sahiplerine özel HOP sürüşlerinde 200 TL değerinde indirim kuponu fırsatı!\nMasterpass’a kayıtlı Mastercard logolu Yapı Kredi banka kartı, ön ödemeli kart ve kredi kartı sahiplerine özel masterpassplus.com web sitesi üzerinden alınacak kupon kodu ile HOP mobil uygulamasında geçerli 200 TL değerinde indirim kuponu hediye!\nBaşlangıç - Bitiş Tarihi\n10.12.2025 - 31.01.2026\nKampanya Başvuru Kanalları\nWorld Mobil uyg",
+      "issues": [
+        "max_discount 200 TL ama min_spend: 0. Metinde minimum harcama belirtilmemiş olabilir."
+      ],
+      "confidence": "LOW"
+    },
+    {
+      "id": 15040,
+      "title": "Silver logolu Mastercard’ınıza özel Galataport’ta otopark 1 TL!",
+      "card_name": "Adios",
+      "url": "https://www.adioscard.com.tr/kampanyalar/silver-logolu-mastercardiniza-ozel-galataportta-otopark-1-tl",
+      "current_min_spend": 0,
+      "current_max_discount": 399,
+      "current_earning": "Özel Fırsat",
+      "current_discount_percentage": null,
+      "campaign_text": "Son Gün 31.12.2025\nHemen Başvur\nSilver logolu Mastercard’ınıza özel Galataport’ta otopark 1 TL!\nMasterpass hesabına kayıtlı Silver logolu Mastercard kredi kartı ile Galataport’ta yapacağınız otopark harcamanız 1 TL!\nBaşlangıç - Bitiş Tarihi\n13.11.2025 - 31.12.2025\nKampanya Koşulları\n13 Kasım 2025 – 31 Aralık 2025 tarihleri arasında Galataport İstanbul mobil uygulaması üzerinden Masterpass™ hesabına kayıtlı Silver logolu Mastercard® kartı ile otopark ödemelerini yapan kullanıcılar ayda bir kere 1",
+      "issues": [
+        "max_discount 399 TL ama min_spend: 0. Metinde minimum harcama belirtilmemiş olabilir."
+      ],
+      "confidence": "LOW"
+    },
+    {
+      "id": 15028,
+      "title": "Toplamda 10.000 TL’ye varan Worldpuan ödüllü Vadaa Şans hafta içi her akşam 20.00’de!",
+      "card_name": "World",
+      "url": "https://www.worldcard.com.tr/kampanyalar/toplamda-10-000-tlye-varan-worldpuan-odullu-vadaa-sans-hafta-ici-her-aksam-20-00de-90000204455",
+      "current_min_spend": 0,
+      "current_max_discount": 10000,
+      "current_earning": "10000 TL Puan",
+      "current_discount_percentage": null,
+      "campaign_text": "Son Gün 31.12.2025\nHemen Başvur\nToplamda 10.000 TL’ye varan Worldpuan ödüllü Vadaa Şans hafta içi her akşam 20.00’de!\nAna Sayfa\nKampanyalar\nToplamda 10.000 TL’ye varan Worldpuan ödüllü Vadaa Şans hafta içi her akşam 20.00’de!\nBilgi ve şans yarışması olan Vadaa Şans hafta içi her akşam toplam 7.500 TL Worldpuan ödül ile, Çarşambaları ise toplam 10.000 TL Worldpuan ödül ile saat 20.00’de World Mobil’de!\nBaşlangıç - Bitiş Tarihi\n03.02.2024 - 31.12.2025\nKampanya Başvuru Kanalları\nWorld Mobil uygulam",
+      "issues": [
+        "max_discount 10000 TL ama min_spend: 0. Metinde minimum harcama belirtilmemiş olabilir."
+      ],
+      "confidence": "LOW"
+    },
+    {
+      "id": 15017,
+      "title": "Toplamda 15.000 TL’ye varan Worldpuan ödüllü Vadaa Şans hafta içi her akşam 20.00’de!",
+      "card_name": "World",
+      "url": "https://www.worldcard.com.tr/kampanyalar/toplamda-15000-tlye-varan-worldpuan-odullu-vadaa-sans-hafta-ici-her-aksam-2000de",
+      "current_min_spend": 0,
+      "current_max_discount": 15000,
+      "current_earning": "15000 TL Puan",
+      "current_discount_percentage": null,
+      "campaign_text": "Son Gün 31.12.2026\nHemen Başvur\nToplamda 15.000 TL’ye varan Worldpuan ödüllü Vadaa Şans hafta içi her akşam 20.00’de!\nAna Sayfa\nKampanyalar\nToplamda 15.000 TL’ye varan Worldpuan ödüllü Vadaa Şans hafta içi her akşam 20.00’de!\nBilgi ve şans yarışması olan Vadaa Şans hafta içi her akşam toplam 10.000 TL Worldpuan ödül ile, Çarşambaları ise toplam 15.000 TL Worldpuan ödül ile saat 20.00’de World Mobil’de!\nBaşlangıç - Bitiş Tarihi\n01.03.2025 - 31.12.2026\nKampanya Koşulları\nVadaa Şans, şans faktörü d",
+      "issues": [
+        "max_discount 15000 TL ama min_spend: 0. Metinde minimum harcama belirtilmemiş olabilir."
+      ],
+      "confidence": "LOW"
+    },
+    {
+      "id": 15009,
+      "title": "Çevrimiçi müzik, oyun ve video platformlarından yapacağınız harcamalara toplamda 300 TL’ye varan indirim!",
+      "card_name": "World",
+      "url": "https://www.worldcard.com.tr/kampanyalar/cevrimici-muzik-oyun-ve-video-platformlarindan-yapacaginiz-harcamalara-toplamda-300-tlye-varan-indir",
+      "current_min_spend": 0,
+      "current_max_discount": 300,
+      "current_earning": "300 TL Puan",
+      "current_discount_percentage": null,
+      "campaign_text": "Son Gün 15.01.2026\nHemen Başvur\nÇevrimiçi müzik, oyun ve video platformlarından yapacağınız harcamalara toplamda 300 TL’ye varan indirim!\nAna Sayfa\nKampanyalar\nÇevrimiçi müzik, oyun ve video platformlarından yapacağınız harcamalara toplamda 300 TL’ye varan indirim!\n16 Aralık 2025 – 15 Ocak 2026 tarihleri arasında seçili çevrimiçi müzik, oyun ve video platformları ödemelerinizde harcadığınız kadar, toplamda 300 TL’ye varan indirim kazanma fırsatını kaçırmayın!\nBaşlangıç - Bitiş Tarihi\n16.12.2025 ",
+      "issues": [
+        "max_discount 300 TL ama min_spend: 0. Metinde minimum harcama belirtilmemiş olabilir."
+      ],
+      "confidence": "LOW"
+    },
+    {
+      "id": 15008,
+      "title": "Apple ve Microsoft Platformlarından yapacağınız harcamalara toplamda 300 TL’ye varan indirim!",
+      "card_name": "World",
+      "url": "https://www.worldcard.com.tr/kampanyalar/apple-ve-microsoft-platformlarindan-yapacaginiz-harcamalara-toplamda-300-tlye-varan-indirim",
+      "current_min_spend": 0,
+      "current_max_discount": 300,
+      "current_earning": "300 TL Puan",
+      "current_discount_percentage": null,
+      "campaign_text": "Son Gün 15.01.2026\nHemen Başvur\nApple ve Microsoft Platformlarından yapacağınız harcamalara toplamda 300 TL’ye varan indirim!\nAna Sayfa\nKampanyalar\nApple ve Microsoft Platformlarından yapacağınız harcamalara toplamda 300 TL’ye varan indirim!\n16 Aralık 2025 – 15 Ocak 2026 tarihleri arasında Apple ve Microsoft Platformları ödemelerinizde harcadığınız kadar, toplamda 300 TL’ye varan indirim kazanma fırsatını kaçırmayın!\nBaşlangıç - Bitiş Tarihi\n16.12.2025 - 15.01.2026\nKampanya Başvuru Kanalları\nWor",
+      "issues": [
+        "max_discount 300 TL ama min_spend: 0. Metinde minimum harcama belirtilmemiş olabilir."
+      ],
+      "confidence": "LOW"
+    },
+    {
+      "id": 15007,
+      "title": "Troy logolu Yapı Kredi kart sahiplerine özel Türk Hava Yolları’nda geçerli yurt içi veya Türkiye çıkışlı yurt dışı biletlerinde her bilet için 500 TL indirim fırsatı!",
+      "card_name": "World",
+      "url": "https://www.worldcard.com.tr/kampanyalar/troy-logolu-yapi-kredi-kart-sahiplerine-ozel-turk-hava-yollarinda-gecerli-yurt-ici-veya-turkiye-ciki",
+      "current_min_spend": 0,
+      "current_max_discount": 500,
+      "current_earning": "500 TL Puan",
+      "current_discount_percentage": null,
+      "campaign_text": "Son Gün 31.01.2026\nHemen Başvur\nTroy logolu Yapı Kredi kart sahiplerine özel Türk Hava Yolları’nda geçerli yurt içi veya Türkiye çıkışlı yurt dışı biletlerinde her bilet için 500 TL indirim fırsatı!\nAna Sayfa\nKampanyalar\nTroy logolu Yapı Kredi kart sahiplerine özel Türk Hava Yolları’nda geçerli yurt içi veya Türkiye çıkışlı yurt dışı biletlerinde her bilet için 500 TL indirim fırsatı!\nTroy logolu Yapı Kredi banka kartı, ön ödemeli kart veya kredi kartı ile Türk Hava Yolları web sitesi veya mobil",
+      "issues": [
+        "max_discount 500 TL ama min_spend: 0. Metinde minimum harcama belirtilmemiş olabilir."
+      ],
+      "confidence": "LOW"
+    },
+    {
+      "id": 14999,
+      "title": "Masterpass’a kayıtlı Mastercard logolu Yapı Kredi kart sahiplerine özel HOP sürüşlerinde 200 TL değerinde indirim kuponu fırsatı!",
+      "card_name": "World",
+      "url": "https://www.worldcard.com.tr/kampanyalar/masterpassa-kayitli-mastercard-logolu-yapi-kredi-kart-sahiplerine-ozel-hop-suruslerinde-200-tl-deger",
+      "current_min_spend": 0,
+      "current_max_discount": 200,
+      "current_earning": "200 TL Puan",
+      "current_discount_percentage": null,
+      "campaign_text": "Son Gün 31.01.2026\nHemen Başvur\nMasterpass’a kayıtlı Mastercard logolu Yapı Kredi kart sahiplerine özel HOP sürüşlerinde 200 TL değerinde indirim kuponu fırsatı!\nAna Sayfa\nKampanyalar\nMasterpass’a kayıtlı Mastercard logolu Yapı Kredi kart sahiplerine özel HOP sürüşlerinde 200 TL değerinde indirim kuponu fırsatı!\nMasterpass’a kayıtlı Mastercard logolu Yapı Kredi banka kartı, ön ödemeli kart ve kredi kartı sahiplerine özel masterpassplus.com web sitesi üzerinden alınacak kupon kodu ile HOP mobil u",
+      "issues": [
+        "max_discount 200 TL ama min_spend: 0. Metinde minimum harcama belirtilmemiş olabilir."
+      ],
+      "confidence": "LOW"
+    },
+    {
+      "id": 14930,
+      "title": "Gürgençler mağazalarından ve www.gurgencler.com.tr’den yapılacak yeni iPhone 17  serisi ve iPhone Air alışverişinize 2.500 TL Worldpuan!",
+      "card_name": "World",
+      "url": "https://www.worldcard.com.tr/kampanyalar/gurgencler-magazalarindan-ve-wwwgurgenclercomtrden-yapilacak-yeni-iphone-17-serisi-ve-iphone-air-ara",
+      "current_min_spend": 0,
+      "current_max_discount": 2500,
+      "current_earning": "2500 TL Puan",
+      "current_discount_percentage": null,
+      "campaign_text": "Son Gün 31.12.2025\nHemen Başvur\nGürgençler mağazalarından ve www.gurgencler.com.tr’den yapılacak yeni iPhone 17 serisi ve iPhone Air alışverişinize 2.500 TL Worldpuan!\nAna Sayfa\nKampanyalar\nGürgençler mağazalarından ve www.gurgencler.com.tr’den yapılacak yeni iPhone 17 serisi ve iPhone Air alışverişinize 2.500 TL Worldpuan!\n3 – 31 Aralık 2025 tarihlerinde Gürgençler mağazalarından ve www.gurgencler.com.tr’den yapacağınız iPhone 17 serisi ve iPhone Air alışverişinize 2.500 TL Worldpuan fırsatını ",
+      "issues": [
+        "max_discount 2500 TL ama min_spend: 0. Metinde minimum harcama belirtilmemiş olabilir."
+      ],
+      "confidence": "LOW"
+    }
+  ]
+}

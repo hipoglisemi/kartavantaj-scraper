@@ -507,11 +507,23 @@ Extract campaign data into JSON matching this EXACT schema:
         - ASLA maksimum değer (20.000) KULLANMA!
         - ÖRNEK: "2.000 TL - 500.000 TL arası 3 taksit" → min_spend: 2000 (500000 DEĞİL!)
       - 🚨 KRİTİK KURAL (KATLANAN HARCAMA): Metinde "her X TL harcamaya Y TL, toplam Z TL" veya "X TL ve üzeri her harcamaya..." kalıbı varsa, SAKIN "X" değerini yazma!
-        - FORMÜL: (Toplam Kazanç / Sefer Başı Kazanç) * Sefer Başı Harcama
-        - ÖRNEK: "5.000 TL ve üzeri her harcamaya 50 TL, toplam 300 TL" -> (300/50)*5000 = 30.000 TL. (Cevap 5000 DEĞİL, 30.000 OLMALI!)
-      - Örnek 2 (Yüzdeli İndirim): "%10 indirim, toplam 200 TL iade" -> (200 / 0.10) = 2000 TL.
-      - Örnek 3 (Tek Sefer): "Tek seferde 2.000 TL harcamanıza" -> 2000 TL.
-      - Örnek 4 (X. Harcama): "İkinci 500 TL harcamaya" -> 1000 TL (500+500).
+        - FORMÜL: min_spend = (Toplam Kazanç / Sefer Başı Kazanç) * Sefer Başı Harcama
+        - ÖRNEK 1: "Her 7.500 TL'ye 750 TL, toplam 3.000 TL" → (3000/750)*7500 = 30.000 TL (7500 DEĞİL!)
+        - ÖRNEK 2: "Her 800 TL'ye 40 TL, toplam 120 TL" → (120/40)*800 = 2.400 TL (800 DEĞİL!)
+        - ÖRNEK 3: "Her 5.000 TL'ye 750 TL, toplam 1.500 TL" → (1500/750)*5000 = 10.000 TL (5000 DEĞİL!)
+        - ÖRNEK 4: "5.000 TL ve üzeri her harcamaya 50 TL, toplam 300 TL" → (300/50)*5000 = 30.000 TL
+        - ⚠️  DİKKAT: "Her X TL'ye Y TL" gördüğünde MUTLAKA formülü uygula, sadece X'i yazma!
+      - 🚨 ÇOKLU İŞLEM KAMPANYALARI: "3 farklı günde 750 TL", "4 işlemde 100 TL" gibi kampanyalar:
+        - FORMÜL: min_spend = İşlem Başı Tutar * İşlem Sayısı
+        - ÖRNEK 1: "3 farklı günde 750 TL ve üzeri" → 750 * 3 = 2.250 TL
+        - ÖRNEK 2: "4 işlemde 100 TL ve üzeri" → 100 * 4 = 400 TL
+      - 🚨 ÖNCELİK KURALI: Eğer kampanyada AYNI ANDA birden fazla pattern varsa:
+        - 1. ÖNCELİK: Aralık kuralı ("X TL - Y TL arası") → min_spend = X (minimum değer)
+        - 2. ÖNCELİK: Katlanan kampanya ("Her X TL'ye Y TL") → Formülü uygula
+        - 3. ÖNCELİK: Yüzde kampanya → Formülü uygula
+        - ÖRNEK: "15.000-29.999 TL arası %5 indirim" → min_spend = 15.000 (50.000 DEĞİL!)
+      - Örnek (Tek Sefer): "Tek seferde 2.000 TL harcamanıza" → 2000 TL.
+      - Örnek (X. Harcama): "İkinci 500 TL harcamaya" → 1000 TL (500+500).
       - ÖNEMLİ: Eğer metinde "Tek seferde en az 500 TL harcama yapmanız gerekir" yazsa BİLE, yukarıdaki hesaplama daha yüksek bir tutar çıkarıyorsa ONU YAZ.
    - max_discount: Kampanyadan kazanılabilecek EN YÜKSEK (TOPLAM) tutar. Eğer "toplamda 500 TL" diyorsa, bu değer 500 olmalı.
    - 🚨 PARA BİRİMİ TESPİTİ (CURRENCY DETECTION):
