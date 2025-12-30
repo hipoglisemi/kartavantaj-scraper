@@ -6,6 +6,10 @@ import { cleanCampaignText } from '../utils/textCleaner';
 
 const GEMINI_API_KEY = process.env.GOOGLE_GEMINI_KEY!;
 
+// Smart Hybrid: Two models for optimal performance
+const FLASH_MODEL = 'gemini-2.0-flash-exp';
+const THINKING_MODEL = 'gemini-2.0-flash-thinking-exp-1219';
+
 const CRITICAL_FIELDS = ['valid_until', 'eligible_customers', 'min_spend', 'category', 'bank', 'earning'];
 
 interface MasterData {
@@ -64,7 +68,35 @@ const MIN_REQUEST_INTERVAL_MS = 1000; // Minimum 1 second between requests (unli
 // Sleep utility
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-async function callGeminiAPI(prompt: string, retryCount = 0): Promise<any> {
+/**
+ * Smart Hybrid: Detect if campaign needs Thinking model
+ * Returns true for complex campaigns requiring advanced reasoning
+ */
+function shouldUseThinking(campaignText: string): boolean {
+    const text = campaignText.toLowerCase();
+
+    // 1. Mathematical complexity
+    if (/her\s+\d+.*?tl.*?(toplam|toplamda)/i.test(text)) return true;  // Tiered: "Her X TL'ye Y TL, toplam Z"
+    if (/\d+\s*tl\s*-\s*\d+\s*tl.*?(%|indirim|puan)/i.test(text)) return true;  // Range + percentage
+    if (/(\d+)\s+(farklı\s+gün|farklı\s+işlem|işlem).*?toplam/i.test(text)) return true;  // Multi-transaction
+
+    // 2. Complex participation
+    if (/\s+(ve|veya)\s+(sms|juzdan|jüzdan|uygulama)/i.test(text)) return true;  // Multiple methods
+    if (/harcamadan\s+önce.*?(katıl|sms)/i.test(text)) return true;  // Constraints
+    if (/\d{4}.*?(sms|mesaj).*?\w+/i.test(text)) return true;  // SMS with keyword
+
+    // 3. Card logic complexity
+    if (/(hariç|geçerli\s+değil|dahil\s+değil)/i.test(text)) return true;  // Exclusions
+    if (/(ticari|business|kobi).*?(kart|card)/i.test(text)) return true;  // Business cards
+    if (/(platinum|gold|classic).*?(ve|veya|hariç)/i.test(text)) return true;  // Card variants
+
+    // 4. Conflicting information
+    if (/son\s+(katılım|gün|tarih).*?\d{1,2}\s+(ocak|şubat|mart|nisan|mayıs|haziran|temmuz|ağustos|eylül|ekim|kasım|aralık)/i.test(text)) return true;  // Date conflicts
+
+    return false;
+}
+
+async function callGeminiAPI(prompt: string, modelName: string = FLASH_MODEL, retryCount = 0): Promise<any> {
     const MAX_RETRIES = 3;
     const BASE_DELAY_MS = 2000; // Start with 2 seconds
 
@@ -80,7 +112,7 @@ async function callGeminiAPI(prompt: string, retryCount = 0): Promise<any> {
         lastRequestTime = Date.now();
 
         const response = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
+            `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${GEMINI_API_KEY}`,
             {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -99,7 +131,7 @@ async function callGeminiAPI(prompt: string, retryCount = 0): Promise<any> {
             const retryDelay = BASE_DELAY_MS * Math.pow(2, retryCount); // Exponential: 2s, 4s, 8s
             console.log(`   ⚠️  Hız limitine takıldı (429). Deneme ${retryCount + 1}/${MAX_RETRIES}, ${retryDelay}ms sonra...`);
             await sleep(retryDelay);
-            return callGeminiAPI(prompt, retryCount + 1);
+            return callGeminiAPI(prompt, modelName, retryCount + 1);
         }
 
         if (!response.ok) {
@@ -144,7 +176,7 @@ async function callGeminiAPI(prompt: string, retryCount = 0): Promise<any> {
             const retryDelay = BASE_DELAY_MS * Math.pow(2, retryCount);
             console.log(`   ⚠️  Error: ${error.message}. Retry ${retryCount + 1}/${MAX_RETRIES} after ${retryDelay}ms...`);
             await sleep(retryDelay);
-            return callGeminiAPI(prompt, retryCount + 1);
+            return callGeminiAPI(prompt, modelName, retryCount + 1);
         }
         throw error;
     }
@@ -568,8 +600,13 @@ TEXT TO PROCESS:
 
     const stage1Prompt = staticPrefix + dynamicContent;
 
-    console.log('   🤖 Stage 1: Full parse...');
-    const stage1Data = await callGeminiAPI(stage1Prompt);
+    // Smart Hybrid: Choose model based on complexity
+    const useThinking = shouldUseThinking(text);
+    const selectedModel = useThinking ? THINKING_MODEL : FLASH_MODEL;
+    const modelLabel = useThinking ? '🧠 THINKING' : '⚡ FLASH';
+
+    console.log(`   ${modelLabel} Stage 1: Full parse...`);
+    const stage1Data = await callGeminiAPI(stage1Prompt, selectedModel);
 
     // Check for missing critical fields
     const missingFields = checkMissingFields(stage1Data);
