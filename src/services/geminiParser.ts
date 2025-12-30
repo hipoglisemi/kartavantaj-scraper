@@ -155,10 +155,20 @@ function checkMissingFields(data: any): string[] {
 
     CRITICAL_FIELDS.forEach(field => {
         const value = data[field];
-        if (!value ||
+
+        // For numeric fields (min_spend, max_discount, discount_percentage),
+        // 0 is a valid value. Only null/undefined means missing.
+        if (field === 'min_spend') {
+            if (value === null || value === undefined) {
+                missing.push(field);
+            }
+        }
+        // For other fields, check for empty/falsy values
+        else if (!value ||
             (Array.isArray(value) && value.length === 0) ||
             value === null ||
-            value === undefined) {
+            value === undefined ||
+            (typeof value === 'string' && value.trim() === '')) {
             missing.push(field);
         }
     });

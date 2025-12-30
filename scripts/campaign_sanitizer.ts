@@ -21,7 +21,10 @@ async function sanitizeData() {
     if (brandStats) {
         const counts: Record<string, Record<string, number>> = {};
         brandStats.forEach(s => {
-            const brands = s.brand.split(',').map((b: string) => b.trim());
+            if (!s.brand) return;
+            const brands = Array.isArray(s.brand)
+                ? s.brand
+                : s.brand.split(',').map((b: string) => b.trim());
             brands.forEach((b: string) => {
                 if (!counts[b]) counts[b] = {};
                 counts[b][s.category] = (counts[b][s.category] || 0) + 1;
@@ -89,7 +92,14 @@ async function sanitizeData() {
         // If brand is found, or category is "Diğer"/"Genel"/"null"
         if (!updatedCategory || updatedCategory === 'Diğer' || updatedCategory === 'Genel') {
             // Priority 1: Brand-to-Sector Mapping (Learned from DB)
-            const firstBrand = updatedBrand ? updatedBrand.split(',')[0].trim() : '';
+            let firstBrand = '';
+            if (updatedBrand) {
+                if (Array.isArray(updatedBrand)) {
+                    firstBrand = updatedBrand[0] || '';
+                } else {
+                    firstBrand = updatedBrand.split(',')[0].trim();
+                }
+            }
             if (firstBrand && brandToSectorMap[firstBrand]) {
                 const mappedCat = brandToSectorMap[firstBrand];
                 if (mappedCat !== updatedCategory) {
