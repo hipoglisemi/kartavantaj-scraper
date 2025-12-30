@@ -8,7 +8,7 @@ const GEMINI_API_KEY = process.env.GOOGLE_GEMINI_KEY!;
 
 // Smart Hybrid: Two models for optimal performance
 const FLASH_MODEL = 'gemini-2.0-flash';
-const THINKING_MODEL = 'gemini-2.0-flash-thinking-exp-1219';
+const THINKING_MODEL = 'gemini-2.0-flash'; // Standardized to Flash since Thinking is unavailable
 
 const CRITICAL_FIELDS = ['valid_until', 'eligible_customers', 'min_spend', 'category', 'bank', 'earning'];
 
@@ -601,26 +601,14 @@ TEXT TO PROCESS:
 
     const stage1Prompt = staticPrefix + dynamicContent;
 
-    // Smart Hybrid: Choose model based on complexity
+    // Smart Hybrid: Model selection (Currently standardized to FLASH_MODEL)
     const useThinking = shouldUseThinking(text);
-    let selectedModel = useThinking ? THINKING_MODEL : FLASH_MODEL;
+    const selectedModel = useThinking ? THINKING_MODEL : FLASH_MODEL;
     const modelLabel = useThinking ? '🧠 THINKING' : '⚡ FLASH';
 
     console.log(`   ${modelLabel} Stage 1: Full parse...`);
 
-    let stage1Data;
-    try {
-        stage1Data = await callGeminiAPI(stage1Prompt, selectedModel);
-    } catch (error: any) {
-        // Fallback to Flash if Thinking model fails (e.g. 404)
-        if (useThinking && (error.message.includes('404') || error.message.includes('not found'))) {
-            console.log(`   ⚠️  Thinking modeli bulunamadı veya hata verdi, Flash modeline dönülüyor...`);
-            selectedModel = FLASH_MODEL;
-            stage1Data = await callGeminiAPI(stage1Prompt, selectedModel);
-        } else {
-            throw error;
-        }
-    }
+    const stage1Data = await callGeminiAPI(stage1Prompt, selectedModel);
 
     // Check for missing critical fields
     const missingFields = checkMissingFields(stage1Data);
