@@ -493,18 +493,26 @@ Extract campaign data into JSON matching this EXACT schema:
        - ÖRNEK: "Her 100 TL'ye 20 TL, toplam 100 TL puan" → earning: "100 TL Puan" (20 DEĞİL!)
        - ÖRNEK: "Her 500 TL'ye 50 TL, toplam 300 TL indirim" → earning: "300 TL İndirim" (50 DEĞİL!)
    - min_spend: KESİNLİKLE KAZANCI ELDE ETMEK İÇİN GEREKEN "TOPLAM" HARCAMA.
-     - 🚨 ARALIK KURALI (MIN-MAX): 
-       - Eğer "1.000 TL - 20.000 TL arası" gibi aralık varsa:
-       - min_spend = MİNİMUM değer (1.000)
-       - ASLA maksimum değer (20.000) KULLANMA!
-       - ÖRNEK: "2.000 TL - 500.000 TL arası 3 taksit" → min_spend: 2000 (500000 DEĞİL!)
-     - 🚨 KRİTİK KURAL (KATLANAN HARCAMA): Metinde "her X TL harcamaya Y TL, toplam Z TL" veya "X TL ve üzeri her harcamaya..." kalıbı varsa, SAKIN "X" değerini yazma!
-       - FORMÜL: (Toplam Kazanç / Sefer Başı Kazanç) * Sefer Başı Harcama
-       - ÖRNEK: "5.000 TL ve üzeri her harcamaya 50 TL, toplam 300 TL" -> (300/50)*5000 = 30.000 TL. (Cevap 5000 DEĞİL, 30.000 OLMALI!)
-     - Örnek 2 (Yüzdeli İndirim): "%10 indirim, toplam 200 TL iade" -> (200 / 0.10) = 2000 TL.
-     - Örnek 3 (Tek Sefer): "Tek seferde 2.000 TL harcamanıza" -> 2000 TL.
-     - Örnek 4 (X. Harcama): "İkinci 500 TL harcamaya" -> 1000 TL (500+500).
-     - ÖNEMLİ: Eğer metinde "Tek seferde en az 500 TL harcama yapmanız gerekir" yazsa BİLE, yukarıdaki hesaplama daha yüksek bir tutar çıkarıyorsa ONU YAZ.
+      - 🚨 YÜZDE KAMPANYALARI İÇİN ZORUNLU HESAPLAMA:
+        - Eğer kampanya yüzde bazlı (%X indirim) VE max_discount belirtilmişse:
+        - FORMÜL: min_spend = max_discount / (yüzde / 100)
+        - ÖRNEK 1: "%10 indirim, maksimum 8.000 TL" → min_spend = 8000 / 0.10 = 80.000 TL
+        - ÖRNEK 2: "%20 indirim, max 10.000 TL" → min_spend = 10000 / 0.20 = 50.000 TL
+        - ÖRNEK 3: "%15 indirim, toplam 200 TL" → min_spend = 200 / 0.15 = 1.333 TL
+        - ⚠️  DİKKAT: Metinde "minimum harcama" belirtilmese BİLE, bu formülü KULLAN!
+        - ⚠️  ASLA min_spend: 0 YAZMA (yüzde kampanyalarında 0 mantıksız)!
+      - 🚨 ARALIK KURALI (MIN-MAX): 
+        - Eğer "1.000 TL - 20.000 TL arası" gibi aralık varsa:
+        - min_spend = MİNİMUM değer (1.000)
+        - ASLA maksimum değer (20.000) KULLANMA!
+        - ÖRNEK: "2.000 TL - 500.000 TL arası 3 taksit" → min_spend: 2000 (500000 DEĞİL!)
+      - 🚨 KRİTİK KURAL (KATLANAN HARCAMA): Metinde "her X TL harcamaya Y TL, toplam Z TL" veya "X TL ve üzeri her harcamaya..." kalıbı varsa, SAKIN "X" değerini yazma!
+        - FORMÜL: (Toplam Kazanç / Sefer Başı Kazanç) * Sefer Başı Harcama
+        - ÖRNEK: "5.000 TL ve üzeri her harcamaya 50 TL, toplam 300 TL" -> (300/50)*5000 = 30.000 TL. (Cevap 5000 DEĞİL, 30.000 OLMALI!)
+      - Örnek 2 (Yüzdeli İndirim): "%10 indirim, toplam 200 TL iade" -> (200 / 0.10) = 2000 TL.
+      - Örnek 3 (Tek Sefer): "Tek seferde 2.000 TL harcamanıza" -> 2000 TL.
+      - Örnek 4 (X. Harcama): "İkinci 500 TL harcamaya" -> 1000 TL (500+500).
+      - ÖNEMLİ: Eğer metinde "Tek seferde en az 500 TL harcama yapmanız gerekir" yazsa BİLE, yukarıdaki hesaplama daha yüksek bir tutar çıkarıyorsa ONU YAZ.
    - max_discount: Kampanyadan kazanılabilecek EN YÜKSEK (TOPLAM) tutar. Eğer "toplamda 500 TL" diyorsa, bu değer 500 olmalı.
    - 🚨 PARA BİRİMİ TESPİTİ (CURRENCY DETECTION):
      - Varsayılan: TRY (Türk Lirası)
