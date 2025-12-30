@@ -96,7 +96,7 @@ function shouldUseThinking(campaignText: string): boolean {
     return false;
 }
 
-async function callGeminiAPI(prompt: string, modelName: string = FLASH_MODEL, retryCount = 0): Promise<any> {
+async function callGeminiAPI(prompt: string, modelName: string = FLASH_MODEL, usePython: boolean = false, retryCount = 0): Promise<any> {
     const MAX_RETRIES = 3;
     const BASE_DELAY_MS = 2000;
 
@@ -117,8 +117,8 @@ async function callGeminiAPI(prompt: string, modelName: string = FLASH_MODEL, re
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     contents: [{ parts: [{ text: prompt }] }],
-                    // Python Code Execution enabled by default for all geminiParser calls
-                    tools: [{ code_execution: {} }],
+                    // Toggle Python Code Execution based on usePython flag
+                    tools: usePython ? [{ code_execution: {} }] : [],
                     generationConfig: {
                         temperature: 0.1
                     }
@@ -133,7 +133,7 @@ async function callGeminiAPI(prompt: string, modelName: string = FLASH_MODEL, re
             const retryDelay = BASE_DELAY_MS * Math.pow(2, retryCount);
             console.log(`   ⚠️  Hız limitine takıldı (429). Deneme ${retryCount + 1}/${MAX_RETRIES}, ${retryDelay}ms sonra...`);
             await sleep(retryDelay);
-            return callGeminiAPI(prompt, modelName, retryCount + 1);
+            return callGeminiAPI(prompt, modelName, usePython, retryCount + 1);
         }
 
         if (!response.ok) {
@@ -144,7 +144,7 @@ async function callGeminiAPI(prompt: string, modelName: string = FLASH_MODEL, re
         const data: any = await response.json();
         const usage = data.usageMetadata;
         if (usage) {
-            console.log(`   📊 AI Usage: ${usage.totalTokenCount} tokens (P: ${usage.promptTokenCount}, C: ${usage.candidatesTokenCount})`);
+            console.log(`   📊 AI Usage: ${usage.totalTokenCount} tokens (P: ${usage.promptTokenCount}, C: ${usage.candidatesTokenCount})${usePython ? ' [PYTHON]' : ''}`);
         }
 
         const candidates = data.candidates?.[0]?.content?.parts || [];
@@ -175,7 +175,7 @@ async function callGeminiAPI(prompt: string, modelName: string = FLASH_MODEL, re
             const retryDelay = BASE_DELAY_MS * Math.pow(2, retryCount);
             console.log(`   ⚠️  Error: ${error.message}. Retry ${retryCount + 1}/${MAX_RETRIES} after ${retryDelay}ms...`);
             await sleep(retryDelay);
-            return callGeminiAPI(prompt, modelName, retryCount + 1);
+            return callGeminiAPI(prompt, modelName, usePython, retryCount + 1);
         }
         throw error;
     }
@@ -257,7 +257,9 @@ TEXT TO SEARCH:
 RETURN ONLY VALID JSON. NO MARKDOWN.
 `;
 
-    const surgicalData = await callGeminiAPI(surgicalPrompt);
+    // Use Python for surgical if complexity is detected or if it's a critical math field
+    const usePython = shouldUseThinking(text) || missingFields.some(f => ['min_spend', 'max_discount'].includes(f));
+    const surgicalData = await callGeminiAPI(surgicalPrompt, FLASH_MODEL, usePython);
 
     // Merge and Clean
     const result = { ...existingData, ...surgicalData };
@@ -604,11 +606,13 @@ TEXT TO PROCESS:
     // Smart Hybrid: Model selection (Currently standardized to FLASH_MODEL)
     const useThinking = shouldUseThinking(text);
     const selectedModel = useThinking ? THINKING_MODEL : FLASH_MODEL;
-    const modelLabel = useThinking ? '🧠 THINKING' : '⚡ FLASH';
+    // Smart Switch: Use Python for complex campaigns or specific bank patterns
+    const usePython = useThinking;
+    const modelLabel = usePython ? '🐍 PYTHON' : '⚡ FLASH';
 
     console.log(`   ${modelLabel} Stage 1: Full parse...`);
 
-    const stage1Data = await callGeminiAPI(stage1Prompt, selectedModel);
+    const stage1Data = await callGeminiAPI(stage1Prompt, selectedModel, usePython);
 
     // Check for missing critical fields
     const missingFields = checkMissingFields(stage1Data);
@@ -663,7 +667,7 @@ FIELD DEFINITIONS:
 Return ONLY valid JSON with the missing fields, no markdown.
 `;
 
-    const stage2Data = await callGeminiAPI(stage2Prompt);
+    const stage2Data = await callGeminiAPI(stage2Prompt, FLASH_MODEL, usePython);
 
     // Merge stage 1 and stage 2 data
     const finalData = {
