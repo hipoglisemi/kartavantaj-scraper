@@ -171,8 +171,9 @@ async function callGeminiAPI(prompt: string, modelName: string = FLASH_MODEL, re
         const cleanJson = jsonMatch[0].trim();
         return JSON.parse(cleanJson);
     } catch (error: any) {
-        // Retry on network errors or JSON parse errors (but not on 429, handled above)
-        if (retryCount < MAX_RETRIES && !error.message.includes('rate limit')) {
+        // Retry on network errors or JSON parse errors (but not on 429 or 404)
+        const is404 = error.message.includes('404') || error.message.includes('not found');
+        if (retryCount < MAX_RETRIES && !error.message.includes('rate limit') && !is404) {
             const retryDelay = BASE_DELAY_MS * Math.pow(2, retryCount);
             console.log(`   ⚠️  Error: ${error.message}. Retry ${retryCount + 1}/${MAX_RETRIES} after ${retryDelay}ms...`);
             await sleep(retryDelay);
@@ -602,11 +603,24 @@ TEXT TO PROCESS:
 
     // Smart Hybrid: Choose model based on complexity
     const useThinking = shouldUseThinking(text);
-    const selectedModel = useThinking ? THINKING_MODEL : FLASH_MODEL;
+    let selectedModel = useThinking ? THINKING_MODEL : FLASH_MODEL;
     const modelLabel = useThinking ? '🧠 THINKING' : '⚡ FLASH';
 
     console.log(`   ${modelLabel} Stage 1: Full parse...`);
-    const stage1Data = await callGeminiAPI(stage1Prompt, selectedModel);
+
+    let stage1Data;
+    try {
+        stage1Data = await callGeminiAPI(stage1Prompt, selectedModel);
+    } catch (error: any) {
+        // Fallback to Flash if Thinking model fails (e.g. 404)
+        if (useThinking && (error.message.includes('404') || error.message.includes('not found'))) {
+            console.log(`   ⚠️  Thinking modeli bulunamadı veya hata verdi, Flash modeline dönülüyor...`);
+            selectedModel = FLASH_MODEL;
+            stage1Data = await callGeminiAPI(stage1Prompt, selectedModel);
+        } else {
+            throw error;
+        }
+    }
 
     // Check for missing critical fields
     const missingFields = checkMissingFields(stage1Data);
