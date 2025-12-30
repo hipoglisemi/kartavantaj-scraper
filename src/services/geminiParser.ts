@@ -8,7 +8,7 @@ const GEMINI_API_KEY = process.env.GOOGLE_GEMINI_KEY!;
 
 // Smart Hybrid: Two models for optimal performance
 const FLASH_MODEL = 'gemini-2.0-flash';
-const THINKING_MODEL = 'gemini-2.0-flash'; // Standardized to Flash since Thinking is unavailable
+const THINKING_MODEL = 'gemini-2.0-flash'; // Standardized to Flash to avoid 404s while maintaining logic
 
 const CRITICAL_FIELDS = ['valid_until', 'eligible_customers', 'min_spend', 'category', 'bank', 'earning'];
 
@@ -72,23 +72,31 @@ const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
  * Smart Hybrid: Detect if campaign needs Thinking model
  * Returns true for complex campaigns requiring advanced reasoning
  */
-function shouldUseThinking(campaignText: string): boolean {
+function shouldUseThinking(campaignText: string, category?: string): boolean {
     const text = campaignText.toLowerCase();
 
-    // 1. Mathematical complexity
-    if (/her\s+\d+.*?tl.*?(toplam|toplamda)/i.test(text)) return true;  // Tiered: "Her X TL'ye Y TL, toplam Z"
-    if (/\d+\s*tl\s*-\s*\d+\s*tl.*?(%|indirim|puan)/i.test(text)) return true;  // Range + percentage
-    if (/(\d+)\s+(farklı\s+gün|farklı\s+işlem|işlem).*?toplam/i.test(text)) return true;  // Multi-transaction
+    // 1. Sector-based priority (Market and E-Commerce are notoriously complex in math)
+    const complexSectors = ['market', 'gida', 'e-ticaret', 'elektronik', 'akaryakit'];
+    if (category && complexSectors.includes(category.toLowerCase())) return true;
+
+    // 2. Mathematical complexity
+    if (/her\s+[\d.]+\s*tl.*?(toplam|toplamda|kazanç|puan)/is.test(text)) return true;  // Tiered: "Her X TL'ye Y TL"
+    if (/kademeli|adim|adım/i.test(text)) return true; // Keywords for tiered rewards
+    if (/[\d.]+\s*tl\s*-\s*[\d.]+\s*tl.*?(%|indirim|puan)/is.test(text)) return true;  // Range + percentage
+    if (/(\d+)\s+(farklı\s+gün|farklı\s+işlem|işlem)/is.test(text)) return true;  // Multi-transaction
+    if (/%[0-9]+.*?(maksimum|en fazla|toplam|puan|tl|varan)/is.test(text)) return true; // Percentage with limit
+    if (/bankkart\s*lira/i.test(text)) return true; // Ziraat Bankkart Lira complexity
+    if (/kademeli|adım|seviye/i.test(text)) return true; // Step/Tiered rewards
 
     // 2. Complex participation
-    if (/\s+(ve|veya)\s+(sms|juzdan|jüzdan|uygulama)/i.test(text)) return true;  // Multiple methods
+    if (/\s+(ve|veya)\s+(sms|juzdan|jüzdan|uygulama|bankkart\s*mobil)/i.test(text)) return true;  // Multiple methods
     if (/harcamadan\s+önce.*?(katıl|sms)/i.test(text)) return true;  // Constraints
     if (/\d{4}.*?(sms|mesaj).*?\w+/i.test(text)) return true;  // SMS with keyword
 
     // 3. Card logic complexity
-    if (/(hariç|geçerli\s+değil|dahil\s+değil)/i.test(text)) return true;  // Exclusions
-    if (/(ticari|business|kobi).*?(kart|card)/i.test(text)) return true;  // Business cards
-    if (/(platinum|gold|classic).*?(ve|veya|hariç)/i.test(text)) return true;  // Card variants
+    if (/(hariç|geçerli\s+değil|dahil\s+değil|kapsam\s+dışı)/i.test(text)) return true;  // Exclusions
+    if (/(ticari|business|kobi|esnaf).*?(kart|card)/i.test(text)) return true;  // Business cards
+    if (/(platinum|gold|classic|premium).*?(ve|veya|hariç)/i.test(text)) return true;  // Card variants
 
     // 4. Conflicting information
     if (/son\s+(katılım|gün|tarih).*?\d{1,2}\s+(ocak|şubat|mart|nisan|mayıs|haziran|temmuz|ağustos|eylül|ekim|kasım|aralık)/i.test(text)) return true;  // Date conflicts
@@ -99,6 +107,7 @@ function shouldUseThinking(campaignText: string): boolean {
 async function callGeminiAPI(prompt: string, modelName: string = FLASH_MODEL, usePython: boolean = false, retryCount = 0): Promise<any> {
     const MAX_RETRIES = 3;
     const BASE_DELAY_MS = 2000;
+    let totalTokens = 0;
 
     try {
         const now = Date.now();
@@ -144,6 +153,7 @@ async function callGeminiAPI(prompt: string, modelName: string = FLASH_MODEL, us
         const data: any = await response.json();
         const usage = data.usageMetadata;
         if (usage) {
+            totalTokens = usage.totalTokenCount;
             console.log(`   📊 AI Usage: ${usage.totalTokenCount} tokens (P: ${usage.promptTokenCount}, C: ${usage.candidatesTokenCount})${usePython ? ' [PYTHON]' : ''}`);
         }
 
@@ -156,14 +166,14 @@ async function callGeminiAPI(prompt: string, modelName: string = FLASH_MODEL, us
             if (part.text && part.text.includes('{')) {
                 const jsonMatch = part.text.match(/\{[\s\S]*\}/);
                 if (jsonMatch) {
-                    try { return JSON.parse(jsonMatch[0]); } catch (e) { /* ignore and continue */ }
+                    try { return { data: JSON.parse(jsonMatch[0]), totalTokens }; } catch (e) { /* ignore and continue */ }
                 }
             }
             // Priority 2: Code Execution Result containing JSON
             if (part.codeExecutionResult && part.codeExecutionResult.output) {
                 const jsonMatch = part.codeExecutionResult.output.match(/\{[\s\S]*\}/);
                 if (jsonMatch) {
-                    try { return JSON.parse(jsonMatch[0]); } catch (e) { /* ignore and continue */ }
+                    try { return { data: JSON.parse(jsonMatch[0]), totalTokens }; } catch (e) { /* ignore and continue */ }
                 }
             }
         }
@@ -216,7 +226,8 @@ export async function parseSurgical(
     existingData: any,
     missingFields: string[],
     url: string,
-    sourceBank?: string
+    bank?: string,
+    metadata?: any
 ): Promise<any> {
     const text = html
         .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
@@ -228,12 +239,13 @@ export async function parseSurgical(
 
     const masterData = await fetchMasterData();
 
-    console.log(`   🤖 Surgical Parse: Filling ${missingFields.join(', ')}...`);
+    // Use Python for surgical if complexity is detected or if it's a critical math field
+    const usePython = shouldUseThinking(text, metadata?.category || existingData?.category) || missingFields.some(f => ['min_spend', 'max_discount'].includes(f));
 
     const surgicalPrompt = `
 You are a precision data extraction tool. We have an existing campaign entry, but it's missing specific info.
 DO NOT guess other fields. ONLY extract the fields requested.
-🚨 MATHEMATICAL ACCURACY: Use the Python code execution tool to verify all spend limits, bonus ratios, and cumulative totals before returning the JSON.
+${usePython ? `🚨 ZORUNLU PYTHON İŞ AKIŞI: Python code execution tool'u kullanarak matematiksel hesaplamaları doğrula.` : ''}
 
 EXISTING DATA (for context):
 Title: ${existingData.title}
@@ -257,9 +269,12 @@ TEXT TO SEARCH:
 RETURN ONLY VALID JSON. NO MARKDOWN.
 `;
 
-    // Use Python for surgical if complexity is detected or if it's a critical math field
-    const usePython = shouldUseThinking(text) || missingFields.some(f => ['min_spend', 'max_discount'].includes(f));
-    const surgicalData = await callGeminiAPI(surgicalPrompt, FLASH_MODEL, usePython);
+    const { data: surgicalData, totalTokens } = await callGeminiAPI(surgicalPrompt, FLASH_MODEL, usePython);
+
+    if (surgicalData && typeof surgicalData === 'object') {
+        surgicalData.ai_method = `${FLASH_MODEL} [SURGICAL]${usePython ? ' [PYTHON]' : ''}`;
+        surgicalData.ai_tokens = totalTokens;
+    }
 
     // Merge and Clean
     const result = { ...existingData, ...surgicalData };
@@ -422,19 +437,8 @@ async function cleanupBrands(brandInput: any, masterData: MasterData): Promise<{
     };
 }
 
-export async function parseWithGemini(html: string, url: string, sourceBank?: string, sourceCard?: string): Promise<any> {
-    // Intelligent HTML to Clean Text conversion
-    const rawText = html
-        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '') // Remove scripts
-        .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')   // Remove styles
-        .replace(/<(?:br|p|div|li|h1|h2|h3|h4|h5|h6)[^>]*>/gi, '\n')       // Block elements to newlines
-        .replace(/<[^>]+>/g, ' ')                                           // Remove other tags
-        .replace(/[ \t]+/g, ' ')                                            // Standardize horizontal spaces
-        .replace(/\n\s*\n/g, '\n')                                          // Remove double newlines
-        .trim();
-
-    // Clean junk banking legal text to save tokens
-    const text = cleanCampaignText(rawText)
+export async function parseWithGemini(campaignText: string, url: string, bank: string, card: string, metadata?: any): Promise<any> {
+    const text = cleanCampaignText(campaignText)
         .substring(0, 12000); // 12k chars is enough for most campaigns after cleaning
 
     const masterData = await fetchMasterData();
@@ -446,9 +450,39 @@ export async function parseWithGemini(html: string, url: string, sourceBank?: st
 
     const today = new Date().toISOString().split('T')[0];
     // STAGE 1: Full Parse
+    // Smart Hybrid: Model selection
+    const useThinking = shouldUseThinking(text, metadata?.category);
+    const selectedModel = useThinking ? THINKING_MODEL : FLASH_MODEL;
+    // Smart Switch: Use Python for complex campaigns or specific bank patterns
+    const usePython = useThinking;
+    const modelLabel = usePython ? `${selectedModel} [PYTHON]` : selectedModel;
+
+    // Metadata Authority: If we have specific metadata (JSON-LD), tell AI it's the GROUND TRUTH
+    let metadataInstruction = "";
+    if (metadata) {
+        metadataInstruction = `
+🚨 METADATA AUTHORITY (CRITICAL):
+The following data was extracted directly from the site's JSON-LD metadata.
+Treat this as the absolute authority for [brand] and [title].
+Metadata: ${JSON.stringify(metadata)}
+`;
+    }
+
+    const pythonWorkflowPrompt = usePython ? `
+🚨 ZORUNLU PYTHON İŞ AKIŞI (MANDATORY WORKFLOW):
+  ADIM 1: Metindeki tüm sayıları ve yüzde sembollerini tespit et
+  ADIM 2: Kampanya türünü belirle (yüzde bazlı mı, sabit tutar mı, kademeli mi)
+  ADIM 3: Python code execution tool'u KULLANARAK matematiksel hesaplamaları YAP:
+    - Yüzde bazlı ise: min_spend = max_discount / (percentage / 100)
+    - Kademeli ise: min_spend = (total_reward / per_transaction_reward) * per_transaction_spend
+  ADIM 4: Python çıktısını JSON alanlarına YAZ
+  ADIM 5: Final JSON'u DÖNDÜR
+🚨 UYARI: Python kullanmadan matematik içeren kampanyaları parse etmek YASAKTIR!` : '';
+
     const staticPrefix = `
 Extract campaign data into JSON matching this EXACT schema.
-🚨 MATHEMATICAL ACCURACY: You MUST use the Python code execution tool to calculate and verify all mathematical logic (min_spend, max_discount, tiered bonuses, etc.) before providing the final JSON output. This ensures 100% accuracy.
+${pythonWorkflowPrompt}
+${metadataInstruction}
 
 {
   "title": "string (catchy campaign title, clear and concise)",
@@ -456,7 +490,7 @@ Extract campaign data into JSON matching this EXACT schema.
   "conditions": ["string (List of important campaign terms, limits, and exclusions. Extract key rules as separate items.)"],
   "category": "string (MUST be one of: ${sortedCategories})",
   "discount": "string (Use ONLY for installment info, e.g. '9 Taksit', '+3 Taksit'. FORMAT: '{Number} Taksit'. NEVER mention fees/interest.)",
-  "earning": "string (🚨 ASLA BOŞ BIRAKMA! Reward info. PRIORITY: '{Amount} TL Puan' | '{Amount} TL İndirim' | '%{X} (max {Y}TL)' for percentage campaigns with limits | '%{X} İndirim' for unlimited percentage. 🚨 SAYI FORMATI: 1.000 ve üzeri sayılarda NOKTA kullan (örn: '30.000 TL Puan', '15.000 TL İndirim'). 🚨 MİL PUAN: Eğer 'Mil' veya 'Mile' kelimesi varsa 'Mil Puan' yaz, 'TL Puan' değil! IF NO NUMERIC REWARD: Create a 2-3 word benefit summary like 'Uçak Bileti', 'Özel Menü', 'Kargo Bedava', 'Taksit İmkanı', 'Özel Fırsat'. MAX 30 chars. NEVER RETURN NULL, EMPTY STRING, OR UNDEFINED!)",
+  "earning": "string (🚨 HİYERARŞİ KURALI - ÖNCE YÜZDE KONTROL ET:\n    1️⃣ Metinde '%' sembolü VARSA:\n       → MUTLAKA '%{X} (max {Y}TL)' formatını kullan\n       → Örnek: '%10 (max 500TL)', '%25 (max 300TL)'\n       → 🚨 ASLA '500 TL Puan' gibi sabit tutar YAZMA!\n    2️⃣ Metinde '%' sembolü YOKSA:\n       → '{Amount} TL Puan' veya '{Amount} TL İndirim' kullan\n       → 🚨 MİL PUAN: 'Mil' kelimesi varsa 'Mil Puan' yaz\n       → 🚨 SAYI FORMATI: 1.000+ sayılarda NOKTA kullan (örn: '30.000 TL Puan')\n    3️⃣ Sayısal ödül YOKSA:\n       → 2-3 kelime özet: 'Uçak Bileti', 'Taksit İmkanı', 'Özel Fırsat'\n    ⚠️  UYARI: Yüzde bazlı kampanyayı '500 TL Puan' şeklinde kısaltmak min_spend hesaplamasını BOZAR!)",
   "min_spend": number (CRITICAL: Total required spend. If title says '500 TL ve üzeri', min_spend is 500. Total sum if multiple steps. 🚨 ARALIK KURALI: Eğer "1.000 TL - 20.000 TL arası" gibi aralık varsa, min_spend = MİNİMUM değer (1.000), ASLA maksimum değer (20.000) KULLANMA!),
   "min_spend_currency": "string (Currency code: TRY, USD, EUR, GBP. Default: TRY. ONLY change if campaign explicitly mentions foreign currency like 'yurt dışı', 'dolar', 'USD', 'euro')",
   "max_discount": number (Max reward limit per customer/campaign),
@@ -594,8 +628,8 @@ Extract campaign data into JSON matching this EXACT schema.
 
     const dynamicContent = `
 CONTEXT: Today is ${today}.
-SOURCE BANK AUTHORITY: ${sourceBank || 'Akbank'}
-SOURCE CARD AUTHORITY: ${sourceCard || 'Axess'}
+BANK AUTHORITY: ${bank || 'Akbank'}
+CARD AUTHORITY: ${card || 'Axess'}
 
 TEXT TO PROCESS:
 "${text.replace(/"/g, '\\"')}"
@@ -603,33 +637,60 @@ TEXT TO PROCESS:
 
     const stage1Prompt = staticPrefix + dynamicContent;
 
-    // Smart Hybrid: Model selection (Currently standardized to FLASH_MODEL)
-    const useThinking = shouldUseThinking(text);
-    const selectedModel = useThinking ? THINKING_MODEL : FLASH_MODEL;
-    // Smart Switch: Use Python for complex campaigns or specific bank patterns
-    const usePython = useThinking;
-    const modelLabel = usePython ? '🐍 PYTHON' : '⚡ FLASH';
-
     console.log(`   ${modelLabel} Stage 1: Full parse...`);
 
-    const stage1Data = await callGeminiAPI(stage1Prompt, selectedModel, usePython);
+    const { data: stage1Data, totalTokens: tokens1 } = await callGeminiAPI(stage1Prompt, selectedModel, usePython);
 
     // Check for missing critical fields
     const missingFields = checkMissingFields(stage1Data);
 
     if (missingFields.length === 0) {
         console.log('   ✅ Stage 1: Complete (all fields extracted)');
+
         // Ensure brand is properly formatted as a string/json for DB
         if (Array.isArray(stage1Data.brand)) {
             stage1Data.brand = stage1Data.brand.join(', ');
         }
 
         // STRICT OVERRIDE: Source Bank/Card TRUMPS AI
-        if (sourceBank) {
-            stage1Data.bank = sourceBank;
+        if (bank) {
+            stage1Data.bank = bank;
         }
-        if (sourceCard) {
-            stage1Data.card_name = sourceCard;
+        if (card) {
+            stage1Data.card_name = card;
+        }
+
+        // 🚨 VALIDATION LAYER - Gemini's Recommendation
+        const { validateAIParsing } = await import('./aiValidator');
+        const validation = validateAIParsing(stage1Data);
+
+        if (!validation.isValid) {
+            console.log('   ⚠️  Validation errors detected:');
+            validation.errors.forEach(err => console.log(`      ${err}`));
+            console.log('   🔄 Triggering Surgical Parse to fix issues...');
+
+            // Determine which fields need fixing based on validation errors
+            const fieldsToFix: string[] = [];
+            if (validation.errors.some(e => e.includes('min_spend'))) fieldsToFix.push('min_spend');
+            if (validation.errors.some(e => e.includes('earning'))) fieldsToFix.push('earning');
+
+            if (fieldsToFix.length > 0) {
+                const fixedData = await parseSurgical(campaignText, stage1Data, fieldsToFix, url, bank, metadata);
+
+                // Re-validate after surgical fix
+                const revalidation = validateAIParsing(fixedData);
+                if (!revalidation.isValid) {
+                    console.log('   ⚠️  WARNING: Still has validation errors after surgical fix:');
+                    revalidation.errors.forEach(err => console.log(`      ${err}`));
+                }
+
+                return fixedData;
+            }
+        }
+
+        if (stage1Data && typeof stage1Data === 'object') {
+            stage1Data.ai_method = modelLabel;
+            stage1Data.ai_tokens = tokens1;
         }
 
         return stage1Data;
@@ -651,7 +712,7 @@ FIELD DEFINITIONS:
             - min_spend: Minimum spending amount as a number
                 - earning: Reward amount or description(e.g. "500 TL Puan")
                     - category: MUST be EXACTLY one of: ${masterData.categories.join(', ')}. If unsure, return "Diğer".
-- bank: MUST be EXACTLY one of: ${masterData.banks.join(', ')}. ${sourceBank ? `(Source: ${sourceBank})` : ''}
+- bank: MUST be EXACTLY one of: ${masterData.banks.join(', ')}. ${bank ? `(Source: ${bank})` : ''}
     - brand: Array of strings representing ALL mentioned merchants / brands.DO NOT include card names(Axess, Wings, etc.).
 
 ### 🛑 CRITICAL: NO HALLUCINATION
@@ -667,7 +728,12 @@ FIELD DEFINITIONS:
 Return ONLY valid JSON with the missing fields, no markdown.
 `;
 
-    const stage2Data = await callGeminiAPI(stage2Prompt, FLASH_MODEL, usePython);
+    const { data: stage2Data, totalTokens: tokens2 } = await callGeminiAPI(stage2Prompt, FLASH_MODEL, usePython);
+
+    if (stage2Data && typeof stage2Data === 'object') {
+        stage2Data.ai_method = `${selectedModel} [STAGE2]${usePython ? ' [PYTHON]' : ''}`;
+        stage2Data.ai_tokens = tokens1 + tokens2;
+    }
 
     // Merge stage 1 and stage 2 data
     const finalData = {
@@ -776,11 +842,11 @@ Return ONLY valid JSON with the missing fields, no markdown.
 
     // STRICT OVERRIDE BEFORE RETURN: Source Bank/Card TRUMPS AI
     // this ensures that no matter what the AI hallucinated for bank/card, the scraper's authority wins
-    if (sourceBank) {
-        finalData.bank = sourceBank;
+    if (bank) {
+        finalData.bank = bank;
     }
-    if (sourceCard) {
-        finalData.card_name = sourceCard;
+    if (card) {
+        finalData.card_name = card;
     }
 
     // GENERATE SEO SLUG
