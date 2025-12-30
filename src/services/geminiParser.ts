@@ -7,8 +7,8 @@ import { cleanCampaignText } from '../utils/textCleaner';
 const GEMINI_API_KEY = process.env.GOOGLE_GEMINI_KEY!;
 
 // Smart Hybrid: Two models for optimal performance
-const FLASH_MODEL = 'gemini-2.0-flash-exp';
-const THINKING_MODEL = 'gemini-2.0-flash-thinking-exp-1219';
+const FLASH_MODEL = 'gemini-2.0-flash';
+const THINKING_MODEL = 'gemini-2.0-flash-thinking';
 
 const CRITICAL_FIELDS = ['valid_until', 'eligible_customers', 'min_spend', 'category', 'bank', 'earning'];
 

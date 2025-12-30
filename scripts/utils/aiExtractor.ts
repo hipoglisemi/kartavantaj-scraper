@@ -42,7 +42,7 @@ async function callGeminiAPI(prompt: string): Promise<any> {
     lastCallTime = Date.now();
 
     const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${process.env.GOOGLE_GEMINI_KEY}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GOOGLE_GEMINI_KEY}`,
         {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
