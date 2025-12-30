@@ -45,22 +45,39 @@ export function standardizeBenefit(text: string): string {
 
     // 3. Extract pure amounts if explicitly monetary
     if (clean.toLowerCase().includes('tl')) {
+        // PRESERVE: If specifically formatted for percentage + limit
+        if (clean.includes('%') && (clean.includes('max') || clean.includes('en fazla'))) {
+            return clean;
+        }
+
         // Look for the LARGEST number associated with Puan/TL/Discount as it's usually the total benefit
         const amounts = clean.match(/(\d+[\d.,]*)\s*(?:TL|Puan|İndirim)/gi);
         if (amounts && amounts.length > 0) {
-            const values = amounts.map(curr => parseFloat(curr.replace(/[^\d]/g, '').replace('.', '').replace(',', '.')));
+            const values = amounts.map(curr => {
+                const num = curr.replace(/[^\d]/g, '');
+                // Handle cases where we might have thousands with dots (e.g. 1.000)
+                return parseFloat(num);
+            });
             const maxVal = Math.max(...values);
 
             // If the max value is part of the original text as a benefit
             if (maxVal > 0) {
-                if (clean.toLowerCase().includes('indirim')) return `${maxVal} TL İndirim`;
-                return `${maxVal} TL Puan`;
+                // Return original if it's nicely formatted with limit
+                if (clean.toLowerCase().includes('max')) return clean;
+
+                if (clean.toLowerCase().includes('indirim')) return `${maxVal.toLocaleString('tr-TR')} TL İndirim`;
+                return `${maxVal.toLocaleString('tr-TR')} TL Puan`;
             }
         }
     }
 
     // 4. Percentage simplifications
     if (clean.includes('%')) {
+        // PRESERVE: Detailed percentage info (e.g. %15 (max 750TL))
+        if (clean.includes('max') || clean.includes('limit') || clean.includes('en fazla')) {
+            return clean;
+        }
+
         const pctMatch = clean.match(/(%\s*\d+|\d+\s*%)/);
         if (pctMatch) {
             if (clean.toLowerCase().includes('indirim')) return `${pctMatch[1].replace(/\s/g, '')} İndirim`;
