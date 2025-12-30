@@ -98,10 +98,9 @@ function shouldUseThinking(campaignText: string): boolean {
 
 async function callGeminiAPI(prompt: string, modelName: string = FLASH_MODEL, retryCount = 0): Promise<any> {
     const MAX_RETRIES = 3;
-    const BASE_DELAY_MS = 2000; // Start with 2 seconds
+    const BASE_DELAY_MS = 2000;
 
     try {
-        // Rate limiting: Ensure minimum interval between requests
         const now = Date.now();
         const timeSinceLastRequest = now - lastRequestTime;
         if (timeSinceLastRequest < MIN_REQUEST_INTERVAL_MS) {
@@ -117,61 +116,60 @@ async function callGeminiAPI(prompt: string, modelName: string = FLASH_MODEL, re
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    contents: [{ parts: [{ text: prompt }] }]
+                    contents: [{ parts: [{ text: prompt }] }],
+                    // Python Code Execution enabled by default for all geminiParser calls
+                    tools: [{ code_execution: {} }],
+                    generationConfig: {
+                        temperature: 0.1
+                    }
                 })
             }
         );
 
-        // Handle 429 (Too Many Requests) with exponential backoff
         if (response.status === 429) {
             if (retryCount >= MAX_RETRIES) {
                 throw new Error(`Gemini API rate limit exceeded after ${MAX_RETRIES} retries`);
             }
-
-            const retryDelay = BASE_DELAY_MS * Math.pow(2, retryCount); // Exponential: 2s, 4s, 8s
+            const retryDelay = BASE_DELAY_MS * Math.pow(2, retryCount);
             console.log(`   ⚠️  Hız limitine takıldı (429). Deneme ${retryCount + 1}/${MAX_RETRIES}, ${retryDelay}ms sonra...`);
             await sleep(retryDelay);
             return callGeminiAPI(prompt, modelName, retryCount + 1);
         }
 
         if (!response.ok) {
-            throw new Error(`Gemini API error: ${response.status} ${response.statusText}`);
+            const errorBody = await response.text();
+            throw new Error(`Gemini API error: ${response.status} - ${errorBody}`);
         }
 
         const data: any = await response.json();
-
-        // Log token usage for Caching verification
         const usage = data.usageMetadata;
         if (usage) {
-            const cached = usage.cachedContentTokenCount || 0;
-            const total = usage.totalTokenCount || 0;
-            const prompt = usage.promptTokenCount || 0;
-            const completion = usage.candidatesTokenCount || 0;
-            const percentage = prompt > 0 ? Math.round((cached / prompt) * 100) : 0;
+            console.log(`   📊 AI Usage: ${usage.totalTokenCount} tokens (P: ${usage.promptTokenCount}, C: ${usage.candidatesTokenCount})`);
+        }
 
-            if (cached > 0) {
-                console.log(`   ✨ CACHE HIT! ${cached}/${prompt} prompt tokens are cached (%${percentage} savings)`);
-            } else {
-                console.log(`   📊 AI Usage: ${total} tokens (Prompt: ${prompt}, Comp: ${completion}) - No cache hit yet.`);
+        const candidates = data.candidates?.[0]?.content?.parts || [];
+        if (candidates.length === 0) throw new Error('No candidates from Gemini');
+
+        // Robust Multi-part Extraction: Check text parts AND code results
+        for (const part of candidates) {
+            // Priority 1: Text part containing JSON
+            if (part.text && part.text.includes('{')) {
+                const jsonMatch = part.text.match(/\{[\s\S]*\}/);
+                if (jsonMatch) {
+                    try { return JSON.parse(jsonMatch[0]); } catch (e) { /* ignore and continue */ }
+                }
+            }
+            // Priority 2: Code Execution Result containing JSON
+            if (part.codeExecutionResult && part.codeExecutionResult.output) {
+                const jsonMatch = part.codeExecutionResult.output.match(/\{[\s\S]*\}/);
+                if (jsonMatch) {
+                    try { return JSON.parse(jsonMatch[0]); } catch (e) { /* ignore and continue */ }
+                }
             }
         }
 
-        const responseText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-
-        if (!responseText) {
-            throw new Error('No response from Gemini');
-        }
-
-        // Robust JSON extraction: Find the first '{' and last '}' to avoid conversational text
-        const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-        if (!jsonMatch) {
-            throw new Error(`AI returned text but no valid JSON object was found. Base Response: "${responseText.substring(0, 100)}..."`);
-        }
-
-        const cleanJson = jsonMatch[0].trim();
-        return JSON.parse(cleanJson);
+        throw new Error(`AI returned but no valid JSON object was found in multi-part response.`);
     } catch (error: any) {
-        // Retry on network errors or JSON parse errors (but not on 429 or 404)
         const is404 = error.message.includes('404') || error.message.includes('not found');
         if (retryCount < MAX_RETRIES && !error.message.includes('rate limit') && !is404) {
             const retryDelay = BASE_DELAY_MS * Math.pow(2, retryCount);
@@ -235,6 +233,7 @@ export async function parseSurgical(
     const surgicalPrompt = `
 You are a precision data extraction tool. We have an existing campaign entry, but it's missing specific info.
 DO NOT guess other fields. ONLY extract the fields requested.
+🚨 MATHEMATICAL ACCURACY: Use the Python code execution tool to verify all spend limits, bonus ratios, and cumulative totals before returning the JSON.
 
 EXISTING DATA (for context):
 Title: ${existingData.title}
@@ -446,7 +445,8 @@ export async function parseWithGemini(html: string, url: string, sourceBank?: st
     const today = new Date().toISOString().split('T')[0];
     // STAGE 1: Full Parse
     const staticPrefix = `
-Extract campaign data into JSON matching this EXACT schema:
+Extract campaign data into JSON matching this EXACT schema.
+🚨 MATHEMATICAL ACCURACY: You MUST use the Python code execution tool to calculate and verify all mathematical logic (min_spend, max_discount, tiered bonuses, etc.) before providing the final JSON output. This ensures 100% accuracy.
 
 {
   "title": "string (catchy campaign title, clear and concise)",
