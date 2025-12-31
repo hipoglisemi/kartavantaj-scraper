@@ -624,13 +624,27 @@ ${metadataInstruction}
    - **YASAK (HALÜSİNASYON):** Metinde SMS kodu yoksa ASLA uydurma (özellikle 'A101' gibi başka kodları YAZMA).
    - YANLIŞ: "SMS ile kayıt olun." (NUMARA VE KOD NEREDE?)
 
-4. **KART TESPİTİ (eligible_customers):**
+4. **ÖRNEK SENARYOLAR (FEW-SHOT TRAINING - MUTLAKA OKU):**
+   - **SENARYO 1: VARAN PUAN (EN ZOR)**
+     - GİRDİ: "Market harcamalarınıza 3.500 TL'ye varan MaxiPuan... Her 2.000 TL'ye 200 TL, toplamda 3.500 TL..."
+     - ÇIKTI: earning: "3.500 TL MaxiPuan", min_spend: 35000  (Formül: 3500/200 * 2000)
+   - **SENARYO 2: TAKSİT**
+     - GİRDİ: "Gree Klima'da peşin fiyatına 11 taksit!"
+     - ÇIKTI: earning: "Peşin Fiyatına 11 Taksit", discount: "11 Taksit", min_spend: 0
+   - **SENARYO 3: YÜZDE İNDİRİM**
+     - GİRDİ: "Teknosa'da %10 indirim, maksimum 500 TL"
+     - ÇIKTI: earning: "500 TL İndirim", percent: "%10", min_spend: 5000 (Formül: 500/0.10)
+   - **SENARYO 4: EKSİK METİN (BAŞLIK KURTARMA)**
+     - GİRDİ: Başlık="1.000 TL İndirim", Metin="Detaylar için tıklayın..." (Para yok)
+     - ÇIKTI: earning: "1.000 TL İndirim", min_spend: 0 (Metin olmadığı için hesaplanamaz)
+
+5. **KART TESPİTİ (eligible_customers):**
    - Metin içinde "Ticari", "Business", "KOBİ" geçiyorsa, eligible_customers listesine ilgili kartları (Axess Business, Wings Business vb.) MUTLAKA ekle. Bireysel kartları EKSİK ETME.
 
-5. **BRAND MATCHING:**
+6. **BRAND MATCHING:**
    - Match brands against: [${sortedBrands} ... and others].
 
-6. **MAXIMUM KAMPANYALARI İÇİN ÖZEL KURALLAR:**
+7. **MAXIMUM KAMPANYALARI İÇİN ÖZEL KURALLAR:**
    - 🚨 Maximum kampanyaları TEK PARAGRAF halinde gelir, tüm bilgiler iç içe!
    - **KATILIM ŞEKLİ (participation_method):**
      - Paragrafta "katılım" kelimesi YOKSA bile, kampanya OTOMATİK olabilir
