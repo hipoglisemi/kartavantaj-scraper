@@ -5,7 +5,6 @@ import { createClient } from '@supabase/supabase-js';
 import * as dotenv from 'dotenv';
 import { generateSectorSlug } from './src/utils/slugify';
 import { parseWithGemini } from './src/services/geminiParser';
-import { parseWithGemini } from './src/services/geminiParser';
 import { normalizeBankName, normalizeCardName } from './src/utils/bankMapper';
 
 dotenv.config();

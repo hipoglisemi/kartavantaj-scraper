@@ -4,7 +4,6 @@ import { syncEarningAndDiscount } from '../utils/dataFixer';
 import { supabase } from '../utils/supabase';
 import { cleanCampaignText } from '../utils/textCleaner';
 
-const GEMINI_API_KEY = process.env.GOOGLE_GEMINI_KEY!;
 
 // Smart Hybrid: Two models for optimal performance
 const FLASH_MODEL = 'gemini-2.0-flash';
@@ -109,6 +108,12 @@ async function callGeminiAPI(prompt: string, modelName: string = FLASH_MODEL, us
     const BASE_DELAY_MS = 2000;
     let totalTokens = 0;
 
+    // Lazy load API Key to ensure dotenv has run
+    const apiKey = process.env.GOOGLE_GEMINI_KEY;
+    if (!apiKey) {
+        throw new Error("❌ Missing GOOGLE_GEMINI_KEY in environment variables!");
+    }
+
     try {
         const now = Date.now();
         const timeSinceLastRequest = now - lastRequestTime;
@@ -120,7 +125,7 @@ async function callGeminiAPI(prompt: string, modelName: string = FLASH_MODEL, us
         lastRequestTime = Date.now();
 
         const response = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${GEMINI_API_KEY}`,
+            `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`,
             {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
