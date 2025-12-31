@@ -3,8 +3,8 @@ import fs from 'fs';
 import path from 'path';
 import { createClient } from '@supabase/supabase-js';
 import * as dotenv from 'dotenv';
-import { generateSectorSlug } from '../utils/slugify';
-import { normalizeBankName, normalizeCardName } from '../utils/bankMapper';
+import { generateSectorSlug } from './src/utils/slugify';
+import { normalizeBankName, normalizeCardName } from './src/utils/bankMapper';
 
 dotenv.config();
 
