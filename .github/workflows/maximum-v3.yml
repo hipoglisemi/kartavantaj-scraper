@@ -1,0 +1,30 @@
+name: 🆕 Maximum V3 (TypeScript)
+
+on:
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: 'Campaign limit'
+        required: false
+        default: '1000'
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+          
+      - name: Install dependencies
+        run: npm install
+        
+      - name: Run Maximum V3 Scraper
+        run: npm run scrape:maximum:v3 -- --limit=${{ github.event.inputs.limit }}
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
