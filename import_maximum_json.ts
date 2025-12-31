@@ -85,7 +85,10 @@ async function importMaximumJson() {
             discount: item.discount || aiData.discount,
             earning: item.earning || aiData.earning, // Fallback to AI
             conditions: conditions,
-            participation_method: participation,
+            participation_method: participation, // Array
+            eligible_customers: item.eligible_customers, // Array
+            valid_cards: item.eligible_customers, // Array (redundant but safe)
+            eligible_cards: item.eligible_customers, // Array (redundant but safe)
             is_active: true,
             created_at: new Date().toISOString()
         };

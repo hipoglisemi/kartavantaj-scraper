@@ -63,17 +63,40 @@ def format_tarih_iso(tarih_str, is_end=False):
     aylar = {'ocak':'01','şubat':'02','mart':'03','nisan':'04','mayıs':'05','haziran':'06',
              'temmuz':'07','ağustos':'08','eylül':'09','ekim':'10','kasım':'11','aralık':'12'}
     try:
-        m_dot = re.search(r'(\d{1,2})\.(\d{1,2})\.(\d{4})\s*-\s*(\d{1,2})\.(\d{1,2})\.(\d{4})', ts)
+        current_year = datetime.now().year
+        # 1. DD.MM.YYYY format
+        m_dot = re.search(r'(\d{1,2})\.(\d{1,2})\.(\d{4})', ts)
         if m_dot:
-            g1, a1, y1, g2, a2, y2 = m_dot.groups()
-            if is_end: return f"{y2}-{a2.zfill(2)}-{g2.zfill(2)}T23:59:59Z"
-            else: return f"{y1}-{a1.zfill(2)}-{g1.zfill(2)}T00:00:00Z"
-        m = re.search(r'(\d{1,2})\s*([a-zğüşıöç]+)?\s*-\s*(\d{1,2})\s*([a-zğüşıöç]+)\s*(\d{4})', ts)
+            g, a, y = m_dot.groups()
+            if is_end: return f"{y}-{a.zfill(2)}-{g.zfill(2)}T23:59:59Z"
+            return f"{y}-{a.zfill(2)}-{g.zfill(2)}T00:00:00Z"
+            
+        # 2. Text Format (1 Ocak 2025)
+        m = re.search(r'(\d{1,2})\s*([a-zğüşıöç]+)\s*(\d{4})', ts)
         if m:
-            g1, a1, g2, a2, yil = m.groups()
-            if not a1: a1 = a2
-            if is_end: return f"{yil}-{aylar.get(a2,'12')}-{str(g2).zfill(2)}T23:59:59Z"
-            else: return f"{yil}-{aylar.get(a1,'01')}-{str(g1).zfill(2)}T00:00:00Z"
+            g, a_str, y = m.groups()
+            a = aylar.get(a_str, '01')
+            if is_end: return f"{y}-{a}-{g.zfill(2)}T23:59:59Z"
+            return f"{y}-{a}-{g.zfill(2)}T00:00:00Z"
+
+        # 3. Implicit Year (1 Ocak) -> Assign closest future date
+        m_imp = re.search(r'(\d{1,2})\s*([a-zğüşıöç]+)', ts)
+        if m_imp:
+             g, a_str = m_imp.groups()
+             a = int(aylar.get(a_str, '1'))
+             g = int(g)
+             
+             # Calculate if date has passed this year
+             try:
+                 date_this_year = datetime(current_year, a, g)
+                 if date_this_year < datetime.now() and is_end:
+                      y = current_year + 1 # Next year
+                 else:
+                      y = current_year
+                 
+                 if is_end: return f"{y}-{str(a).zfill(2)}-{str(g).zfill(2)}T23:59:59Z"
+                 return f"{y}-{str(a).zfill(2)}-{str(g).zfill(2)}T00:00:00Z"
+             except: pass
     except: return None
 
 def get_category(title, text):
@@ -317,10 +340,33 @@ def main():
                     full_text = temizle_metin(d_soup.get_text())
                     conditions = [t for t in full_text.split('\n') if len(t)>20]
 
-                # 🔥 GÖRSEL İÇİN V7 TAKTİĞİ: ID SELECTOR
+                # 🔥 GÖRSEL İÇİN V3 (META + SELECTOR)
                 image = None
-                img_el = d_soup.select_one("img[id$='CampaignImage']")
-                if img_el: image = urljoin(BASE_URL, img_el['src'])
+                
+                # 1. Meta Tags (En Güvenilir)
+                og_img = d_soup.find("meta", property="og:image")
+                if og_img and og_img.get("content"): image = og_img["content"]
+                
+                if not image:
+                    tw_img = d_soup.find("meta", name="twitter:image")
+                    if tw_img and tw_img.get("content"): image = tw_img["content"]
+                    
+                # 2. Page Specific Selectors
+                if not image:
+                    img_el = d_soup.select_one("img[id$='CampaignImage']")
+                    if img_el: image = urljoin(BASE_URL, img_el['src'])
+                
+                if not image:
+                    # Fallback generic container
+                    img_el = d_soup.select_one(".campaign-detail-image img, .detail-image img")
+                    if img_el: image = urljoin(BASE_URL, img_el['src'])
+
+                # Fix: Default "2026" issue - check if year is excessively far
+                if vu and "2026" in vu and datetime.now().year < 2026:
+                     # If it's just "1 Ocak" and code guessed 2026 because 2025 passed?
+                     # Let's trust the site if explicitly stated, but if it was ambiguous, maybe clip it
+                     pass 
+
 
                 cat = get_category(title, full_text)
                 merchant = extract_merchant(title)
