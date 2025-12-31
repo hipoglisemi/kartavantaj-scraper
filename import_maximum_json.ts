@@ -64,31 +64,41 @@ async function importMaximumJson() {
             console.error(`   ⚠️ AI Parse Error (${item.title}):`, err.message);
         }
 
-        // Merge Logic: Python V8 (High Trust for Math) > AI (High Trust for Text/Class)
-        // We override sector, brand, description with AI data if available
-
+        // Smart merge: Python V8 for math, AI for text/arrays
         const campaignData = {
             bank: bankName,
-            card_name: cardName, // Keep Python's card logic as it's specific
-            title: item.title, // Keep original title (usually accurate from Python)
-            description: aiData.description || item.description, // AI description is usually more marketing-friendly
+            card_name: cardName,
+            title: item.title,
+            description: aiData.description || item.description,
             image: item.image,
             url: item.url,
             reference_url: item.url,
-            category: aiData.category || item.category, // AI category is much better mapped to Master Sectors
+            category: aiData.category || item.category,
             sector_slug: aiData.sector_slug || sectorSlug,
-            brand: aiData.brand, // AI extracts brands much better
-            valid_until: item.valid_until, // Trust Python regex for dates
-            // valid_from: item.valid_from, 
-            min_spend: item.min_spend || aiData.min_spend || 0, // Fallback to AI if Python missed it
+            brand: aiData.brand,
+            valid_until: item.valid_until,
+            min_spend: item.min_spend || aiData.min_spend || 0,
             max_discount: item.max_discount || aiData.max_discount || 0,
             discount: item.discount || aiData.discount,
-            earning: item.earning || aiData.earning, // Fallback to AI
-            conditions: conditions,
-            participation_method: participation, // Array
-            eligible_customers: item.eligible_customers, // Array
-            valid_cards: item.eligible_customers, // Array (redundant but safe)
-            eligible_cards: item.eligible_customers, // Array (redundant but safe)
+            earning: item.earning || aiData.earning,
+
+            // 🔥 CRITICAL FIX: Use AI data for arrays if Python data is empty/generic
+            conditions: (conditions && conditions.length > 0) ? conditions : (aiData.conditions || []),
+            participation_method: (participation && participation.length > 0 && participation[0] !== 'Detayları İnceleyin')
+                ? participation
+                : (aiData.participation_method ? [aiData.participation_method] : []),
+
+            // Use AI eligible_customers if Python only has generic "Maximum"
+            eligible_customers: (item.eligible_customers && item.eligible_customers.length > 1)
+                ? item.eligible_customers
+                : (aiData.eligible_customers || item.eligible_customers || []),
+            valid_cards: (item.eligible_customers && item.eligible_customers.length > 1)
+                ? item.eligible_customers
+                : (aiData.eligible_customers || item.eligible_customers || []),
+            eligible_cards: (item.eligible_customers && item.eligible_customers.length > 1)
+                ? item.eligible_customers
+                : (aiData.eligible_customers || item.eligible_customers || []),
+
             is_active: true,
             created_at: new Date().toISOString()
         };
