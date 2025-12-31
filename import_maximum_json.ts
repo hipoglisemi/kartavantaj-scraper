@@ -4,6 +4,8 @@ import path from 'path';
 import { createClient } from '@supabase/supabase-js';
 import * as dotenv from 'dotenv';
 import { generateSectorSlug } from './src/utils/slugify';
+import { parseWithGemini } from './src/services/geminiParser';
+import { parseWithGemini } from './src/services/geminiParser';
 import { normalizeBankName, normalizeCardName } from './src/utils/bankMapper';
 
 dotenv.config();
@@ -45,22 +47,44 @@ async function importMaximumJson() {
         const conditions = Array.isArray(item.conditions) ? item.conditions : (item.conditions ? [item.conditions] : []);
         const participation = Array.isArray(item.participation_method) ? item.participation_method : (item.participation_method ? [item.participation_method] : []);
 
+        // Create text context for AI
+        const combinedText = `
+            ${item.title}
+            ${item.description}
+            ${conditions.join('\n')}
+            ${participation.join('\n')}
+        `;
+
+        // 🔥 AI Enrichment (Gemini)
+        let aiData = {};
+        try {
+            console.log(`   🧠 AI Analiz ediliyor: ${item.title.substring(0, 30)}...`);
+            // Pass hardcoded 'İş Bankası' and current partial cardName
+            aiData = await parseWithGemini(combinedText, item.url, bankName, cardName);
+        } catch (err) {
+            console.error(`   ⚠️ AI Parse Error (${item.title}):`, err.message);
+        }
+
+        // Merge Logic: Python V8 (High Trust for Math) > AI (High Trust for Text/Class)
+        // We override sector, brand, description with AI data if available
+
         const campaignData = {
             bank: bankName,
-            card_name: cardName,
-            title: item.title,
-            description: item.description,
+            card_name: cardName, // Keep Python's card logic as it's specific
+            title: item.title, // Keep original title (usually accurate from Python)
+            description: aiData.description || item.description, // AI description is usually more marketing-friendly
             image: item.image,
             url: item.url,
             reference_url: item.url,
-            category: item.category,
-            sector_slug: sectorSlug,
-            valid_until: item.valid_until,
-            // valid_from: item.valid_from, // Optional, schema might not expect checks
-            min_spend: item.min_spend || 0,
-            max_discount: item.max_discount || 0,
-            discount: item.discount,
-            earning: item.earning,
+            category: aiData.category || item.category, // AI category is much better mapped to Master Sectors
+            sector_slug: aiData.sector_slug || sectorSlug,
+            brand: aiData.brand, // AI extracts brands much better
+            valid_until: item.valid_until, // Trust Python regex for dates
+            // valid_from: item.valid_from, 
+            min_spend: item.min_spend || aiData.min_spend || 0, // Fallback to AI if Python missed it
+            max_discount: item.max_discount || aiData.max_discount || 0,
+            discount: item.discount || aiData.discount,
+            earning: item.earning || aiData.earning, // Fallback to AI
             conditions: conditions,
             participation_method: participation,
             is_active: true,
