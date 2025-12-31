@@ -273,6 +273,11 @@ def main():
         if system_os == "Darwin": # Mac
             use_sub = False
             print("   🍏 MacOS tespit edildi: Subprocess modu kapalı.")
+            # Chrome 143+ Fixes for Mac
+            options.add_argument("--disable-backgrounding-occluded-windows")
+            options.add_argument("--disable-renderer-backgrounding")
+            options.add_argument("--disable-extensions")
+            options.add_argument("--disable-plugins")
         else: # Linux/Windows
             print(f"   🐧 {system_os} tespit edildi: Subprocess modu açık.")
 
