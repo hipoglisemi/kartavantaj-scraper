@@ -1,0 +1,103 @@
+name: 🏦 Yapı Kredi Scraper
+
+on:
+  workflow_dispatch:
+    inputs:
+      card:
+        description: 'Kart seçimi'
+        required: true
+        type: choice
+        options:
+          - 'Tümü'
+          - 'World'
+          - 'Adios'
+          - 'Crystal'
+          - 'Play'
+      limit:
+        description: 'Kampanya limiti (0 = tümü)'
+        required: false
+        default: '0'
+
+jobs:
+  scrape-yapikredi:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Install Dependencies
+        run: npm ci
+      
+      - name: Run World Scraper
+        if: ${{ github.event.inputs.card == 'World' || github.event.inputs.card == 'Tümü' }}
+        run: npx tsx src/scrapers/yapikredi/world.ts ${{ github.event.inputs.limit != '0' && format('--limit {0}', github.event.inputs.limit) || '' }}
+        env:
+          GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
+      
+      - name: Import World Campaigns
+        if: ${{ github.event.inputs.card == 'World' || github.event.inputs.card == 'Tümü' }}
+        run: npx tsx import_world.ts
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
+      
+      - name: Run Adios Scraper
+        if: ${{ github.event.inputs.card == 'Adios' || github.event.inputs.card == 'Tümü' }}
+        run: npx tsx src/scrapers/yapikredi/adios.ts ${{ github.event.inputs.limit != '0' && format('--limit {0}', github.event.inputs.limit) || '' }}
+        env:
+          GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
+      
+      - name: Import Adios Campaigns
+        if: ${{ github.event.inputs.card == 'Adios' || github.event.inputs.card == 'Tümü' }}
+        run: npx tsx import_adios.ts
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
+      
+      - name: Run Crystal Scraper
+        if: ${{ github.event.inputs.card == 'Crystal' || github.event.inputs.card == 'Tümü' }}
+        run: npx tsx src/scrapers/yapikredi/crystal.ts ${{ github.event.inputs.limit != '0' && format('--limit {0}', github.event.inputs.limit) || '' }}
+        env:
+          GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
+      
+      - name: Import Crystal Campaigns
+        if: ${{ github.event.inputs.card == 'Crystal' || github.event.inputs.card == 'Tümü' }}
+        run: npx tsx import_crystal.ts
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
+      
+      - name: Run Play Scraper
+        if: ${{ github.event.inputs.card == 'Play' || github.event.inputs.card == 'Tümü' }}
+        run: npx tsx src/scrapers/yapikredi/play.ts ${{ github.event.inputs.limit != '0' && format('--limit {0}', github.event.inputs.limit) || '' }}
+        env:
+          GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
+      
+      - name: Import Play Campaigns
+        if: ${{ github.event.inputs.card == 'Play' || github.event.inputs.card == 'Tümü' }}
+        run: npx tsx import_play.ts
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
+      
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: yapikredi-campaigns
+          path: |
+            world_kampanyalar_raw.json
+            adios_kampanyalar_raw.json
+            crystal_kampanyalar_raw.json
+            play_kampanyalar_raw.json

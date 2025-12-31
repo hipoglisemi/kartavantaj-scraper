@@ -1,0 +1,103 @@
+name: 🏦 Akbank Scraper
+
+on:
+  workflow_dispatch:
+    inputs:
+      card:
+        description: 'Kart seçimi'
+        required: true
+        type: choice
+        options:
+          - 'Tümü'
+          - 'Axess'
+          - 'Wings'
+          - 'Business'
+          - 'Free'
+      limit:
+        description: 'Kampanya limiti (0 = tümü)'
+        required: false
+        default: '0'
+
+jobs:
+  scrape-akbank:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Install Dependencies
+        run: npm ci
+      
+      - name: Run Axess Scraper
+        if: ${{ github.event.inputs.card == 'Axess' || github.event.inputs.card == 'Tümü' }}
+        run: npx tsx src/scrapers/akbank/axess.ts ${{ github.event.inputs.limit != '0' && format('--limit {0}', github.event.inputs.limit) || '' }}
+        env:
+          GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
+      
+      - name: Import Axess Campaigns
+        if: ${{ github.event.inputs.card == 'Axess' || github.event.inputs.card == 'Tümü' }}
+        run: npx tsx import_axess.ts
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
+      
+      - name: Run Wings Scraper
+        if: ${{ github.event.inputs.card == 'Wings' || github.event.inputs.card == 'Tümü' }}
+        run: npx tsx src/scrapers/akbank/wings.ts ${{ github.event.inputs.limit != '0' && format('--limit {0}', github.event.inputs.limit) || '' }}
+        env:
+          GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
+      
+      - name: Import Wings Campaigns
+        if: ${{ github.event.inputs.card == 'Wings' || github.event.inputs.card == 'Tümü' }}
+        run: npx tsx import_wings.ts
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
+      
+      - name: Run Business Scraper
+        if: ${{ github.event.inputs.card == 'Business' || github.event.inputs.card == 'Tümü' }}
+        run: npx tsx src/scrapers/akbank/business.ts ${{ github.event.inputs.limit != '0' && format('--limit {0}', github.event.inputs.limit) || '' }}
+        env:
+          GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
+      
+      - name: Import Business Campaigns
+        if: ${{ github.event.inputs.card == 'Business' || github.event.inputs.card == 'Tümü' }}
+        run: npx tsx import_business.ts
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
+      
+      - name: Run Free Scraper
+        if: ${{ github.event.inputs.card == 'Free' || github.event.inputs.card == 'Tümü' }}
+        run: npx tsx src/scrapers/akbank/free.ts ${{ github.event.inputs.limit != '0' && format('--limit {0}', github.event.inputs.limit) || '' }}
+        env:
+          GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
+      
+      - name: Import Free Campaigns
+        if: ${{ github.event.inputs.card == 'Free' || github.event.inputs.card == 'Tümü' }}
+        run: npx tsx import_free.ts
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
+      
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: akbank-campaigns
+          path: |
+            axess_kampanyalar_raw.json
+            wings_kampanyalar_raw.json
+            business_kampanyalar_raw.json
+            free_kampanyalar_raw.json

@@ -1,0 +1,45 @@
+name: 🏦 Halkbank Scraper
+
+on:
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: 'Kampanya limiti (0 = tümü)'
+        required: false
+        default: '0'
+
+jobs:
+  scrape-halkbank:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Install Dependencies
+        run: npm ci
+      
+      - name: Run Paraf Scraper
+        run: npx tsx src/scrapers/halkbank/paraf.ts ${{ github.event.inputs.limit != '0' && format('--limit {0}', github.event.inputs.limit) || '' }}
+        env:
+          GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
+      
+      - name: Import Paraf Campaigns
+        run: npx tsx import_paraf_pc.ts
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
+      
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: halkbank-campaigns
+          path: paraf_kampanyalar_raw.json
