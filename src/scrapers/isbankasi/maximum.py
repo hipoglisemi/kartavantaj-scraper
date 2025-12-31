@@ -290,6 +290,9 @@ def main():
                 if vu and datetime.strptime(vu, "%Y-%m-%dT%H:%M:%SZ") < datetime.now(): continue
 
                 desc_el = d_soup.select_one("span[id$='CampaignDescription']")
+                # Backup Selectors (Eğer ID değişirse)
+                if not desc_el:
+                    desc_el = d_soup.select_one(".campaign-detail-content") or d_soup.select_one(".detail-text") or d_soup.select_one(".content-body")
                 conditions = []
                 full_text = ""
                 if desc_el:
