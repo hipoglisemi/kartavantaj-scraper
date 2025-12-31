@@ -43,7 +43,7 @@ export async function optimizeCampaigns(
     // STEP 2: Query database for existing campaigns (only clean URLs)
     const { data: existingCampaigns } = await supabase
         .from('campaigns')
-        .select('reference_url, title, image, brand, sector_slug')
+        .select('reference_url, title, image, brand, sector_slug, participation_method, eligible_customers')
         .eq('card_name', cardName)
         .in('reference_url', cleanUrls);
 
@@ -62,16 +62,22 @@ export async function optimizeCampaigns(
             newUrls.push(url);
         } else {
             // Case 2: Campaign exists, check if data is incomplete
-            const isImageMissing = !campaign.image || campaign.image.trim() === '' || campaign.image.includes('placeholder');
-            const isBrandMissing = !campaign.brand; // Optional: Enforce brand check
-            const isSectorGeneric = campaign.sector_slug === 'genel'; // Optional: Enforce sector check
+            const isImageMissing = !campaign.image || campaign.image.trim() === '' || campaign.image.includes('placeholder') || campaign.image.includes('favicon');
+            const isBrandMissing = !campaign.brand;
+            const isSectorGeneric = campaign.sector_slug === 'genel';
+
+            // Maximum-specific checks
+            const isParticipationMissing = Array.isArray(campaign.participation_method) && campaign.participation_method.length === 0;
+            const isSingleCard = Array.isArray(campaign.eligible_customers) && campaign.eligible_customers.length === 1 && campaign.eligible_customers[0] === 'Maximum';
 
             // You can customize this logic based on strictness
-            if (isImageMissing || isBrandMissing) {
+            if (isImageMissing || isBrandMissing || isParticipationMissing || isSingleCard) {
                 // Log the reason for debugging
                 const reason = [];
                 if (isImageMissing) reason.push('image_missing');
                 if (isBrandMissing) reason.push('brand_missing');
+                if (isParticipationMissing) reason.push('participation_missing');
+                if (isSingleCard) reason.push('single_card');
                 // if (isSectorGeneric) reason.push('sector_generic');
 
                 console.log(`      ⚠️  Incomplete (${reason.join(', ')}): ${url}`);
