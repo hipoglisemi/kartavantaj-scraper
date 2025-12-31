@@ -1,4 +1,3 @@
-# Manual workflow for Ziraat Bankkart scraping
 name: 💳 Manuel Ziraat Tarama
 
 on:
@@ -21,7 +20,7 @@ on:
 
 jobs:
   scrape:
-    name: 💳 Ziraat Taraması Başlatılıyor
+    name: 💳 Ziraat Taraması
     runs-on: ubuntu-latest
     timeout-minutes: 120
 
@@ -38,9 +37,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: 💳 Bankkart
-        if: inputs.run_bankkart == 'true'
-        run: npx tsx src/scrapers/ziraat/bankkart.ts ${{ inputs.use_ai == 'true' && '--ai' || '' }} --limit=${{ inputs.limit }}
+      - name: 💳 Ziraat Bankkart
+        if: github.event.inputs.run_bankkart == 'true'
+        run: npx tsx src/scrapers/ziraat/bankkart.ts ${{ github.event.inputs.use_ai == 'true' && '--ai' || '' }} --limit=${{ github.event.inputs.limit }}
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}

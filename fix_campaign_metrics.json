@@ -1,0 +1,67 @@
+[
+  {
+    "campaign_id": 15079,
+    "campaign_title": "Error",
+    "model_used": "flash",
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "total_tokens": 0,
+    "processing_time_ms": 2273,
+    "before_min_spend": 0,
+    "after_min_spend": 0,
+    "success": false,
+    "error": "No JSON found in response"
+  },
+  {
+    "campaign_id": 15002,
+    "campaign_title": "Error",
+    "model_used": "flash",
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "total_tokens": 0,
+    "processing_time_ms": 1005,
+    "before_min_spend": 0,
+    "after_min_spend": 0,
+    "success": false,
+    "error": "No JSON found in response"
+  },
+  {
+    "campaign_id": 14954,
+    "campaign_title": "Error",
+    "model_used": "flash",
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "total_tokens": 0,
+    "processing_time_ms": 723,
+    "before_min_spend": 0,
+    "after_min_spend": 0,
+    "success": false,
+    "error": "No JSON found in response"
+  },
+  {
+    "campaign_id": 15024,
+    "campaign_title": "Error",
+    "model_used": "flash",
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "total_tokens": 0,
+    "processing_time_ms": 664,
+    "before_min_spend": 0,
+    "after_min_spend": 0,
+    "success": false,
+    "error": "No JSON found in response"
+  },
+  {
+    "campaign_id": 15025,
+    "campaign_title": "Error",
+    "model_used": "flash",
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "total_tokens": 0,
+    "processing_time_ms": 823,
+    "before_min_spend": 0,
+    "after_min_spend": 0,
+    "success": false,
+    "error": "No JSON found in response"
+  }
+]

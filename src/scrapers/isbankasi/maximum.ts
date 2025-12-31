@@ -1,3 +1,5 @@
+/// <reference lib="dom" />
+
 import puppeteer from 'puppeteer';
 import { createClient } from '@supabase/supabase-js';
 import * as dotenv from 'dotenv';
@@ -22,290 +24,241 @@ const CAMPAIGNS_URL = 'https://www.maximum.com.tr/kampanyalar';
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-async function runScraperLogic(isAIEnabled: boolean, limit: number = 9999) {
-    const browser = await puppeteer.launch({
-        headless: true,
-        args: [
-            '--no-sandbox',
-            '--disable-setuid-sandbox',
-            '--disable-blink-features=AutomationControlled',
-            '--disable-web-security',
-            '--disable-features=IsolateOrigins,site-per-process'
-        ]
-    });
-    const page = await browser.newPage();
-
-    // Set realistic User-Agent
-    await page.setUserAgent(
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-    );
-
-    // Set extra headers
-    await page.setExtraHTTPHeaders({
-        'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-        'Accept-Encoding': 'gzip, deflate, br',
-        'Connection': 'keep-alive',
-        'Upgrade-Insecure-Requests': '1'
-    });
-
-    try {
-        console.log(`\n   🔍 Navigating to ${CAMPAIGNS_URL}...`);
-        await page.goto(CAMPAIGNS_URL, { waitUntil: 'networkidle2', timeout: 30000 });
-
-        // Handle "Daha Fazla" (Load More) button logic
-        let hasMore = true;
-        let buttonClickCount = 0;
-        // If limit is small (e.g. 5), we don't need to load everything
-        const MAX_CLICKS = limit < 20 ? 0 : 20;
-
-        console.log(`   🔄 Loading campaigns (Limit: ${limit})...`);
-
-        while (hasMore && buttonClickCount < MAX_CLICKS) {
-            try {
-                const buttonFound = await page.evaluate(() => {
-                    // @ts-ignore
-                    const buttons = Array.from(document.querySelectorAll('button'));
-                    // @ts-ignore
-                    const btn = buttons.find((b: any) => b.innerText.includes('Daha Fazla'));
-                    if (btn) {
-                        (btn as any).click();
-                        return true;
-                    }
-                    return false;
-                });
-
-                if (buttonFound) {
-                    await sleep(2000); // Wait for content to load
-                    buttonClickCount++;
-                    process.stdout.write('.'); // Progress indicator
-                } else {
-                    hasMore = false;
-                }
-            } catch (e) {
-                console.log('   ℹ️ No more buttons found or error clicking.');
-                hasMore = false;
-            }
-        }
-        console.log(`\n   ✅ Loaded list after ${buttonClickCount} clicks.`);
-
-        // Extract Links
-        const campaignLinks = await page.evaluate(() => {
-            const links: string[] = [];
-            // @ts-ignore
-            document.querySelectorAll('a').forEach((a: any) => {
-                const href = a.getAttribute('href');
-                if (href && href.includes('/kampanyalar/') && !href.includes('arsiv') && href.length > 25) {
-                    // Filter out category pages
-                    if (href.endsWith('-kampanyalari') || href.endsWith('-odemeleri') || href.includes('yilbasi-kampanyalari')) {
-                        return;
-                    }
-                    links.push(href);
-                }
-            });
-            return [...new Set(links)]; // Unique links
-        });
-
-
-        console.log(`   🎉 Found ${campaignLinks.length} campaigns via scraping.`);
-
-        // Normalize to Full URLs for DB check
-        const fullUrls = campaignLinks.map(link => link.startsWith('http') ? link : `${BASE_URL}${link}`);
-
-        // Normalize Bank and Card
-        const normalizedBank = await normalizeBankName('İş Bankası');
-        const normalizedCard = await normalizeCardName(normalizedBank, 'Maximum');
-
-        // Optimize
-        console.log(`   🔍 Optimizing campaign list via database check...`);
-        const { urlsToProcess } = await optimizeCampaigns(fullUrls, normalizedCard);
-
-        // Apply Limit
-        const limitedUrls = urlsToProcess.slice(0, limit);
-
-        console.log(`   🚀 Processing details for ${limitedUrls.length} campaigns (Limit applied: ${limit})...\n`);
-
-        // Process Each Campaign
-        for (const fullUrl of limitedUrls) {
-            // fullUrl is already absolute here
-            console.log(`\n   🔍 Processing: ${fullUrl}`);
-
-            try {
-                await page.goto(fullUrl, { waitUntil: 'domcontentloaded', timeout: 20000 });
-
-                // Get page content
-                // Maximum site loads details dynamically too? Python script implies it.
-                // It waits for "span[id$='CampaignDescription']"
-
-                try {
-                    await page.waitForSelector("span[id$='CampaignDescription']", { timeout: 5000 });
-                } catch {
-                    // Ignore, might be simple text page
-                }
-
-                const html = await page.content();
-
-                const title = await page.evaluate(() => {
-                    // @ts-ignore
-                    const h1 = document.querySelector('h1.gradient-title-text') || document.querySelector('h1');
-                    return h1 ? (h1 as any).innerText.trim() : 'Başlıksız Kampanya';
-                });
-
-                const imageUrl = await page.evaluate(() => {
-                    // @ts-ignore
-                    const img = document.querySelector("img[id$='CampaignImage']");
-                    return img ? img.getAttribute('src') : null;
-                });
-
-                const fullImageUrl = imageUrl ? (imageUrl.startsWith('http') ? imageUrl : `${BASE_URL}${imageUrl}`) : '';
-
-                // AI Parsing
-                let campaignData;
-                if (isAIEnabled) {
-                    campaignData = await parseWithGemini(html, fullUrl, normalizedBank, normalizedCard);
-                } else {
-                    campaignData = {
-                        title: title,
-                        description: title,
-                        card_name: normalizedCard,
-                        bank: normalizedBank,
-                        url: fullUrl,
-                        reference_url: fullUrl,
-                        image: fullImageUrl,
-                        category: 'Diğer',
-                        sector_slug: 'diger',
-                        is_active: true
-                    };
-                }
-
-                if (campaignData) {
-                    // 1.8 Marketing Text Enhancement (NEW)
-                    if (isAIEnabled) {
-                        console.log(`      🤖 AI Marketing: Generating catchy summary...`);
-                        // @ts-ignore
-                        const { enhanceDescription } = await import('../../services/descriptionEnhancer');
-                        campaignData.ai_marketing_text = await enhanceDescription(campaignData.title);
-                    }
-
-                    // Force fields
-                    campaignData.title = title; // Strict Assignment
-                    campaignData.card_name = normalizedCard;
-                    campaignData.bank = normalizedBank; // Enforce strict bank assignment
-
-                    // MAP FIELDS TO DB SCHEMA
-                    campaignData.url = fullUrl;
-                    campaignData.reference_url = fullUrl;
-                    campaignData.image = fullImageUrl;
-                    // campaignData.image_url = fullImageUrl;
-
-                    if (!campaignData.image && fullImageUrl) {
-                        campaignData.image = fullImageUrl;
-                    }
-                    campaignData.category = campaignData.category || 'Diğer';
-                    campaignData.sector_slug = generateSectorSlug(campaignData.category);
-                    syncEarningAndDiscount(campaignData);
-                    campaignData.publish_status = 'processing';
-                    campaignData.publish_updated_at = new Date().toISOString();
-                    campaignData.is_active = true;
-
-                    // Filter out expired campaigns if end_date exists
-                    if (campaignData.end_date) {
-                        const today = new Date();
-                        today.setHours(0, 0, 0, 0);
-                        const endDate = new Date(campaignData.end_date);
-                        if (endDate < today) {
-                            console.log(`      ⚠️  Expired (${campaignData.end_date}), skipping...`);
-                            continue;
-                        }
-                    }
-
-                    // Set default min_spend
-                    campaignData.min_spend = campaignData.min_spend || 0;
-                // Lookup and assign IDs from master tables
-                const ids = await lookupIDs(
-                    campaignData.bank,
-                    campaignData.card_name,
-                    campaignData.brand,
-                    campaignData.sector_slug
-                );
-                Object.assign(campaignData, ids);
-                // Assign badge based on campaign content
-                const badge = assignBadge(campaignData);
-                campaignData.badge_text = badge.text;
-                campaignData.badge_color = badge.color;
-                // Mark as generic if it's a non-brand-specific campaign
-                markGenericBrand(campaignData);
-
-                // Upsert
-                    const { error } = await supabase
-                        .from('campaigns')
-                        .upsert(campaignData, { onConflict: 'reference_url' });
-
-                    if (error) {
-                        console.error(`      ❌ Supabase Error: ${error.message}`);
-                    } else {
-                        console.log(`      ✅ Saved to DB: ${title}`);
-                    }
-                }
-
-            } catch (err: any) {
-                const errorMsg = err.message || String(err);
-
-                // Specific handling for connection errors
-                if (errorMsg.includes('ERR_CONNECTION_RESET') ||
-                    errorMsg.includes('ERR_CONNECTION_REFUSED') ||
-                    errorMsg.includes('net::')) {
-                    console.error(`      ⚠️ Network error: ${errorMsg}`);
-                    console.error(`      💡 This might be temporary. Will retry on next run.`);
-                } else if (errorMsg.includes('timeout')) {
-                    console.error(`      ⏱️ Timeout error: ${errorMsg}`);
-                } else {
-                    console.error(`      ❌ Error processing ${fullUrl}: ${errorMsg}`);
-                }
-            }
-
-            await sleep(1000);
-        }
-
-    } catch (error: any) {
-        console.error(`❌ Global Error: ${error.message}`);
-        throw error;
-    } finally {
-        await browser.close();
-    }
-}
-
-async function runMaximumScraper() {
-    console.log('🚀 Starting İş Bankası (Maximum) Scraper...');
+async function runMaximumScraperV2() {
+    console.log('🚀 Starting İş Bankası (Maximum) Scraper V2...');
     const isAIEnabled = process.argv.includes('--ai');
 
     // Parse limit argument
     const limitArg = process.argv.find(arg => arg.startsWith('--limit='));
     const limit = limitArg ? parseInt(limitArg.split('=')[1]) : 9999;
 
-    const MAX_RETRIES = 3;
-    const RETRY_DELAY = 5000; // 5 seconds
+    const browser = await puppeteer.launch({
+        headless: true,
+        args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-blink-features=AutomationControlled',
+            '--disable-web-security'
+        ]
+    });
+    const page = await browser.newPage();
+    await page.setViewport({ width: 1400, height: 900 });
+    await page.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
 
-    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-        try {
-            console.log(`\n   🔄 Attempt ${attempt}/${MAX_RETRIES}...`);
-            await runScraperLogic(isAIEnabled, limit);
-            console.log('\n✅ İş Bankası scraper completed successfully!');
-            return; // Success, exit
-        } catch (error: any) {
-            const errorMsg = error.message || String(error);
-            console.error(`\n   ❌ Attempt ${attempt} failed: ${errorMsg}`);
+    try {
+        // 1. Gather Categories
+        console.log(`\n   🔍 Fetching Categories from ${CAMPAIGNS_URL}...`);
+        await page.goto(CAMPAIGNS_URL, { waitUntil: 'domcontentloaded', timeout: 30000 });
+        await sleep(3000);
 
-            if (attempt < MAX_RETRIES) {
-                console.log(`   ⏳ Retrying in ${RETRY_DELAY / 1000}s...`);
-                await sleep(RETRY_DELAY);
-            } else {
-                console.error(`\n   ❌ All ${MAX_RETRIES} attempts failed.`);
-                console.error(`   💡 Possible causes: Site blocking, network issues, or temporary downtime.`);
-                throw error;
+        const categoryLinks = await page.evaluate(() => {
+            const links: string[] = [];
+            // Strategy 1: Find links ending with -kampanyalari
+            document.querySelectorAll('a').forEach((a: any) => {
+                const href = a.getAttribute('href');
+                if (href && href.includes('/kampanyalar/') && href.endsWith('-kampanyalari')) {
+                    links.push(href);
+                }
+            });
+            // Strategy 2: Check standard known categories if dynamic ones fail
+            return [...new Set(links)];
+        });
+
+        const fullCategoryUrls = categoryLinks.map(l => l.startsWith('http') ? l : `${BASE_URL}${l}`);
+        console.log(`   📂 Found ${fullCategoryUrls.length} categories: ${fullCategoryUrls.map(u => u.split('/').pop()).join(', ')}`);
+
+        // 2. Crawl Each Category
+        let allCampaignLinks: { url: string, image: string }[] = [];
+
+        for (const catUrl of fullCategoryUrls) {
+            try {
+                console.log(`      ➡️  Crawling Category: ${catUrl}`);
+                await page.goto(catUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+                await sleep(3000);
+
+                // Click "Daha Fazla" loop
+                let hasMore = true;
+                let clickCount = 0;
+                while (hasMore && clickCount < 3) { // Limit depth for now
+                    try {
+                        const btnFound = await page.evaluate(() => {
+                            const btns = Array.from(document.querySelectorAll('button'));
+                            const loadMore = btns.find(b => b.innerText.includes('Daha Fazla'));
+                            if (loadMore) { loadMore.click(); return true; }
+                            return false;
+                        });
+                        if (btnFound) {
+                            process.stdout.write('.');
+                            await sleep(2000);
+                            clickCount++;
+                        } else {
+                            hasMore = false;
+                        }
+                    } catch { hasMore = false; }
+                }
+                process.stdout.write('\n');
+
+                const links = await page.evaluate(() => {
+                    const found: { url: string, image: string, title: string }[] = [];
+                    // Select specifically campaign cards
+                    document.querySelectorAll('.card').forEach((card: any) => {
+                        const a = card.querySelector('a');
+                        const img = card.querySelector('img');
+                        // Try multiple title selectors
+                        const titleEl = card.querySelector('.card-text, h3, .card-title, h5, h4, .title') || card.querySelector('div[class*="title" i]');
+                        let rawTitle = titleEl ? titleEl.innerText.trim() : '';
+
+                        // Fallback: If title is empty or suspiciously short ("Son Gün"), use full text split
+                        if (!rawTitle || rawTitle.toLowerCase().includes('son gün') || rawTitle.length < 5) {
+                            rawTitle = card.innerText.trim().split('\n')[0].trim();
+                        }
+
+                        if (a && img) {
+                            const href = a.getAttribute('href');
+                            const src = img.getAttribute('src');
+
+                            if (href && href.includes('/kampanyalar/') &&
+                                !href.endsWith('-kampanyalari') &&
+                                !href.includes('arsiv') &&
+                                href.length > 25) {
+
+                                found.push({
+                                    url: href,
+                                    image: src || '',
+                                    title: rawTitle
+                                });
+                            }
+                        }
+                    });
+                    // Fallback for non-card layout (if any)
+                    if (found.length === 0) {
+                        document.querySelectorAll('a').forEach((a: any) => {
+                            const href = a.getAttribute('href');
+                            if (href && href.includes('/kampanyalar/') && !href.endsWith('-kampanyalari') && href.length > 50) {
+                                found.push({ url: href, image: '', title: a.innerText.trim() });
+                            }
+                        });
+                    }
+                    return found;
+                });
+
+                allCampaignLinks.push(...links);
+
+            } catch (e) {
+                console.error(`      ❌ Error crawling category ${catUrl}:`, e);
             }
         }
+
+        // Deduplicate by URL
+        const uniqueMap = new Map();
+        allCampaignLinks.forEach(item => {
+            if (!uniqueMap.has(item.url)) uniqueMap.set(item.url, item);
+        });
+
+        const uniqueItems = Array.from(uniqueMap.values());
+
+        // Normalize URLs
+        const fullItems = uniqueItems.map(item => ({
+            ...item,
+            url: item.url.startsWith('http') ? item.url : `${BASE_URL}${item.url}`,
+            image: (item.image && !item.image.startsWith('http')) ? `${BASE_URL}${item.image.startsWith('/') ? '' : '/'}${item.image}` : item.image
+        }));
+
+        console.log(`\n   🎉 Total Unique Campaigns Found: ${fullItems.length}`);
+
+        // 3. Optimize & Limit
+        const normalizedBank = await normalizeBankName('İş Bankası');
+        const normalizedCard = await normalizeCardName(normalizedBank, 'Maximum');
+
+        const { urlsToProcess } = await optimizeCampaigns(fullItems.map(i => i.url), normalizedCard);
+
+        // Filter final list based on optimized URLs
+        const finalItems = fullItems.filter(i => urlsToProcess.includes(i.url)).slice(0, limit);
+
+        console.log(`   🚀 Processing ${finalItems.length} campaigns (Limit: ${limit})...\n`);
+
+        // 4. Process Details
+        for (const item of finalItems) {
+            console.log(`   🔍 Processing: ${item.url}`);
+            try {
+                let content = { title: '', image: '', html: '' };
+
+                try {
+                    await page.goto(item.url, { waitUntil: 'domcontentloaded', timeout: 30000 });
+
+                    content = await page.evaluate(() => {
+                        const h1 = document.querySelector('h1')?.innerText?.trim() || '';
+
+                        // Extract Clean Text
+                        const bodyClone = document.body.cloneNode(true) as HTMLElement;
+                        bodyClone.querySelectorAll('script, style, nav, footer, header').forEach((el) => el.remove());
+                        const cleanHtml = bodyClone.innerHTML;
+
+                        return { title: h1, image: '', html: cleanHtml };
+                    });
+                } catch (navErr) {
+                    console.log(`      ⚠️  Detail page load failed (Access Blocked?), using list data...`);
+                }
+
+                // Fallback to list data if detail extraction failed
+                const finalTitle = content.title || item.title || 'Kampanya Detayı'; // AI will fix this from URL
+                const finalImage = item.image; // USE LIST IMAGE (Trustworthy)
+
+                // Default Data
+                let campaignData: any = {
+                    title: finalTitle,
+                    description: finalTitle,
+                    card_name: normalizedCard,
+                    bank: normalizedBank,
+                    url: item.url,
+                    reference_url: item.url,
+                    image: finalImage,
+                    category: 'Diğer',
+                    sector_slug: 'diger',
+                    is_active: true
+                };
+
+                // AI Parsing
+                if (isAIEnabled) {
+                    const metadata = {
+                        title: content.title,
+                        bank: normalizedBank,
+                        card: normalizedCard,
+                        image: finalImage
+                    };
+                    const aiData = await parseWithGemini(content.html, item.url, normalizedBank, normalizedCard, metadata);
+                    if (aiData) {
+                        campaignData = { ...campaignData, ...aiData };
+                    }
+                }
+
+                // Final Polish
+                campaignData.image = finalImage; // Ensure fixed image is used
+                syncEarningAndDiscount(campaignData);
+                const ids = await lookupIDs(campaignData.bank, campaignData.card_name, campaignData.brand, campaignData.sector_slug);
+                Object.assign(campaignData, ids);
+                assignBadge(campaignData);
+                markGenericBrand(campaignData);
+
+                // Save
+                const { error } = await supabase.from('campaigns').upsert(campaignData, { onConflict: 'reference_url' });
+
+                if (error) console.error(`      ❌ DB Error: ${error.message}`);
+                else console.log(`      ✅ Saved: ${campaignData.title}`);
+
+            } catch (err: any) {
+                console.error(`      ❌ Error fetching detail: ${err.message}`);
+            }
+            await sleep(1000);
+        }
+
+    } catch (e) {
+        console.error('Critical Error:', e);
+    } finally {
+        await browser.close();
     }
 }
 
-runMaximumScraper();
+if (require.main === module) {
+    runMaximumScraperV2();
+}

@@ -1,3 +1,4 @@
+/// <reference lib="dom" />
 
 import puppeteer, { Page } from 'puppeteer';
 import { createClient } from '@supabase/supabase-js';
@@ -29,23 +30,63 @@ const CARD_CONFIG = {
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 
+// Selector priorities for content
+const CONTENT_SELECTORS = [
+    '.subpage-detail',
+    '.accordion',
+    '.tab-content',
+    '#tab-details',
+    '.campaign-detail-content'
+];
+
 export async function scrapeCampaignDetail(page: Page, fullUrl: string) {
-    await page.goto(fullUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+    await page.goto(fullUrl, { waitUntil: 'domcontentloaded', timeout: 60000 });
 
-    // Get clean HTML (remove script/style to save tokens)
+    // 1. Handle Accordions/Tabs (Expand all)
+    try {
+        const triggers = await page.$$('.accordion-toggle, .nav-tabs a, details summary, .panel-heading a');
+        for (const trigger of triggers) {
+            try {
+                await trigger.evaluate(el => (el as HTMLElement).click());
+                await sleep(100);
+            } catch (e) { }
+        }
+        await sleep(1000); // Wait for animations
+    } catch (e) {
+        console.log('   ⚠️  Interaction error (ignoring):', e);
+    }
+
+    // 2. Extract Clean HTML
     const content = await page.evaluate(() => {
-        // @ts-ignore
         const doc = document as any;
-        const cloned = doc.body.cloneNode(true) as any;
-        cloned.querySelectorAll('script, style, iframe, footer, nav, header, .campaign-boxes, .other-campaigns').forEach((el: any) => el.remove());
 
-        // Specific selectors for Bankkart
+        // Remove known junk
+        doc.querySelectorAll('script, style, iframe, footer, nav, header, .campaign-boxes, .other-campaigns, .cookie-banner, .popup').forEach((el: any) => el.remove());
+
+        // Try to find the specific content container first
+        let mainContent = '';
+        const specificContent = doc.querySelector('.subpage-detail, .accordion, .detail-content');
+
+        if (specificContent) {
+            mainContent = specificContent.innerHTML;
+        } else {
+            // Fallback to body but cleaned
+            mainContent = doc.body.innerHTML;
+        }
+
+        // Specific Cleaners for Ziraat
+        // Remove "Hemen Katıl" forms which confuse AI with phone inputs
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = mainContent;
+        tempDiv.querySelectorAll('.form-area, .tabs-form, .modal, #sendNewPhoneAndCardData').forEach((el: any) => el.remove());
+        mainContent = tempDiv.innerHTML;
+
         const detailJson = doc.querySelector('script[type="application/ld+json"]')?.textContent;
         let ldTitle = '';
         try { if (detailJson) ldTitle = JSON.parse(detailJson).name; } catch (e) { }
 
         return {
-            html: cloned.innerHTML,
+            html: mainContent,
             title: ldTitle ||
                 doc.querySelector('.subpage-detail h1')?.innerText?.trim() ||
                 doc.querySelector('h1')?.innerText?.trim() ||
@@ -144,7 +185,11 @@ async function runBankkartScraper() {
         );
 
         console.log(`   🔍 Optimizing list via database check...`);
-        const { urlsToProcess } = await optimizeCampaigns(allUrls, normalizedCard);
+        const { urlsToProcess: optimizedParams } = await optimizeCampaigns(allUrls, normalizedCard);
+
+        console.log(`   ⚠️ FORCE MODE: Ignoring optimization to repair all content...`);
+        // FORCE ALL: Ignore the optimized list and process everything to fix content issues
+        const urlsToProcess = allUrls;
 
         const finalItems = urlsToProcess.slice(0, limit);
         console.log(`   🚀 Processing details for ${finalItems.length} campaigns (Limit: ${limit})...\n`);
