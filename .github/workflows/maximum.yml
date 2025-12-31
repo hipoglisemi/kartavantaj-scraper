@@ -52,7 +52,7 @@ jobs:
       
       - name: Upload results
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: maximum-campaigns
           path: src/scrapers/isbankasi/maximum_kampanyalar_hibrit.json
