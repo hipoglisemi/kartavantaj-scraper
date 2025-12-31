@@ -1,0 +1,45 @@
+name: 🎯 Maximum V4 (Best Hybrid)
+
+on:
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: 'Campaign limit'
+        required: false
+        default: '1000'
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+          
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+        
+      - name: Install Node dependencies
+        run: npm install
+        
+      - name: Run Link Collector (Python)
+        run: |
+          xvfb-run --auto-servernum --server-args='-screen 0 1920x1080x24' \
+          python3 -u src/scrapers/isbankasi/maximum-links.py --limit=${{ github.event.inputs.limit }}
+        env:
+          DISPLAY: :99
+          
+      - name: Process Links (TypeScript + AI)
+        run: tsx src/scrapers/isbankasi/maximum-v4.ts
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
