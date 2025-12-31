@@ -61,6 +61,10 @@ async function importMaximumFromPC() {
             }
 
             // Merge Python + AI data
+            let finalCards = aiData.eligible_customers;
+            if (!finalCards || finalCards.length === 0) finalCards = pythonData.eligible_customers;
+            if (!finalCards || finalCards.length === 0) finalCards = [normalizedCard, 'Maximum Mobil', 'İşCep'];
+
             const campaignData: any = {
                 title: pythonData.title,
                 image: pythonData.image,
@@ -83,7 +87,8 @@ async function importMaximumFromPC() {
                 brand: aiData.brand || pythonData.merchant,
                 conditions: aiData.conditions || pythonData.conditions || [],
                 participation_method: aiData.participation_method || pythonData.participation_method,
-                eligible_customers: aiData.eligible_customers || pythonData.eligible_customers || ['Maximum'],
+                marketing_text: aiData.marketing_text,
+                eligible_customers: finalCards,
 
                 sector_slug: generateSectorSlug(aiData.category || pythonData.category || 'Diğer'),
                 is_active: true

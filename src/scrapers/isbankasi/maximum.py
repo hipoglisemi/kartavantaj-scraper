@@ -258,8 +258,18 @@ def main():
             if count >= CAMPAIGN_LIMIT: break
             
             try:
-                time.sleep(1.5)
-                driver.get(url)
+                # Retry Logic (Bot Koruması İçin)
+                for attempt in range(5):
+                    try:
+                        driver.get(url)
+                        break
+                    except Exception as e:
+                        if attempt == 4: raise e # Son deneme
+                        wait_time = 5 * (2 ** attempt) # 5, 10, 20, 40...
+                        print(f"      ⚠️ Bağlantı hatası, {wait_time}sn bekleniyor... ({attempt+1}/5)")
+                        time.sleep(wait_time)
+                
+                time.sleep(random.uniform(2, 4)) # Random delay
                 
                 # 🔥 GÖRSEL İÇİN V7 TAKTİĞİ: SCROLL
                 driver.execute_script("window.scrollTo(0, 600);")
