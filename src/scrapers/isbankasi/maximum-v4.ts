@@ -70,8 +70,39 @@ async function processMaximumLinks() {
             // Extract details
             const title = $('h1.gradient-title-text, h1').first().text().trim() || 'Başlıksız';
 
-            // Image from Python scraper (list page)
-            let image = imageMap.get(url) || '';
+            // Image from detail page (multiple fallbacks)
+            let image = '';
+
+            // Try 1: Open Graph image (most reliable)
+            image = $('meta[property="og:image"]').attr('content') || '';
+
+            // Try 2: Campaign image by ID
+            if (!image) {
+                const imgEl = $('img[id*="CampaignImage"], img[id*="campaignImage"]');
+                image = imgEl.attr('src') || imgEl.attr('data-src') || '';
+            }
+
+            // Try 3: First large image in content
+            if (!image) {
+                const contentImg = $('.campaign-content img, .campaign-detail img, article img').first();
+                image = contentImg.attr('src') || contentImg.attr('data-src') || '';
+            }
+
+            // Try 4: Any img with campaign in class/id
+            if (!image) {
+                const anyImg = $('img[class*="campaign"], img[id*="campaign"]').first();
+                image = anyImg.attr('src') || anyImg.attr('data-src') || '';
+            }
+
+            // Make absolute URL
+            if (image && !image.startsWith('http')) {
+                image = new URL(image, CARD_CONFIG.baseUrl).toString();
+            }
+
+            // Filter out favicon/logo
+            if (image && (image.includes('favicon') || image.includes('logo.svg') || image.includes('menu'))) {
+                image = '';
+            }
 
             // Description & Conditions
             const descEl = $('span[id$="CampaignDescription"]');
