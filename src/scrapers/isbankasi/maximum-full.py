@@ -5,16 +5,22 @@ import time
 import json
 import re
 import random
+import argparse
 from datetime import datetime
 from urllib.parse import urljoin
 from bs4 import BeautifulSoup
+
+# Parse command line arguments
+parser = argparse.ArgumentParser()
+parser.add_argument('--limit', type=int, default=1000, help='Campaign limit')
+args, unknown = parser.parse_known_args()
 
 # --- AYARLAR ---
 BASE_URL = "https://www.maximum.com.tr"
 CAMPAIGNS_URL = "https://www.maximum.com.tr/kampanyalar"
 OUTPUT_FILE = "maximum_campaigns_full.json"
 IMPORT_SOURCE_NAME = "Maximum Kart"
-CAMPAIGN_LIMIT = 1000 
+CAMPAIGN_LIMIT = args.limit 
 
 # --- SSL FIX ---
 try:
