@@ -266,7 +266,17 @@ def main():
         options.add_argument(f"--user-agent={random.choice(ua_list)}")
         
         # Driver Initialization
-        driver = uc.Chrome(options=options, use_subprocess=True) # Best for CI/Linux
+        import platform
+        system_os = platform.system()
+        use_sub = True
+        
+        if system_os == "Darwin": # Mac
+            use_sub = False
+            print("   🍏 MacOS tespit edildi: Subprocess modu kapalı.")
+        else: # Linux/Windows
+            print(f"   🐧 {system_os} tespit edildi: Subprocess modu açık.")
+
+        driver = uc.Chrome(options=options, use_subprocess=use_sub)
         driver.set_page_load_timeout(120)
         
         print("   -> Siteye bağlanılıyor...")
