@@ -38,7 +38,7 @@ jobs:
           DISPLAY: :99
           
       - name: Process Links (TypeScript + AI)
-        run: tsx src/scrapers/isbankasi/maximum-v4.ts
+        run: npx tsx src/scrapers/isbankasi/maximum-v4.ts
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
