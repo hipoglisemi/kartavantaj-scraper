@@ -53,16 +53,39 @@ async function runMaximumScraper() {
 
         const $ = cheerio.load(response.data);
 
-        // Extract campaign links
+        // Extract campaign links (exclude category/menu pages)
         $('a[href*="/kampanyalar/"]').each((_: number, el: any) => {
             const href = $(el).attr('href');
             if (!href || href.includes('arsiv')) return;
 
             const fullUrl = href.startsWith('http') ? href : new URL(href, CARD_CONFIG.baseUrl).toString();
 
+            // 🔥 FILTER: Exclude category/menu pages
+            const urlPath = fullUrl.replace(CARD_CONFIG.baseUrl, '');
+
+            // Skip if URL is too short (likely a category)
+            if (urlPath.length < 30) return;
+
+            // Skip common category patterns
+            const categoryPatterns = [
+                '/kampanyalar/bireysel',
+                '/kampanyalar/ticari',
+                '/kampanyalar/sektor',
+                '/kampanyalar/kategori',
+                'kampanyalar$', // Exact match to /kampanyalar
+                'kampanyalar/$'  // Exact match to /kampanyalar/
+            ];
+
+            if (categoryPatterns.some(pattern => new RegExp(pattern).test(urlPath))) {
+                return;
+            }
+
             // Get title from link
             const title = $(el).find('.card-title, h5, h4, .title').text().trim() ||
                 $(el).text().trim();
+
+            // Skip if title contains "Kampanyaları" (plural, indicates category)
+            if (title.toLowerCase().includes('kampanyaları')) return;
 
             // Get image from link
             const imgEl = $(el).find('img');
