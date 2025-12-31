@@ -10,7 +10,7 @@
     "scrape:worldcard": "tsx src/scrapers/worldcard.ts",
     "fix:brands": "tsx scripts/sync_brands.ts",
     "fix:titles": "tsx scripts/restore_titles.ts",
-    "scrape:maximum:py": "python3 src/scrapers/isbankasi/maximum.py",
+    "scrape:maximum:py": "python3 -u src/scrapers/isbankasi/maximum.py",
     "import:maximum": "tsx import_maximum_json.ts",
     "scrape:maximum:full": "npm run scrape:maximum:py && npm run import:maximum"
   },

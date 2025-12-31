@@ -41,7 +41,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y xvfb
           # Pass --limit=10 to the python script
-          xvfb-run --auto-servernum --server-args="-screen 0 1280x1024x24" python3 src/scrapers/isbankasi/maximum.py --limit=10
+          xvfb-run --auto-servernum --server-args="-screen 0 1280x1024x24" python3 -u src/scrapers/isbankasi/maximum.py --limit=10
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
