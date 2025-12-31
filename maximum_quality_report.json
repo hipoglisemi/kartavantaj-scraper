@@ -1,0 +1,856 @@
+{
+  "timestamp": "2025-12-31T13:55:17.507Z",
+  "totalCampaigns": 46,
+  "issues": {
+    "missingImage": 46,
+    "missingParticipation": 43,
+    "emptyConditions": 1,
+    "singleCard": 40,
+    "noEarning": 11,
+    "noDiscount": 3,
+    "longDescription": 0,
+    "missingBrand": 12
+  },
+  "samples": [
+    {
+      "title": "FLO’da Peşin Fiyatına 6 Taksit Fırsatı!",
+      "url": "https://www.maximum.com.tr/kampanyalar/floda-pesin-fiyatina-taksit-firsati",
+      "issues": [
+        "❌ Görsel yok/hatalı",
+        "❌ Katılım şekli yok",
+        "❌ Tek kart (generic)"
+      ]
+    },
+    {
+      "title": "Vakkorama Harcamalarınızda 4 Taksit Ayrıcalığı!",
+      "url": "https://www.maximum.com.tr/kampanyalar/vakkorama-harcamalarinizda-taksit-ayricaligi",
+      "issues": [
+        "❌ Görsel yok/hatalı",
+        "❌ Katılım şekli yok",
+        "❌ Tek kart (generic)",
+        "⚠️  Kazanç bilgisi yok"
+      ]
+    },
+    {
+      "title": "Yurt İçi Uçak Biletlerinde Peşin Fiyatına 6 Aya Varan Taksit Fırsatı ETS’de!",
+      "url": "https://www.maximum.com.tr/kampanyalar/maximum-ile-yurtici-ucak-biletlerinde-taksit-firsati-etsde",
+      "issues": [
+        "❌ Görsel yok/hatalı",
+        "❌ Katılım şekli yok",
+        "❌ Tek kart (generic)"
+      ]
+    },
+    {
+      "title": "Zara Home mağazalarında vade farksız 6 taksit!",
+      "url": "https://www.maximum.com.tr/kampanyalar/zara-home-da-taksit-firsati",
+      "issues": [
+        "❌ Görsel yok/hatalı",
+        "❌ Katılım şekli yok",
+        "❌ Tek kart (generic)"
+      ]
+    },
+    {
+      "title": "Tumi'de 2.500 TL'ye varan MaxiPuan Kampanyası!",
+      "url": "https://www.maximum.com.tr/kampanyalar/tumide-maxipuan-firsati",
+      "issues": [
+        "❌ Görsel yok/hatalı",
+        "❌ Katılım şekli yok",
+        "❌ Tek kart (generic)"
+      ]
+    },
+    {
+      "title": "Maximum'dan Pull&Bear'da %10 indirim!",
+      "url": "https://www.maximum.com.tr/kampanyalar/pull-and-bearda-indirim-firsati",
+      "issues": [
+        "❌ Görsel yok/hatalı",
+        "❌ Katılım şekli yok",
+        "❌ Tek kart (generic)"
+      ]
+    },
+    {
+      "title": "Maximiles Black ile ücretsiz Amazon Prime üyeliği ayrıcalığı!",
+      "url": "https://www.maximum.com.tr/kampanyalar/amazon-prime-uyeliginiz-maximiles-blackten",
+      "issues": [
+        "❌ Görsel yok/hatalı",
+        "❌ Katılım şekli yok",
+        "⚠️  Kazanç bilgisi yok",
+        "⚠️  Marka generic"
+      ]
+    },
+    {
+      "title": "Beymen'de Vade Farksız 4 taksit!",
+      "url": "https://www.maximum.com.tr/kampanyalar/beymende-taksit-firsati",
+      "issues": [
+        "❌ Görsel yok/hatalı",
+        "❌ Katılım şekli yok",
+        "❌ Tek kart (generic)",
+        "⚠️  Kazanç bilgisi yok"
+      ]
+    },
+    {
+      "title": "ucuzabilet.com’da Peşin Fiyatına 6 Aya Varan Taksit Fırsatı!",
+      "url": "https://www.maximum.com.tr/kampanyalar/ucuzabiletcomda-pesin-fiyatina-taksit-firsati",
+      "issues": [
+        "❌ Görsel yok/hatalı",
+        "❌ Katılım şekli yok",
+        "❌ Tek kart (generic)"
+      ]
+    },
+    {
+      "title": "İş Bankası Visa Logolu Kartlarınıza Beymen.com’da seçili Apple ürünü alışverişlerinde eşsiz fırsat!",
+      "url": "https://www.maximum.com.tr/kampanyalar/is-bankasi-visa-logolu-kartlariniza-beymen-comda-secili-apple-urunlerinde-essiz-firsat#gecmis",
+      "issues": [
+        "❌ Görsel yok/hatalı",
+        "❌ Katılım şekli yok",
+        "⚠️  Kazanç bilgisi yok"
+      ]
+    },
+    {
+      "title": "Lova’da peşin fiyatına 9 taksit fırsatı!",
+      "url": "https://www.maximum.com.tr/kampanyalar/lovada-pesin-fiyatina-taksit-firsati",
+      "issues": [
+        "❌ Görsel yok/hatalı",
+        "❌ Katılım şekli yok",
+        "❌ Tek kart (generic)"
+      ]
+    },
+    {
+      "title": "KidZania Girişlerinde %10 İndirim Ayrıcalığı!",
+      "url": "https://www.maximum.com.tr/kampanyalar/kidzania-giris-biletlerinde-indirim",
+      "issues": [
+        "❌ Görsel yok/hatalı",
+        "❌ Katılım şekli yok",
+        "❌ Tek kart (generic)",
+        "⚠️  Kazanç bilgisi yok",
+        "⚠️  İndirim bilgisi yok",
+        "⚠️  Marka generic"
+      ]
+    },
+    {
+      "title": "Nine West'te 300 TL MaxiPuan Kampanyası!",
+      "url": "https://www.maximum.com.tr/kampanyalar/nine-west-maxipuan-kampanyasi",
+      "issues": [
+        "❌ Görsel yok/hatalı",
+        "❌ Tek kart (generic)"
+      ]
+    },
+    {
+      "title": "Forever 21'da 250 TL MaxiPuan!",
+      "url": "https://www.maximum.com.tr/kampanyalar/forever-21de-maxipuan-firsati",
+      "issues": [
+        "❌ Görsel yok/hatalı",
+        "❌ Katılım şekli yok",
+        "❌ Tek kart (generic)"
+      ]
+    },
+    {
+      "title": "adL’de Peşin Fiyatına 6 Taksit Fırsatı!",
+      "url": "https://www.maximum.com.tr/kampanyalar/adl-de-pesin-fiyatina-taksit-firsati",
+      "issues": [
+        "❌ Görsel yok/hatalı",
+        "❌ Katılım şekli yok",
+        "❌ Tek kart (generic)"
+      ]
+    },
+    {
+      "title": "Türk Hava Yolları'nda 6'ya Varan Taksit Fırsatı!",
+      "url": "https://www.maximum.com.tr/kampanyalar/thy-pesin-fiyatina-6taksit",
+      "issues": [
+        "❌ Görsel yok/hatalı",
+        "❌ Katılım şekli yok",
+        "❌ Tek kart (generic)"
+      ]
+    },
+    {
+      "title": "Maximum Kart'ınızla Pegasus'ta 500 TL İndirim Fırsatı!",
+      "url": "https://www.maximum.com.tr/kampanyalar/pegasus-indirim-kampanyasi",
+      "issues": [
+        "❌ Görsel yok/hatalı",
+        "❌ Katılım şekli yok"
+      ]
+    },
+    {
+      "title": "Toyzz Shop’ta 5 Taksit Fırsatı!",
+      "url": "https://www.maximum.com.tr/kampanyalar/toyzz-shopta-taksit-firsati",
+      "issues": [
+        "❌ Görsel yok/hatalı",
+        "❌ Katılım şekli yok",
+        "❌ Tek kart (generic)"
+      ]
+    },
+    {
+      "title": "İş Bankası TROY logolu kart sahiplerine özel Türk Hava Yolları Biletlerinde 500 TL’e varan İndirim!",
+      "url": "https://www.maximum.com.tr/kampanyalar/is-bankasi-troy-logolu-kart-sahiplerine-ozel-turk-hava-yollari-biletlerinde-indirim",
+      "issues": [
+        "❌ Görsel yok/hatalı",
+        "❌ Katılım şekli yok",
+        "❌ Tek kart (generic)",
+        "⚠️  Marka generic"
+      ]
+    },
+    {
+      "title": "Pazarama'da Peşin Fiyatına 9 Taksit Fırsatı!",
+      "url": "https://www.maximum.com.tr/kampanyalar/pazarama-online-alisveriste-9-taksit-firsati",
+      "issues": [
+        "❌ Görsel yok/hatalı",
+        "❌ Katılım şekli yok",
+        "❌ Tek kart (generic)"
+      ]
+    }
+  ],
+  "fullData": [
+    {
+      "id": 15587,
+      "title": "FLO’da Peşin Fiyatına 6 Taksit Fırsatı!",
+      "image": "✅",
+      "participation_method": [],
+      "conditions": 1,
+      "eligible_customers": [
+        "Maximum"
+      ],
+      "earning": "Taksit İmkanı",
+      "discount": "6 Taksit",
+      "brand": "Flo",
+      "description_length": 139
+    },
+    {
+      "id": 15586,
+      "title": "Vakkorama Harcamalarınızda 4 Taksit Ayrıcalığı!",
+      "image": "✅",
+      "participation_method": [],
+      "conditions": 1,
+      "eligible_customers": [
+        "Maximum"
+      ],
+      "earning": "",
+      "discount": "5 Taksit",
+      "brand": "Vakkorama",
+      "description_length": 139
+    },
+    {
+      "id": 15585,
+      "title": "Yurt İçi Uçak Biletlerinde Peşin Fiyatına 6 Aya Varan Taksit Fırsatı ETS’de!",
+      "image": "✅",
+      "participation_method": [],
+      "conditions": 1,
+      "eligible_customers": [
+        "Maximum"
+      ],
+      "earning": "Taksit İmkanı",
+      "discount": "6 Taksit",
+      "brand": "Etstur",
+      "description_length": 98
+    },
+    {
+      "id": 15584,
+      "title": "Zara Home mağazalarında vade farksız 6 taksit!",
+      "image": "✅",
+      "participation_method": [],
+      "conditions": 1,
+      "eligible_customers": [
+        "Maximum"
+      ],
+      "earning": "Taksit İmkanı",
+      "discount": "6 Taksit",
+      "brand": "Zara Home",
+      "description_length": 90
+    },
+    {
+      "id": 15583,
+      "title": "Tumi'de 2.500 TL'ye varan MaxiPuan Kampanyası!",
+      "image": "✅",
+      "participation_method": [],
+      "conditions": 1,
+      "eligible_customers": [
+        "Maximum"
+      ],
+      "earning": "500 TL Puan",
+      "discount": "",
+      "brand": "Tumi",
+      "description_length": 89
+    },
+    {
+      "id": 15582,
+      "title": "Maximum'dan Pull&Bear'da %10 indirim!",
+      "image": "✅",
+      "participation_method": [],
+      "conditions": 1,
+      "eligible_customers": [
+        "Maximum"
+      ],
+      "earning": "200 TL Puan",
+      "discount": "",
+      "brand": "Pull&Bear",
+      "description_length": 104
+    },
+    {
+      "id": 15581,
+      "title": "Maximiles Black ile ücretsiz Amazon Prime üyeliği ayrıcalığı!",
+      "image": "✅",
+      "participation_method": [],
+      "conditions": 1,
+      "eligible_customers": [
+        "Maximum",
+        "Maximiles Black"
+      ],
+      "earning": "Özel Fırsat",
+      "discount": "",
+      "brand": "Genel",
+      "description_length": 115
+    },
+    {
+      "id": 15580,
+      "title": "Beymen'de Vade Farksız 4 taksit!",
+      "image": "✅",
+      "participation_method": [],
+      "conditions": 1,
+      "eligible_customers": [
+        "Maximum"
+      ],
+      "earning": "Özel Fırsat",
+      "discount": "4 Taksit",
+      "brand": "Beymen",
+      "description_length": 105
+    },
+    {
+      "id": 15579,
+      "title": "ucuzabilet.com’da Peşin Fiyatına 6 Aya Varan Taksit Fırsatı!",
+      "image": "✅",
+      "participation_method": [],
+      "conditions": 1,
+      "eligible_customers": [
+        "Maximum"
+      ],
+      "earning": "Taksit İmkanı",
+      "discount": "6 Taksit",
+      "brand": "Ucuzabilet",
+      "description_length": 187
+    },
+    {
+      "id": 15578,
+      "title": "İş Bankası Visa Logolu Kartlarınıza Beymen.com’da seçili Apple ürünü alışverişlerinde eşsiz fırsat!",
+      "image": "✅",
+      "participation_method": [],
+      "conditions": 4,
+      "eligible_customers": [
+        "Maximum",
+        "Visa"
+      ],
+      "earning": "Özel Fırsat",
+      "discount": "",
+      "brand": "Apple",
+      "description_length": 271
+    },
+    {
+      "id": 15577,
+      "title": "Lova’da peşin fiyatına 9 taksit fırsatı!",
+      "image": "✅",
+      "participation_method": [],
+      "conditions": 1,
+      "eligible_customers": [
+        "Maximum"
+      ],
+      "earning": "Taksit İmkanı",
+      "discount": "",
+      "brand": "Lova",
+      "description_length": 106
+    },
+    {
+      "id": 15576,
+      "title": "KidZania Girişlerinde %10 İndirim Ayrıcalığı!",
+      "image": "✅",
+      "participation_method": [],
+      "conditions": 1,
+      "eligible_customers": [],
+      "earning": null,
+      "discount": null,
+      "brand": null,
+      "description_length": 45
+    },
+    {
+      "id": 15575,
+      "title": "Nine West'te 300 TL MaxiPuan Kampanyası!",
+      "image": "✅",
+      "participation_method": "İşCep'ten kampanyaya katılın.",
+      "conditions": 1,
+      "eligible_customers": [
+        "Maximum"
+      ],
+      "earning": "300 TL Puan",
+      "discount": null,
+      "brand": "Nine West",
+      "description_length": 114
+    },
+    {
+      "id": 15574,
+      "title": "Forever 21'da 250 TL MaxiPuan!",
+      "image": "✅",
+      "participation_method": [],
+      "conditions": 1,
+      "eligible_customers": [
+        "Maximum"
+      ],
+      "earning": "200 TL Puan",
+      "discount": "",
+      "brand": "Forever 21",
+      "description_length": 104
+    },
+    {
+      "id": 15573,
+      "title": "adL’de Peşin Fiyatına 6 Taksit Fırsatı!",
+      "image": "✅",
+      "participation_method": [],
+      "conditions": 1,
+      "eligible_customers": [
+        "Maximum"
+      ],
+      "earning": "Taksit İmkanı",
+      "discount": "6 Taksit",
+      "brand": "Adl",
+      "description_length": 130
+    },
+    {
+      "id": 15572,
+      "title": "Türk Hava Yolları'nda 6'ya Varan Taksit Fırsatı!",
+      "image": "✅",
+      "participation_method": [],
+      "conditions": 1,
+      "eligible_customers": [
+        "Maximum"
+      ],
+      "earning": "Taksit İmkanı",
+      "discount": "6 Taksit",
+      "brand": "Türk Hava Yolları",
+      "description_length": 126
+    },
+    {
+      "id": 15571,
+      "title": "Maximum Kart'ınızla Pegasus'ta 500 TL İndirim Fırsatı!",
+      "image": "✅",
+      "participation_method": [],
+      "conditions": 1,
+      "eligible_customers": [
+        "Axess",
+        "Wings",
+        "Business",
+        "Free",
+        "TROY"
+      ],
+      "earning": "500 TL Puan",
+      "discount": "",
+      "brand": "Pegasus",
+      "description_length": 130
+    },
+    {
+      "id": 15570,
+      "title": "Toyzz Shop’ta 5 Taksit Fırsatı!",
+      "image": "✅",
+      "participation_method": [],
+      "conditions": 1,
+      "eligible_customers": [
+        "Maximum"
+      ],
+      "earning": "Taksit İmkanı",
+      "discount": "",
+      "brand": "Toyzz Shop",
+      "description_length": 75
+    },
+    {
+      "id": 15569,
+      "title": "İş Bankası TROY logolu kart sahiplerine özel Türk Hava Yolları Biletlerinde 500 TL’e varan İndirim!",
+      "image": "✅",
+      "participation_method": [],
+      "conditions": 1,
+      "eligible_customers": [
+        "Maximum TROY"
+      ],
+      "earning": "500 TL Puan",
+      "discount": "",
+      "brand": "Genel",
+      "description_length": 109
+    },
+    {
+      "id": 15568,
+      "title": "Pazarama'da Peşin Fiyatına 9 Taksit Fırsatı!",
+      "image": "✅",
+      "participation_method": [],
+      "conditions": 1,
+      "eligible_customers": [
+        "Maximum"
+      ],
+      "earning": "Taksit İmkanı",
+      "discount": "9 Taksit",
+      "brand": "Pazarama",
+      "description_length": 90
+    },
+    {
+      "id": 15567,
+      "title": "The Cosmetics Company Store'da 500 TL MaxiPuan!",
+      "image": "✅",
+      "participation_method": [],
+      "conditions": 1,
+      "eligible_customers": [
+        "Maximum"
+      ],
+      "earning": "500 TL Puan",
+      "discount": "",
+      "brand": "The Cosmetics Company Store",
+      "description_length": 121
+    },
+    {
+      "id": 15566,
+      "title": "İşbir Yatak'ta peşin fiyatına 7 taksit fırsatı!",
+      "image": "✅",
+      "participation_method": [],
+      "conditions": 1,
+      "eligible_customers": [
+        "Maximum"
+      ],
+      "earning": "Taksit İmkanı",
+      "discount": "7 Taksit",
+      "brand": "İşbir Yatak",
+      "description_length": 114
+    },
+    {
+      "id": 15564,
+      "title": "Decathlon'da 300 TL MaxiPuan!",
+      "image": "✅",
+      "participation_method": [],
+      "conditions": 1,
+      "eligible_customers": [
+        "Maximum"
+      ],
+      "earning": "300 TL Puan",
+      "discount": "",
+      "brand": "Decathlon",
+      "description_length": 102
+    },
+    {
+      "id": 15563,
+      "title": "Lastikcim.com'da 4 Taksit Fırsatı",
+      "image": "✅",
+      "participation_method": [],
+      "conditions": 1,
+      "eligible_customers": [
+        "Maximum"
+      ],
+      "earning": "",
+      "discount": "6 Taksit",
+      "brand": "Lastikcim",
+      "description_length": 84
+    },
+    {
+      "id": 15562,
+      "title": "Korkmaz'da peşin fiyatına 6 taksit fırsatı!",
+      "image": "✅",
+      "participation_method": [],
+      "conditions": 1,
+      "eligible_customers": [
+        "Axess",
+        "Wings",
+        "Business",
+        "Free",
+        "TROY"
+      ],
+      "earning": "",
+      "discount": "6 Taksit",
+      "brand": "Korkmaz",
+      "description_length": 77
+    },
+    {
+      "id": 15561,
+      "title": "Maximum’dan Vignetim’de yapacağınız e-vinyet ve otoyol bileti ödemelerinde %7 indirim fırsatı!",
+      "image": "✅",
+      "participation_method": [],
+      "conditions": 1,
+      "eligible_customers": [
+        "Axess",
+        "Wings",
+        "Business",
+        "Free"
+      ],
+      "earning": "%7 İndirim",
+      "discount": "",
+      "brand": "",
+      "description_length": 109
+    },
+    {
+      "id": 15560,
+      "title": "Pazarama Tatil'den yapacağınız araç kiralamalarınızda 3 taksit fırsatı!",
+      "image": "✅",
+      "participation_method": [],
+      "conditions": 1,
+      "eligible_customers": [
+        "Axess",
+        "Wings",
+        "Business",
+        "Free",
+        "TROY"
+      ],
+      "earning": "Özel Fırsat",
+      "discount": "3 Taksit",
+      "brand": "Genel",
+      "description_length": 153
+    },
+    {
+      "id": 15559,
+      "title": "Gap'de 800 TL'ye varan MaxiPuan!",
+      "image": "✅",
+      "participation_method": [],
+      "conditions": 1,
+      "eligible_customers": [
+        "Maximum"
+      ],
+      "earning": "",
+      "discount": "",
+      "brand": "Gap",
+      "description_length": 90
+    },
+    {
+      "id": 15558,
+      "title": "Pazarama Tatil'den yapacağınız yurtiçi otel rezervasyonlarınıza 6 taksit fırsatı!",
+      "image": "✅",
+      "participation_method": [],
+      "conditions": 1,
+      "eligible_customers": [
+        "Maximum"
+      ],
+      "earning": "Taksit İmkanı",
+      "discount": "",
+      "brand": "Pazarama",
+      "description_length": 109
+    },
+    {
+      "id": 15556,
+      "title": "Sixt Rent a Car Araç Kiralamada %35 İndirim Fırsatı",
+      "image": "✅",
+      "participation_method": [],
+      "conditions": 1,
+      "eligible_customers": [],
+      "earning": "%35 İndirim",
+      "discount": "",
+      "brand": "Genel",
+      "description_length": 153
+    },
+    {
+      "id": 15555,
+      "title": "Altınbaş'ta 3.000 TL MaxiPuan!",
+      "image": "✅",
+      "participation_method": [],
+      "conditions": 1,
+      "eligible_customers": [
+        "Maximum"
+      ],
+      "earning": "3.000 TL Puan",
+      "discount": null,
+      "brand": "Altınbaş",
+      "description_length": 111
+    },
+    {
+      "id": 15554,
+      "title": "Mobil Temassız Kampanyaları",
+      "image": "✅",
+      "participation_method": [],
+      "conditions": 0,
+      "eligible_customers": [
+        "Maximum Kart"
+      ],
+      "earning": "Puan fırsatlarını",
+      "discount": "",
+      "brand": "Genel",
+      "description_length": 131
+    },
+    {
+      "id": 15553,
+      "title": "Jo Malone London'da 750 TL MaxiPuan!",
+      "image": "✅",
+      "participation_method": [],
+      "conditions": 1,
+      "eligible_customers": [
+        "Maximum"
+      ],
+      "earning": "750 TL Puan",
+      "discount": "",
+      "brand": "Jo Malone London",
+      "description_length": 97
+    },
+    {
+      "id": 15552,
+      "title": "Beyaz Eşya Alışverişinize 1.400 TL'ye varan MaxiPuan!",
+      "image": "✅",
+      "participation_method": [],
+      "conditions": 1,
+      "eligible_customers": [
+        "Maximum"
+      ],
+      "earning": "",
+      "discount": "",
+      "brand": "Genel",
+      "description_length": 128
+    },
+    {
+      "id": 15551,
+      "title": "pinaronline.com’dan yapacağınız 3.000 TL ve üzeri alışverişinizde %15 İndirim fırsatı!",
+      "image": "✅",
+      "participation_method": [],
+      "conditions": 1,
+      "eligible_customers": [
+        "Maximum"
+      ],
+      "earning": "%15 (max 0TL)",
+      "discount": "",
+      "brand": "Pinaronline",
+      "description_length": 86
+    },
+    {
+      "id": 15550,
+      "title": "Evinizi Anadolu Sigorta ile Güvence Altına Alın, 1750 TL’ye Varan MaxiPuan Kazanın!",
+      "image": "✅",
+      "participation_method": [],
+      "conditions": 1,
+      "eligible_customers": [
+        "Maximum"
+      ],
+      "earning": "1.750 TL Puan",
+      "discount": "",
+      "brand": "Anadolu Sigorta",
+      "description_length": 106
+    },
+    {
+      "id": 15549,
+      "title": "Kıbrıs'taki Akaryakıt İstasyonlarında 250 TL MaxiPuan Fırsatı",
+      "image": "✅",
+      "participation_method": [],
+      "conditions": 1,
+      "eligible_customers": [
+        "Maximum"
+      ],
+      "earning": "Puan",
+      "discount": "",
+      "brand": "Genel",
+      "description_length": 92
+    },
+    {
+      "id": 15548,
+      "title": "Bankamatik Kartınız Alışverişlerinizde de Yanınızda!",
+      "image": "✅",
+      "participation_method": [],
+      "conditions": 1,
+      "eligible_customers": [],
+      "earning": "Özel Fırsat",
+      "discount": "",
+      "brand": "Genel",
+      "description_length": 137
+    },
+    {
+      "id": 15547,
+      "title": "Vakko Harcamalarınızda 4 Taksit Ayrıcalığı!",
+      "image": "✅",
+      "participation_method": [],
+      "conditions": 1,
+      "eligible_customers": [
+        "Maximum"
+      ],
+      "earning": "Taksit İmkanı",
+      "discount": "",
+      "brand": "Vakko",
+      "description_length": 118
+    },
+    {
+      "id": 15546,
+      "title": "FLO'da 250 TL MaxiPuan Kampanyası!",
+      "image": "✅",
+      "participation_method": "İşCep'ten kampanyaya katılın.",
+      "conditions": 1,
+      "eligible_customers": [
+        "Maximum"
+      ],
+      "earning": "250 TL Puan",
+      "discount": null,
+      "brand": "FLO",
+      "description_length": 117
+    },
+    {
+      "id": 15545,
+      "title": "Vaillant'ta 30.000 TL'ye varan indirim!",
+      "image": "✅",
+      "participation_method": "İşCep'ten kampanyaya katılın.",
+      "conditions": 1,
+      "eligible_customers": [
+        "Maximum"
+      ],
+      "earning": "%12 (max 30.000TL)",
+      "discount": null,
+      "brand": "Vaillant",
+      "description_length": 134
+    },
+    {
+      "id": 15544,
+      "title": "Bankamatik Kartı ile Elektronik, Yapı Market, Mobilya ve Beyaz Eşya Harcamanıza 250 TL MaxiPuan!",
+      "image": "✅",
+      "participation_method": [],
+      "conditions": 1,
+      "eligible_customers": [
+        "Maximum"
+      ],
+      "earning": "250 TL Puan",
+      "discount": null,
+      "brand": "",
+      "description_length": 137
+    },
+    {
+      "id": 15543,
+      "title": "Gelir Vergisi, Motorlu Taşıtlar Vergisi, Tapu Harç ve Emlak Vergisi Ödemelerinize Sonradan 3 Aya Varan Taksit Fırsatı!",
+      "image": "✅",
+      "participation_method": [],
+      "conditions": 1,
+      "eligible_customers": [],
+      "earning": "Taksit İmkanı",
+      "discount": "",
+      "brand": "Genel",
+      "description_length": 103
+    },
+    {
+      "id": 15542,
+      "title": "Otomate.app'te 1.000 TL İndirim ve Peşin Fiyatına 3 Taksit Fırsatı!",
+      "image": "✅",
+      "participation_method": [],
+      "conditions": 1,
+      "eligible_customers": [
+        "Maximum"
+      ],
+      "earning": "Taksit İmkanı",
+      "discount": "6 Taksit",
+      "brand": "Otomate",
+      "description_length": 84
+    },
+    {
+      "id": 15541,
+      "title": "Enplus mağazalarında ve enplus.com.tr'de peşin fiyatına 4 taksit!",
+      "image": "✅",
+      "participation_method": [],
+      "conditions": 1,
+      "eligible_customers": [
+        "Maximum"
+      ],
+      "earning": "Taksit İmkanı",
+      "discount": "",
+      "brand": "Enplus",
+      "description_length": 133
+    },
+    {
+      "id": 15540,
+      "title": "Maximum'dan Zara Home'da %10 indirim!",
+      "image": "✅",
+      "participation_method": [],
+      "conditions": 1,
+      "eligible_customers": [
+        "Maximum"
+      ],
+      "earning": "300 TL Puan",
+      "discount": "",
+      "brand": "Zara Home",
+      "description_length": 102
+    }
+  ]
+}

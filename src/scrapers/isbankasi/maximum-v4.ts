@@ -42,13 +42,17 @@ async function processMaximumLinks() {
         return;
     }
 
-    const links: string[] = JSON.parse(fs.readFileSync(linksPath, 'utf8'));
-    console.log(`📋 Loaded ${links.length} links from Python scraper\n`);
+    const links: Array<{ url: string, image: string | null }> = JSON.parse(fs.readFileSync(linksPath, 'utf8'));
+    console.log(`📋 Loaded ${links.length} campaigns from Python scraper\n`);
 
-    // Optimize
+    // Optimize (extract URLs only)
     console.log(`   🔍 Optimizing via database check...`);
-    const { urlsToProcess } = await optimizeCampaigns(links, normalizedCard);
-    console.log(`   🚀 Processing ${urlsToProcess.length} campaigns (skipping ${links.length - urlsToProcess.length} existing)...\n`);
+    const urls = links.map(l => l.url);
+    const { urlsToProcess } = await optimizeCampaigns(urls, normalizedCard);
+    console.log(`   🚀 Processing ${urlsToProcess.length} campaigns (skipping ${urls.length - urlsToProcess.length} existing)...\n`);
+
+    // Create URL to image map
+    const imageMap = new Map(links.map(l => [l.url, l.image]));
 
     // Process each link
     for (const url of urlsToProcess) {
@@ -66,15 +70,8 @@ async function processMaximumLinks() {
             // Extract details
             const title = $('h1.gradient-title-text, h1').first().text().trim() || 'Başlıksız';
 
-            // Image (try multiple selectors)
-            let image = $('meta[property="og:image"]').attr('content') || '';
-            if (!image) {
-                const imgEl = $('img[id$="CampaignImage"]');
-                image = imgEl.attr('src') || '';
-            }
-            if (image && !image.startsWith('http')) {
-                image = new URL(image, CARD_CONFIG.baseUrl).toString();
-            }
+            // Image from Python scraper (list page)
+            let image = imageMap.get(url) || '';
 
             // Description & Conditions
             const descEl = $('span[id$="CampaignDescription"]');

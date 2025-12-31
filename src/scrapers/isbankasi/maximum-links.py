@@ -103,19 +103,43 @@ def main():
         print("      List loaded.")
         
         soup = BeautifulSoup(driver.page_source, 'html.parser')
-        all_links = []
+        campaigns = []
+        
+        # Find all campaign cards
         for a in soup.find_all('a', href=True):
             if "/kampanyalar/" in a['href'] and "arsiv" not in a['href'] and len(a['href']) > 25:
-                all_links.append(urljoin(BASE_URL, a['href']))
+                url = urljoin(BASE_URL, a['href'])
+                
+                # Try to find image within the same card
+                img = None
+                img_tag = a.find('img')
+                if img_tag and img_tag.get('src'):
+                    img_src = img_tag.get('src')
+                    # Skip logos, favicons, menu icons
+                    if not any(x in img_src.lower() for x in ['logo', 'favicon', 'menu', 'icon', 'altmenu']):
+                        img = urljoin(BASE_URL, img_src)
+                
+                campaigns.append({
+                    "url": url,
+                    "image": img
+                })
         
-        unique_links = list(set(all_links))[:CAMPAIGN_LIMIT]
-        print(f"   -> Found {len(unique_links)} campaigns.")
+        # Remove duplicates by URL
+        seen_urls = set()
+        unique_campaigns = []
+        for c in campaigns:
+            if c["url"] not in seen_urls:
+                seen_urls.add(c["url"])
+                unique_campaigns.append(c)
+        
+        unique_campaigns = unique_campaigns[:CAMPAIGN_LIMIT]
+        print(f"   -> Found {len(unique_campaigns)} campaigns.")
 
-        # Output as simple JSON array
+        # Output as JSON array with URL and image
         with open(OUTPUT_FILE, 'w', encoding='utf-8') as f:
-            json.dump(unique_links, f, ensure_ascii=False, indent=2)
+            json.dump(unique_campaigns, f, ensure_ascii=False, indent=2)
             
-        print(f"\n✅ DONE! {len(unique_links)} links saved to {OUTPUT_FILE}")
+        print(f"\n✅ DONE! {len(unique_campaigns)} campaigns saved to {OUTPUT_FILE}")
 
     except Exception as main_e:
         print(f"❌ Critical Error: {main_e}")
