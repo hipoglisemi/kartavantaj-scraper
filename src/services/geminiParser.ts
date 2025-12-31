@@ -566,9 +566,10 @@ ${metadataInstruction}
        - max_discount: Z (TOPLAM kazanç)
        - ÖRNEK: "Her 100 TL'ye 20 TL, toplam 100 TL puan" → earning: "100 TL Puan" (20 DEĞİL!)
        - ÖRNEK: "Her 500 TL'ye 50 TL, toplam 300 TL indirim" → earning: "300 TL İndirim" (50 DEĞİL!)
-      - 🚨 BAŞLIK ÖNCELİĞİ (VARAN KAMPANYALAR - ÇOK KRİTİK):
-        - Eğer Başlık'ta "X TL'ye varan", "X TL puan", "toplam X TL" geçiyorsa ve metindeki hesaplaman daha düşük çıkıyorsa, BAŞLIKTAKİ DEĞERİ (X) earning olarak al.
-        - ÖRNEK: Başlık "3.500 TL'ye varan puan" -> Earning: "3.500 TL Puan" (Eksik metin durumunda başlık esastır)
+      - 🚨 BAŞLIK ÖNCELİĞİ (VARAN KAMPANYALAR & EKSİK VERİ):
+        - KURAL 1: Başlıkta "X TL'ye varan" geçiyorsa ve metindeki hesaplama düşükse -> BAŞLIĞI AL.
+        - KURAL 2: Metinden mantıklı bir para/puan çıkaramadıysan (veya "Özel Fırsat" gibi belirsizse) VE Başlıkta net para varsa ("1.000 TL İndirim") -> BAŞLIĞI AL.
+        - ÖRNEK: Başlık "3.500 TL'ye varan puan" -> Earning: "3.500 TL Puan"
    - min_spend: KESİNLİKLE KAZANCI ELDE ETMEK İÇİN GEREKEN "TOPLAM" HARCAMA.
       - 🚨 YÜZDE KAMPANYALARI İÇİN ZORUNLU HESAPLAMA:
         - Eğer kampanya yüzde bazlı (%X indirim) VE max_discount belirtilmişse:
