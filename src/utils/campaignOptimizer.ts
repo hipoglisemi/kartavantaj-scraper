@@ -22,16 +22,30 @@ export async function optimizeCampaigns(
         new: number;
         incomplete: number;
         complete: number;
+        blacklisted: number;
     }
 }> {
     console.log(`   🔍 Checking for new and incomplete campaigns in database...`);
 
-    // Query database for existing campaigns with more fields to check completeness
+    // STEP 1: Blacklist Check (filter out blacklisted URLs)
+    const { data: blacklistedData } = await supabase
+        .from('campaign_blacklist')
+        .select('url')
+        .in('url', urls);
+
+    const blacklistedUrls = new Set(blacklistedData?.map(b => b.url) || []);
+    const cleanUrls = urls.filter(url => !blacklistedUrls.has(url));
+
+    if (blacklistedUrls.size > 0) {
+        console.log(`   🚫 Blacklist: ${blacklistedUrls.size} URLs atlandı`);
+    }
+
+    // STEP 2: Query database for existing campaigns (only clean URLs)
     const { data: existingCampaigns } = await supabase
         .from('campaigns')
         .select('reference_url, title, image, brand, sector_slug')
         .eq('card_name', cardName)
-        .in('reference_url', urls);
+        .in('reference_url', cleanUrls);
 
     const existingMap = new Map(
         existingCampaigns?.map(c => [c.reference_url, c]) || []
@@ -40,7 +54,7 @@ export async function optimizeCampaigns(
     const newUrls: string[] = [];
     const incompleteUrls: string[] = [];
 
-    for (const url of urls) {
+    for (const url of cleanUrls) {
         const campaign = existingMap.get(url);
 
         if (!campaign) {
@@ -67,13 +81,14 @@ export async function optimizeCampaigns(
     }
 
     const urlsToProcess = [...newUrls, ...incompleteUrls];
-    const completeCount = urls.length - urlsToProcess.length;
+    const completeCount = cleanUrls.length - urlsToProcess.length;
 
     const stats = {
         total: urls.length,
         new: newUrls.length,
         incomplete: incompleteUrls.length,
-        complete: completeCount
+        complete: completeCount,
+        blacklisted: blacklistedUrls.size
     };
 
     console.log(`   📊 Total: ${stats.total}, New: ${stats.new}, Incomplete: ${stats.incomplete}, Complete: ${stats.complete}`);
