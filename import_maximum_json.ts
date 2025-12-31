@@ -41,11 +41,9 @@ async function importMaximumJson() {
 
         const sectorSlug = generateSectorSlug(item.category || 'Diğer');
 
-        // Participation steps mapping
-        const participationText = item.participation_method;
-
         // Conditions mapping
-        const conditionsText = Array.isArray(item.conditions) ? item.conditions.join('\n') : item.conditions;
+        const conditions = Array.isArray(item.conditions) ? item.conditions : (item.conditions ? [item.conditions] : []);
+        const participation = Array.isArray(item.participation_method) ? item.participation_method : (item.participation_method ? [item.participation_method] : []);
 
         const campaignData = {
             bank: bankName,
@@ -63,8 +61,8 @@ async function importMaximumJson() {
             max_discount: item.max_discount || 0,
             discount: item.discount,
             earning: item.earning,
-            conditions: conditionsText,
-            participation_method: participationText,
+            conditions: conditions,
+            participation_method: participation,
             is_active: true,
             created_at: new Date().toISOString()
         };
