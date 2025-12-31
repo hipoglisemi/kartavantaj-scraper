@@ -632,12 +632,14 @@ ${metadataInstruction}
      - Paragrafta "katılım" kelimesi YOKSA bile, kampanya OTOMATİK olabilir
      - Eğer "İşCep", "Jüzdan", "SMS", "katıl" gibi kelimeler YOKSA → participation_method: null
      - Eğer "peşin fiyatına taksit", "vade farksız", "indirim" gibi kelimeler varsa → Otomatik kampanya, participation_method: null
-   - **GEÇERLİ KARTLAR (eligible_customers):**
-     - Paragrafta "Maximum Kart", "Maximum ile", "Maximum'unuzla" → ["Maximum"]
-     - Paragrafta "Tüm Maximum kartlar", "Maximum kartlarınıza" → ["Maximum", "Maximum Gold", "Maximum Platinum"]
-     - Paragrafta "İş Bankası Visa", "Visa logolu" → ["Maximum", "Visa"]
-     - Paragrafta "İş Bankası TROY", "TROY logolu" → ["Maximum TROY"]
-     - Paragrafta "İş Bankası kartları", "Tüm İş Bankası kartları" → ["Axess", "Wings", "Business", "Free", "TROY"]
+   - **GEÇERLİ KARTLAR (eligible_customers) - ÇOK ÖNEMLİ:**
+     - 🚨 TEK KART BULUP DURMA! Metinde geçen TÜM kartları listele.
+     - Özellikle şunları ARA: "Maximiles", "Privia", "MercedesCard", "Pati Kart", "Maximum Genç", "İş'te Üniversiteli", "Business", "Ticari".
+     - Örnek: "Maximum ve Maximiles kartlarınızla" -> ["Maximum", "Maximiles"]
+     - Örnek: "Maximum, Maximiles ve Privia ile" -> ["Maximum", "Maximiles", "Privia"]
+     - "Tüm Maximum kartlar" derse -> ["Maximum", "Maximum Gold", "Maximum Platinum", "Maximum Genç"] ekle.
+     - "İş Bankası Visa", "Visa logolu" -> ["Maximum Visa"]
+     - "İş Bankası TROY", "TROY logolu" -> ["Maximum TROY"]
      - ASLA sadece ["Maximum"] yazma, metinde başka kart tipleri varsa MUTLAKA ekle!
    - **KOŞULLAR (conditions):**
      - Uzun paragrafı cümlelere böl
