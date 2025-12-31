@@ -263,27 +263,39 @@ def main():
         for i, url in enumerate(unique_links, 1):
             if count >= CAMPAIGN_LIMIT: break
             
-            try:
-                time.sleep(1.5)
-                driver.get(url)
-                
-                # 🔥 GÖRSEL İÇİN V7 TAKTİĞİ: SCROLL
-                driver.execute_script("window.scrollTo(0, 600);")
-                time.sleep(0.5)
-                
-                try: WebDriverWait(driver, 5).until(EC.presence_of_element_located((By.CSS_SELECTOR, "span[id$='CampaignDescription']")))
-                except: pass
+            # Retry logic for bot protection
+            max_retries = 3
+            retry_count = 0
+            success = False
+            
+            while retry_count < max_retries and not success:
+                try:
+                    # Random delay to avoid rate limiting
+                    time.sleep(random.uniform(2, 4))
+                    
+                    driver.get(url)
+                    
+                    # 🔥 GÖRSEL İÇİN V7 TAKTİĞİ: SCROLL
+                    driver.execute_script("window.scrollTo(0, 600);")
+                    time.sleep(0.5)
+                    
+                    try: WebDriverWait(driver, 5).until(EC.presence_of_element_located((By.CSS_SELECTOR, "span[id$='CampaignDescription']")))
+                    except: pass
 
-                d_soup = BeautifulSoup(driver.page_source, 'html.parser')
-                title_el = d_soup.select_one('h1.gradient-title-text') or d_soup.find('h1')
-                title = temizle_metin(title_el.text) if title_el else "Başlık Yok"
-                
-                if "geçmiş" in title.lower() or len(title) < 10: continue
+                    d_soup = BeautifulSoup(driver.page_source, 'html.parser')
+                    title_el = d_soup.select_one('h1.gradient-title-text') or d_soup.find('h1')
+                    title = temizle_metin(title_el.text) if title_el else "Başlık Yok"
+                    
+                    if "geçmiş" in title.lower() or len(title) < 10: 
+                        success = True  # Skip but don't retry
+                        break
 
                 date_el = d_soup.select_one("span[id$='KampanyaTarihleri']")
                 date_text = temizle_metin(date_el.text) if date_el else ""
                 vu = format_tarih_iso(date_text, True)
-                if vu and datetime.strptime(vu, "%Y-%m-%dT%H:%M:%SZ") < datetime.now(): continue
+                if vu and datetime.strptime(vu, "%Y-%m-%dT%H:%M:%SZ") < datetime.now(): 
+                    success = True  # Skip but don't retry
+                    break
 
                 desc_el = d_soup.select_one("span[id$='CampaignDescription']")
                 conditions = []
@@ -333,13 +345,21 @@ def main():
                     "participation_method": part_method,
                     "conditions": conditions,
                     "eligible_customers": cards,
-                    "source_url": BASE_URL
+                    "source_url": BASE_URL,
+                    "raw_html": str(d_soup)[:5000]  # For AI processing
                 }
                 final_data.append(item)
+                success = True
 
-            except Exception as e:
-                print(f"      ⚠️ Hata: {e}")
-                continue
+                except Exception as e:
+                    retry_count += 1
+                    if retry_count < max_retries:
+                        wait_time = 2 ** retry_count  # Exponential backoff
+                        print(f"      ⚠️ Hata (Deneme {retry_count}/{max_retries}): {str(e)[:50]}... {wait_time}s bekliyor...")
+                        time.sleep(wait_time)
+                    else:
+                        print(f"      ❌ Atlandı (Max retry): {url}")
+                        break
         
         with open(OUTPUT_FILE, 'w', encoding='utf-8') as f:
             json.dump(final_data, f, ensure_ascii=False, indent=4)
