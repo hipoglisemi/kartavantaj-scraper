@@ -9,14 +9,19 @@
     "start": "node dist/index.js",
     "scrape:worldcard": "tsx src/scrapers/worldcard.ts",
     "fix:brands": "tsx scripts/sync_brands.ts",
-    "fix:titles": "tsx scripts/restore_titles.ts"
+    "fix:titles": "tsx scripts/restore_titles.ts",
+    "scrape:maximum:py": "python3 src/scrapers/isbankasi/maximum.py",
+    "import:maximum": "tsx import_maximum_json.ts",
+    "scrape:maximum:full": "npm run scrape:maximum:py && npm run import:maximum"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",
     "axios": "^1.13.2",
     "cheerio": "^1.1.2",
     "dotenv": "^16.3.1",
-    "puppeteer": "^24.34.0"
+    "puppeteer": "^24.34.0",
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",

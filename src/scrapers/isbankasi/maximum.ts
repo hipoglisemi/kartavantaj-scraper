@@ -1,18 +1,26 @@
-/// <reference lib="dom" />
 
-import puppeteer from 'puppeteer';
+import puppeteer from 'puppeteer-extra';
+import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import { createClient } from '@supabase/supabase-js';
 import * as dotenv from 'dotenv';
-import { parseWithGemini } from '../../services/geminiParser';
-import { generateSectorSlug } from '../../utils/slugify';
-import { syncEarningAndDiscount } from '../../utils/dataFixer';
+import * as cheerio from 'cheerio'; // Cheerio for fast parsing like BeautifulSoup
+import {
+    getCategory,
+    extractMerchant,
+    cleanText,
+    formatDateIso,
+    extractFinancialsV8,
+    extractParticipation,
+    extractCardsPrecise,
+    trLower
+} from '../../utils/MaximumHelpers';
 import { normalizeBankName, normalizeCardName } from '../../utils/bankMapper';
-import { optimizeCampaigns } from '../../utils/campaignOptimizer';
-import { lookupIDs } from '../../utils/idMapper';
-import { assignBadge } from '../../services/badgeAssigner';
-import { markGenericBrand } from '../../utils/genericDetector';
+import { generateSectorSlug } from '../../utils/slugify';
 
 dotenv.config();
+
+// Use Stealth Plugin
+puppeteer.use(StealthPlugin());
 
 const supabase = createClient(
     process.env.SUPABASE_URL!,
@@ -24,241 +32,225 @@ const CAMPAIGNS_URL = 'https://www.maximum.com.tr/kampanyalar';
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-async function runMaximumScraperV2() {
-    console.log('🚀 Starting İş Bankası (Maximum) Scraper V2...');
-    const isAIEnabled = process.argv.includes('--ai');
+async function runMaximumScraperTS() {
+    console.log('🚀 Starting İş Bankası (Maximum) Scraper (TS Stealth + V8 Engine)...');
 
     // Parse limit argument
     const limitArg = process.argv.find(arg => arg.startsWith('--limit='));
-    const limit = limitArg ? parseInt(limitArg.split('=')[1]) : 9999;
+    const limit = limitArg ? parseInt(limitArg.split('=')[1]) : 1000;
 
     const browser = await puppeteer.launch({
-        headless: true,
+        headless: true, // Start headless
         args: [
             '--no-sandbox',
             '--disable-setuid-sandbox',
-            '--disable-blink-features=AutomationControlled',
-            '--disable-web-security'
+            '--window-position=-10000,0', // Move window offscreen if headful
+            '--disable-blink-features=AutomationControlled'
         ]
     });
+
     const page = await browser.newPage();
+    // Simulate typical desktop view
     await page.setViewport({ width: 1400, height: 900 });
-    await page.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+
+    // --- STEALTH HEADERS & EVASION (Ported from wings.ts) ---
+    await page.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36');
+    await page.setExtraHTTPHeaders({
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+        'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Connection': 'keep-alive',
+        'Upgrade-Insecure-Requests': '1',
+        'Sec-Fetch-Dest': 'document',
+        'Sec-Fetch-Mode': 'navigate',
+        'Sec-Fetch-Site': 'none',
+        'Cache-Control': 'max-age=0'
+    });
+
+    await page.evaluateOnNewDocument(() => {
+        // @ts-ignore
+        Object.defineProperty(navigator, 'webdriver', { get: () => false });
+    });
 
     try {
-        // 1. Gather Categories
-        console.log(`\n   🔍 Fetching Categories from ${CAMPAIGNS_URL}...`);
-        await page.goto(CAMPAIGNS_URL, { waitUntil: 'domcontentloaded', timeout: 30000 });
-        await sleep(3000);
+        console.log(`   🔍 Loading Campaign List: ${CAMPAIGNS_URL}...`);
+        await page.goto(CAMPAIGNS_URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
+        await sleep(5000);
 
-        const categoryLinks = await page.evaluate(() => {
-            const links: string[] = [];
-            // Strategy 1: Find links ending with -kampanyalari
-            document.querySelectorAll('a').forEach((a: any) => {
-                const href = a.getAttribute('href');
-                if (href && href.includes('/kampanyalar/') && href.endsWith('-kampanyalari')) {
-                    links.push(href);
-                }
-            });
-            // Strategy 2: Check standard known categories if dynamic ones fail
-            return [...new Set(links)];
-        });
-
-        const fullCategoryUrls = categoryLinks.map(l => l.startsWith('http') ? l : `${BASE_URL}${l}`);
-        console.log(`   📂 Found ${fullCategoryUrls.length} categories: ${fullCategoryUrls.map(u => u.split('/').pop()).join(', ')}`);
-
-        // 2. Crawl Each Category
-        let allCampaignLinks: { url: string, image: string }[] = [];
-
-        for (const catUrl of fullCategoryUrls) {
+        // --- INFINITE SCROLL LOGIC ---
+        let hasMore = true;
+        while (hasMore) {
             try {
-                console.log(`      ➡️  Crawling Category: ${catUrl}`);
-                await page.goto(catUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
-                await sleep(3000);
-
-                // Click "Daha Fazla" loop
-                let hasMore = true;
-                let clickCount = 0;
-                while (hasMore && clickCount < 3) { // Limit depth for now
-                    try {
-                        const btnFound = await page.evaluate(() => {
-                            const btns = Array.from(document.querySelectorAll('button'));
-                            const loadMore = btns.find(b => b.innerText.includes('Daha Fazla'));
-                            if (loadMore) { loadMore.click(); return true; }
-                            return false;
-                        });
-                        if (btnFound) {
-                            process.stdout.write('.');
-                            await sleep(2000);
-                            clickCount++;
-                        } else {
-                            hasMore = false;
-                        }
-                    } catch { hasMore = false; }
-                }
-                process.stdout.write('\n');
-
-                const links = await page.evaluate(() => {
-                    const found: { url: string, image: string, title: string }[] = [];
-                    // Select specifically campaign cards
-                    document.querySelectorAll('.card').forEach((card: any) => {
-                        const a = card.querySelector('a');
-                        const img = card.querySelector('img');
-                        // Try multiple title selectors
-                        const titleEl = card.querySelector('.card-text, h3, .card-title, h5, h4, .title') || card.querySelector('div[class*="title" i]');
-                        let rawTitle = titleEl ? titleEl.innerText.trim() : '';
-
-                        // Fallback: If title is empty or suspiciously short ("Son Gün"), use full text split
-                        if (!rawTitle || rawTitle.toLowerCase().includes('son gün') || rawTitle.length < 5) {
-                            rawTitle = card.innerText.trim().split('\n')[0].trim();
-                        }
-
-                        if (a && img) {
-                            const href = a.getAttribute('href');
-                            const src = img.getAttribute('src');
-
-                            if (href && href.includes('/kampanyalar/') &&
-                                !href.endsWith('-kampanyalari') &&
-                                !href.includes('arsiv') &&
-                                href.length > 25) {
-
-                                found.push({
-                                    url: href,
-                                    image: src || '',
-                                    title: rawTitle
-                                });
-                            }
-                        }
-                    });
-                    // Fallback for non-card layout (if any)
-                    if (found.length === 0) {
-                        document.querySelectorAll('a').forEach((a: any) => {
-                            const href = a.getAttribute('href');
-                            if (href && href.includes('/kampanyalar/') && !href.endsWith('-kampanyalari') && href.length > 50) {
-                                found.push({ url: href, image: '', title: a.innerText.trim() });
-                            }
-                        });
+                // Find and click "Daha Fazla" button
+                const btnFound = await page.evaluate(() => {
+                    const btns = Array.from(document.querySelectorAll('button'));
+                    const loadMore = btns.find(b => b.innerText.includes('Daha Fazla'));
+                    if (loadMore) {
+                        loadMore.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        return loadMore; // signal existence
                     }
-                    return found;
+                    return null;
                 });
 
-                allCampaignLinks.push(...links);
+                if (btnFound) {
+                    await sleep(1000);
+                    await page.click('button::-p-text(Daha Fazla)'); // Puppeteer pseudo-selector or use eval click
+                    // Re-implement robust click as evaluate might fail with stealth contexts sometimes
+                    await page.evaluate(() => {
+                        const btns = Array.from(document.querySelectorAll('button'));
+                        const loadMore = btns.find(b => b.innerText.includes('Daha Fazla'));
+                        if (loadMore) (loadMore as HTMLElement).click();
+                    });
 
+                    process.stdout.write('.');
+                    await sleep(2500); // 2.5s wait as per Python script
+                } else {
+                    console.log('\n      ✅ All list loaded.');
+                    hasMore = false;
+                }
             } catch (e) {
-                console.error(`      ❌ Error crawling category ${catUrl}:`, e);
+                hasMore = false;
             }
         }
 
-        // Deduplicate by URL
-        const uniqueMap = new Map();
-        allCampaignLinks.forEach(item => {
-            if (!uniqueMap.has(item.url)) uniqueMap.set(item.url, item);
+        // --- EXTRACT LINKS ---
+        const content = await page.content();
+        const $ = cheerio.load(content);
+        let allLinks: string[] = [];
+
+        $('a').each((_, el) => {
+            const href = $(el).attr('href');
+            if (href && href.includes('/kampanyalar/') && !href.includes('arsiv') && href.length > 25) {
+                allLinks.push(href.startsWith('http') ? href : `${BASE_URL}${href}`); // Handle relative URLs
+            }
         });
 
-        const uniqueItems = Array.from(uniqueMap.values());
+        const uniqueLinks = [...new Set(allLinks)];
+        console.log(`\n   🎉 Found ${uniqueLinks.length} unique campaigns. Processing...`);
 
-        // Normalize URLs
-        const fullItems = uniqueItems.map(item => ({
-            ...item,
-            url: item.url.startsWith('http') ? item.url : `${BASE_URL}${item.url}`,
-            image: (item.image && !item.image.startsWith('http')) ? `${BASE_URL}${item.image.startsWith('/') ? '' : '/'}${item.image}` : item.image
-        }));
+        const bankName = await normalizeBankName('İş Bankası');
 
-        console.log(`\n   🎉 Total Unique Campaigns Found: ${fullItems.length}`);
+        let count = 0;
+        for (const url of uniqueLinks) {
+            if (count >= limit) break;
 
-        // 3. Optimize & Limit
-        const normalizedBank = await normalizeBankName('İş Bankası');
-        const normalizedCard = await normalizeCardName(normalizedBank, 'Maximum');
-
-        const { urlsToProcess } = await optimizeCampaigns(fullItems.map(i => i.url), normalizedCard);
-
-        // Filter final list based on optimized URLs
-        const finalItems = fullItems.filter(i => urlsToProcess.includes(i.url)).slice(0, limit);
-
-        console.log(`   🚀 Processing ${finalItems.length} campaigns (Limit: ${limit})...\n`);
-
-        // 4. Process Details
-        for (const item of finalItems) {
-            console.log(`   🔍 Processing: ${item.url}`);
             try {
-                let content = { title: '', image: '', html: '' };
+                await sleep(1500); // 1.5s delay
+                await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
 
+                // 🔥 VISUAL V7 TACTIC: SCROLL
+                await page.evaluate(() => window.scrollTo(0, 600));
+                await sleep(500);
+
+                // Wait for description (optional presence check like in Python)
                 try {
-                    await page.goto(item.url, { waitUntil: 'domcontentloaded', timeout: 30000 });
+                    await page.waitForSelector("span[id$='CampaignDescription']", { timeout: 5000 });
+                } catch { }
 
-                    content = await page.evaluate(() => {
-                        const h1 = document.querySelector('h1')?.innerText?.trim() || '';
+                const detailContent = await page.content();
+                const $d = cheerio.load(detailContent);
 
-                        // Extract Clean Text
-                        const bodyClone = document.body.cloneNode(true) as HTMLElement;
-                        bodyClone.querySelectorAll('script, style, nav, footer, header').forEach((el) => el.remove());
-                        const cleanHtml = bodyClone.innerHTML;
+                const titleEl = $d('h1.gradient-title-text').first() || $d('h1').first();
+                const title = cleanText(titleEl.text() || "Başlık Yok");
 
-                        return { title: h1, image: '', html: cleanHtml };
-                    });
-                } catch (navErr) {
-                    console.log(`      ⚠️  Detail page load failed (Access Blocked?), using list data...`);
+                if (trLower(title).includes('geçmiş') || title.length < 10) continue;
+
+                // Dates
+                const dateEl = $d("span[id$='KampanyaTarihleri']");
+                const dateText = cleanText(dateEl.text());
+                const validUntil = formatDateIso(dateText, true);
+
+                if (validUntil && new Date(validUntil) < new Date()) continue; // Expired
+
+                // Description & Conditions
+                const descEl = $d("span[id$='CampaignDescription']");
+                let conditions: string[] = [];
+                let fullText = "";
+
+                if (descEl.length > 0) {
+                    // Mimic Python's br -> newline replacement
+                    descEl.find('br').replaceWith('\n');
+                    descEl.find('p').prepend('\n');
+                    const rawText = descEl.text();
+                    conditions = rawText.split('\n').map(line => cleanText(line)).filter(l => l.length > 15);
+                    fullText = conditions.join(' ');
+                } else {
+                    fullText = cleanText($d.text());
+                    conditions = fullText.split('\n').filter(t => t.length > 20);
                 }
 
-                // Fallback to list data if detail extraction failed
-                const finalTitle = content.title || item.title || 'Kampanya Detayı'; // AI will fix this from URL
-                const finalImage = item.image; // USE LIST IMAGE (Trustworthy)
+                // 🔥 VISUAL V7 TACTIC: ID SELECTOR FOR IMAGE
+                let image = "";
+                const imgEl = $d("img[id$='CampaignImage']");
+                if (imgEl.length > 0) {
+                    const src = imgEl.attr('src');
+                    if (src) image = src.startsWith('http') ? src : `${BASE_URL}${src}`;
+                }
 
-                // Default Data
-                let campaignData: any = {
-                    title: finalTitle,
-                    description: finalTitle,
-                    card_name: normalizedCard,
-                    bank: normalizedBank,
-                    url: item.url,
-                    reference_url: item.url,
-                    image: finalImage,
-                    category: 'Diğer',
-                    sector_slug: 'diger',
-                    is_active: true
+                // V8 Logic Extraction
+                const cat = getCategory(title, fullText);
+                const merchant = extractMerchant(title);
+                const { minS, earn, disc, maxD } = extractFinancialsV8(fullText, title);
+                const cards = extractCardsPrecise(fullText);
+                const participationMethod = extractParticipation(fullText);
+                const sectorSlug = generateSectorSlug(cat);
+
+                // Determine Best Card Name
+                let cardName = 'Maximum';
+                if (cards.length > 0) {
+                    if (cards.includes('Maximum Kart')) cardName = 'Maximum';
+                    else cardName = cards[0];
+                }
+                const normalizedCardNameVal = await normalizeCardName(bankName, cardName);
+
+                count++;
+
+                const imgStatus = image ? '✅' : '❌';
+                console.log(`      [${count}] ${title.substring(0, 35)}... (M:${minS} E:${earn || 'None'} Img:${imgStatus})`);
+
+                const campaignData = {
+                    bank: bankName,
+                    card_name: normalizedCardNameVal,
+                    title: title,
+                    description: conditions[0] || title,
+                    image: image,
+                    url: url,
+                    reference_url: url,
+                    category: cat,
+                    sector_slug: sectorSlug,
+                    valid_until: validUntil,
+                    min_spend: minS,
+                    max_discount: maxD,
+                    discount: disc, // Mapped from 'disc' (installments)
+                    earning: earn, // Mapped from 'earn' (e.g. 100 TL Puan)
+                    conditions: conditions.join('\n'),
+                    participation_method: participationMethod,
+                    is_active: true,
                 };
 
-                // AI Parsing
-                if (isAIEnabled) {
-                    const metadata = {
-                        title: content.title,
-                        bank: normalizedBank,
-                        card: normalizedCard,
-                        image: finalImage
-                    };
-                    const aiData = await parseWithGemini(content.html, item.url, normalizedBank, normalizedCard, metadata);
-                    if (aiData) {
-                        campaignData = { ...campaignData, ...aiData };
-                    }
+                // DB Upsert
+                const { error } = await supabase
+                    .from('campaigns')
+                    .upsert(campaignData, { onConflict: 'reference_url' });
+
+                if (error) {
+                    console.error(`      ❌ DB Error: ${error.message}`);
                 }
 
-                // Final Polish
-                campaignData.image = finalImage; // Ensure fixed image is used
-                syncEarningAndDiscount(campaignData);
-                const ids = await lookupIDs(campaignData.bank, campaignData.card_name, campaignData.brand, campaignData.sector_slug);
-                Object.assign(campaignData, ids);
-                assignBadge(campaignData);
-                markGenericBrand(campaignData);
-
-                // Save
-                const { error } = await supabase.from('campaigns').upsert(campaignData, { onConflict: 'reference_url' });
-
-                if (error) console.error(`      ❌ DB Error: ${error.message}`);
-                else console.log(`      ✅ Saved: ${campaignData.title}`);
-
-            } catch (err: any) {
-                console.error(`      ❌ Error fetching detail: ${err.message}`);
+            } catch (e: any) {
+                console.error(`      ⚠️ Error processing ${url}:`, e.message);
             }
-            await sleep(1000);
         }
 
-    } catch (e) {
-        console.error('Critical Error:', e);
+        console.log(`\n✅ TS Scraper Finished. Processed ${count} campaigns.`);
+
+    } catch (e: any) {
+        console.error('❌ Critical Error:', e);
     } finally {
         await browser.close();
     }
 }
 
 if (require.main === module) {
-    runMaximumScraperV2();
+    runMaximumScraperTS();
 }
