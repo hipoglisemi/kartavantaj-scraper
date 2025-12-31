@@ -222,31 +222,50 @@ def main():
     
     driver = None
     try:
+        # --- ROBUST CHROME OPTIONS ---
         options = uc.ChromeOptions()
         options.add_argument("--no-first-run")
         options.add_argument("--password-store=basic")
         options.add_argument('--ignore-certificate-errors')
         options.add_argument("--window-position=-10000,0") 
         options.add_argument("--no-sandbox")
+        options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--disable-gpu")
+        options.add_argument("--disable-popup-blocking")
+        options.add_argument("--disable-notifications")
+        options.add_argument("--disable- blink-features=AutomationControlled")
         
-        driver = uc.Chrome(options=options, use_subprocess=True)
-        driver.set_page_load_timeout(60)
+        # Random User Agent
+        ua_list = [
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36"
+        ]
+        options.add_argument(f"--user-agent={random.choice(ua_list)}")
         
+        # Driver Initialization
+        driver = uc.Chrome(options=options, use_subprocess=True) # Best for CI/Linux
+        driver.set_page_load_timeout(120)
+        
+        print("   -> Siteye bağlanılıyor...")
         driver.get(CAMPAIGNS_URL)
-        print("   -> Liste yükleniyor...")
-        time.sleep(5)
+        time.sleep(7) # Wait for WAF/Cloudflare to settle
         
-        # Sonsuz Scroll
-        while True:
+        # Sonsuz Scroll (Daha güvenli)
+        last_height = driver.execute_script("return document.body.scrollHeight")
+        for _ in range(5): # Limit scroll to prevent infinite loops during debug
             try:
                 btn = driver.find_element(By.XPATH, "//button[contains(text(), 'Daha Fazla')]")
                 driver.execute_script("arguments[0].scrollIntoView(true);", btn)
-                time.sleep(1)
+                time.sleep(1.5)
                 driver.execute_script("arguments[0].click();", btn)
-                time.sleep(2)
+                time.sleep(3)
+                
+                new_height = driver.execute_script("return document.body.scrollHeight")
+                if new_height == last_height: break
+                last_height = new_height
             except:
-                print("      Tüm liste yüklendi.")
                 break
+        print("      Liste yüklendi (veya Daha Fazla butonu bitti).")
         
         soup = BeautifulSoup(driver.page_source, 'html.parser')
         all_links = []
