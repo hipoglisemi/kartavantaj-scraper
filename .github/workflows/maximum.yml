@@ -1,45 +1,58 @@
-name: 🎯 Maximum V4 (Best Hybrid)
+name: 🎯 Maximum (Production)
 
 on:
   workflow_dispatch:
     inputs:
       limit:
-        description: 'Campaign limit'
+        description: 'Campaign limit (default: 1000)'
         required: false
         default: '1000'
+  schedule:
+    - cron: '0 3 * * *'  # Her gün 06:00 TR (03:00 UTC)
 
 jobs:
-  scrape:
+  scrape-and-import:
     runs-on: ubuntu-latest
+    timeout-minutes: 120
+    
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v3
       
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'
-          
+      
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '20'
-          
+      
       - name: Install Python dependencies
         run: pip install -r requirements.txt
-        
+      
       - name: Install Node dependencies
         run: npm install
-        
-      - name: Run Link Collector (Python)
+      
+      - name: Run Maximum Scraper
         run: |
+          cd src/scrapers/isbankasi
           xvfb-run --auto-servernum --server-args='-screen 0 1920x1080x24' \
-          python3 -u src/scrapers/isbankasi/maximum-links.py --limit=${{ github.event.inputs.limit }}
+          python3 -u maximum.py
         env:
           DISPLAY: :99
-          
-      - name: Process Links (TypeScript + AI)
-        run: npx tsx src/scrapers/isbankasi/maximum-v4.ts
+      
+      - name: Import to Supabase with AI
+        run: npx tsx import_maximum_pc.ts "src/scrapers/isbankasi/maximum_kampanyalar_hibrit.json"
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
+      
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: maximum-campaigns
+          path: src/scrapers/isbankasi/maximum_kampanyalar_hibrit.json
