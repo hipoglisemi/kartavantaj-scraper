@@ -290,66 +290,66 @@ def main():
                         success = True  # Skip but don't retry
                         break
 
-                date_el = d_soup.select_one("span[id$='KampanyaTarihleri']")
-                date_text = temizle_metin(date_el.text) if date_el else ""
-                vu = format_tarih_iso(date_text, True)
-                if vu and datetime.strptime(vu, "%Y-%m-%dT%H:%M:%SZ") < datetime.now(): 
-                    success = True  # Skip but don't retry
-                    break
+                    date_el = d_soup.select_one("span[id$='KampanyaTarihleri']")
+                    date_text = temizle_metin(date_el.text) if date_el else ""
+                    vu = format_tarih_iso(date_text, True)
+                    if vu and datetime.strptime(vu, "%Y-%m-%dT%H:%M:%SZ") < datetime.now(): 
+                        success = True  # Skip but don't retry
+                        break
 
-                desc_el = d_soup.select_one("span[id$='CampaignDescription']")
-                conditions = []
-                full_text = ""
-                if desc_el:
-                    for br in desc_el.find_all("br"): br.replace_with("\n")
-                    for p in desc_el.find_all("p"): p.insert(0, "\n")
-                    raw_text = desc_el.get_text()
-                    conditions = [temizle_metin(line) for line in raw_text.split('\n') if len(temizle_metin(line)) > 15]
-                    full_text = " ".join(conditions)
-                else:
-                    full_text = temizle_metin(d_soup.get_text())
-                    conditions = [t for t in full_text.split('\n') if len(t)>20]
+                    desc_el = d_soup.select_one("span[id$='CampaignDescription']")
+                    conditions = []
+                    full_text = ""
+                    if desc_el:
+                        for br in desc_el.find_all("br"): br.replace_with("\n")
+                        for p in desc_el.find_all("p"): p.insert(0, "\n")
+                        raw_text = desc_el.get_text()
+                        conditions = [temizle_metin(line) for line in raw_text.split('\n') if len(temizle_metin(line)) > 15]
+                        full_text = " ".join(conditions)
+                    else:
+                        full_text = temizle_metin(d_soup.get_text())
+                        conditions = [t for t in full_text.split('\n') if len(t)>20]
 
-                # 🔥 GÖRSEL İÇİN V7 TAKTİĞİ: ID SELECTOR
-                image = None
-                img_el = d_soup.select_one("img[id$='CampaignImage']")
-                if img_el: image = urljoin(BASE_URL, img_el['src'])
+                    # 🔥 GÖRSEL İÇİN V7 TAKTİĞİ: ID SELECTOR
+                    image = None
+                    img_el = d_soup.select_one("img[id$='CampaignImage']")
+                    if img_el: image = urljoin(BASE_URL, img_el['src'])
 
-                cat = get_category(title, full_text)
-                merchant = extract_merchant(title)
-                min_s, earn, disc, max_d = extract_financials_v8(full_text, title)
-                cards = extract_cards_precise(full_text)
-                vf = format_tarih_iso(date_text, False)
-                part_method = extract_participation(full_text)
-                
-                count += 1
-                print(f"      [{count}] {title[:35]}... (M:{min_s} E:{earn} Img:{'✅' if image else '❌'})")
+                    cat = get_category(title, full_text)
+                    merchant = extract_merchant(title)
+                    min_s, earn, disc, max_d = extract_financials_v8(full_text, title)
+                    cards = extract_cards_precise(full_text)
+                    vf = format_tarih_iso(date_text, False)
+                    part_method = extract_participation(full_text)
+                    
+                    count += 1
+                    print(f"      [{count}] {title[:35]}... (M:{min_s} E:{earn} Img:{'✅' if image else '❌'})")
 
-                item = {
-                    "id": count,
-                    "title": title,
-                    "provider": IMPORT_SOURCE_NAME,
-                    "category": cat,
-                    "merchant": merchant,
-                    "image": image,
-                    "images": [image] if image else [],
-                    "description": conditions[0] if conditions else title,
-                    "url": url,
-                    "discount": disc,
-                    "earning": earn,
-                    "min_spend": min_s,
-                    "max_discount": max_d,
-                    "created_at": datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ"),
-                    "valid_from": vf,
-                    "valid_until": vu,
-                    "participation_method": part_method,
-                    "conditions": conditions,
-                    "eligible_customers": cards,
-                    "source_url": BASE_URL,
-                    "raw_html": str(d_soup)[:5000]  # For AI processing
-                }
-                final_data.append(item)
-                success = True
+                    item = {
+                        "id": count,
+                        "title": title,
+                        "provider": IMPORT_SOURCE_NAME,
+                        "category": cat,
+                        "merchant": merchant,
+                        "image": image,
+                        "images": [image] if image else [],
+                        "description": conditions[0] if conditions else title,
+                        "url": url,
+                        "discount": disc,
+                        "earning": earn,
+                        "min_spend": min_s,
+                        "max_discount": max_d,
+                        "created_at": datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ"),
+                        "valid_from": vf,
+                        "valid_until": vu,
+                        "participation_method": part_method,
+                        "conditions": conditions,
+                        "eligible_customers": cards,
+                        "source_url": BASE_URL,
+                        "raw_html": str(d_soup)[:5000]  # For AI processing
+                    }
+                    final_data.append(item)
+                    success = True
 
                 except Exception as e:
                     retry_count += 1
