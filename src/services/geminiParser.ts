@@ -626,7 +626,31 @@ ${metadataInstruction}
 5. **BRAND MATCHING:**
    - Match brands against: [${sortedBrands} ... and others].
 
-6. **ABSOLUTE NO-HALLUCINATION RULE:**
+6. **MAXIMUM KAMPANYALARI İÇİN ÖZEL KURALLAR:**
+   - 🚨 Maximum kampanyaları TEK PARAGRAF halinde gelir, tüm bilgiler iç içe!
+   - **KATILIM ŞEKLİ (participation_method):**
+     - Paragrafta "katılım" kelimesi YOKSA bile, kampanya OTOMATİK olabilir
+     - Eğer "İşCep", "Jüzdan", "SMS", "katıl" gibi kelimeler YOKSA → participation_method: null
+     - Eğer "peşin fiyatına taksit", "vade farksız", "indirim" gibi kelimeler varsa → Otomatik kampanya, participation_method: null
+   - **GEÇERLİ KARTLAR (eligible_customers):**
+     - Paragrafta "Maximum Kart", "Maximum ile", "Maximum'unuzla" → ["Maximum"]
+     - Paragrafta "Tüm Maximum kartlar", "Maximum kartlarınıza" → ["Maximum", "Maximum Gold", "Maximum Platinum"]
+     - Paragrafta "İş Bankası Visa", "Visa logolu" → ["Maximum", "Visa"]
+     - Paragrafta "İş Bankası TROY", "TROY logolu" → ["Maximum TROY"]
+     - Paragrafta "İş Bankası kartları", "Tüm İş Bankası kartları" → ["Axess", "Wings", "Business", "Free", "TROY"]
+     - ASLA sadece ["Maximum"] yazma, metinde başka kart tipleri varsa MUTLAKA ekle!
+   - **KOŞULLAR (conditions):**
+     - Uzun paragrafı cümlelere böl
+     - Her cümle ayrı bir koşul olmalı
+     - Max 3-4 koşul, en önemlilerini seç
+     - Örnek: "01 Ocak - 31 Aralık 2025 tarihleri arasında Maximum Kart'ınız ile etstur.com üzerinden alacağınız yurt içi uçak biletlerinde peşin fiyatına vade farksız 3 veya 6 taksit imkanından faydalanabilirsiniz için taksit harcamalarınız için taksit uygulamaz."
+       → conditions: [
+         "Kampanya 01 Ocak - 31 Aralık 2025 tarihleri arasında geçerlidir",
+         "etstur.com üzerinden yurt içi uçak bileti alımlarında geçerlidir",
+         "Peşin fiyatına 3 veya 6 taksit imkanı sunulmaktadır"
+       ]
+
+7. **ABSOLUTE NO-HALLUCINATION RULE:**
    - IF not explicitly found -> return null.
    - NEVER use placeholder numbers.
 `;
