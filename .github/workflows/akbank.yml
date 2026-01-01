@@ -37,7 +37,7 @@ jobs:
       
       - name: Run Axess Scraper
         if: ${{ github.event.inputs.card == 'Axess' || github.event.inputs.card == 'Tümü' }}
-        run: npx tsx src/scrapers/akbank/axess.ts ${{ github.event.inputs.limit != '0' && format('--limit {0}', github.event.inputs.limit) || '' }}
+        run: npx tsx src/scrapers/akbank/axess.ts --ai ${{ github.event.inputs.limit != '0' && format('--limit {0}', github.event.inputs.limit) || '' }}
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
@@ -45,7 +45,7 @@ jobs:
       
       - name: Run Wings Scraper
         if: ${{ github.event.inputs.card == 'Wings' || github.event.inputs.card == 'Tümü' }}
-        run: npx tsx src/scrapers/akbank/wings.ts ${{ github.event.inputs.limit != '0' && format('--limit {0}', github.event.inputs.limit) || '' }}
+        run: npx tsx src/scrapers/akbank/wings.ts --ai ${{ github.event.inputs.limit != '0' && format('--limit {0}', github.event.inputs.limit) || '' }}
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
@@ -53,7 +53,7 @@ jobs:
       
       - name: Run Business Scraper
         if: ${{ github.event.inputs.card == 'Business' || github.event.inputs.card == 'Tümü' }}
-        run: npx tsx src/scrapers/akbank/business.ts ${{ github.event.inputs.limit != '0' && format('--limit {0}', github.event.inputs.limit) || '' }}
+        run: npx tsx src/scrapers/akbank/business.ts --ai ${{ github.event.inputs.limit != '0' && format('--limit {0}', github.event.inputs.limit) || '' }}
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
@@ -61,7 +61,7 @@ jobs:
       
       - name: Run Free Scraper
         if: ${{ github.event.inputs.card == 'Free' || github.event.inputs.card == 'Tümü' }}
-        run: npx tsx src/scrapers/akbank/free.ts ${{ github.event.inputs.limit != '0' && format('--limit {0}', github.event.inputs.limit) || '' }}
+        run: npx tsx src/scrapers/akbank/free.ts --ai ${{ github.event.inputs.limit != '0' && format('--limit {0}', github.event.inputs.limit) || '' }}
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}

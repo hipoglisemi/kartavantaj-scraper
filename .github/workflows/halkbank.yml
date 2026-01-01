@@ -26,7 +26,7 @@ jobs:
         run: npm ci
       
       - name: Run Paraf Scraper
-        run: npx tsx src/scrapers/halkbank/paraf.ts ${{ github.event.inputs.limit != '0' && format('--limit {0}', github.event.inputs.limit) || '' }}
+        run: npx tsx src/scrapers/halkbank/paraf.ts --ai ${{ github.event.inputs.limit != '0' && format('--limit {0}', github.event.inputs.limit) || '' }}
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
