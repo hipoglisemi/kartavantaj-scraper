@@ -1,15 +1,16 @@
 
-import puppeteer from 'puppeteer';
+import axios from 'axios';
+import * as cheerio from 'cheerio';
 import { createClient } from '@supabase/supabase-js';
 import * as dotenv from 'dotenv';
 import { parseWithGemini } from '../../services/geminiParser';
 import { generateSectorSlug } from '../../utils/slugify';
 import { syncEarningAndDiscount } from '../../utils/dataFixer';
+import { normalizeBankName, normalizeCardName } from '../../utils/bankMapper';
 import { optimizeCampaigns } from '../../utils/campaignOptimizer';
 import { lookupIDs } from '../../utils/idMapper';
 import { assignBadge } from '../../services/badgeAssigner';
 import { markGenericBrand } from '../../utils/genericDetector';
-import { normalizeBankName, normalizeCardName } from '../../utils/bankMapper';
 
 dotenv.config();
 
@@ -34,186 +35,110 @@ async function runParafScraper() {
     const limit = limitArg ? parseInt(limitArg.split('=')[1]) : 999;
     const isAIEnabled = args.includes('--ai');
 
-    const browser = await puppeteer.launch({
-        headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox']
-    });
-    const page = await browser.newPage();
-    await page.setViewport({ width: 1920, height: 1080 });
-
-    // Bot detection bypass
-    await page.evaluateOnNewDocument(() => {
-        // @ts-ignore
-        Object.defineProperty(navigator, 'webdriver', { get: () => false });
-        // @ts-ignore
-        window.chrome = { runtime: {} };
-    });
-
-    // Retry Navigation Helper
-    async function retryNavigation(page: any, url: string, retries = 3) {
-        for (let i = 0; i < retries; i++) {
-            try {
-                await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
-                return;
-            } catch (e: any) {
-                console.log(`      ⚠️  Navigation error (Attempt ${i + 1}/${retries}): ${e.message}`);
-                if (i === retries - 1) throw e;
-                const waitTime = 5000 * Math.pow(2, i); // Exponential backoff: 5s, 10s, 20s
-                await sleep(waitTime);
-            }
-        }
-    }
-
     try {
-        await retryNavigation(page, CAMPAIGNS_URL);
-
-        // Wait for campaigns to load dynamically
-        try {
-            await page.waitForSelector('.cmp-list--campaigns', { visible: true, timeout: 20000 });
-            await sleep(2000);
-        } catch (e) {
-            console.log('   ⚠️  Campaign list did not load within timeout.');
-        }
-
-        // Load more campaigns logic
-        let hasMore = true;
-        let buttonClickCount = 0;
-        const maxClicks = 20;
-
-        while (hasMore && buttonClickCount < maxClicks) {
-            // Optimization: Check if we have enough items
-            const currentCount = await page.evaluate(() => document.querySelectorAll('.cmp-list--campaigns .cmp-teaser__title a').length);
-            if (currentCount >= limit) {
-                console.log(`   ✨ Reached limit (${currentCount} >= ${limit}), stopping load more.`);
-                break;
-            }
-
-            try {
-                // Scroll to bottom
-                await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-                await sleep(1000);
-
-                // Look for "DAHA FAZLA" button
-                const buttons = await page.$$('a, button, div[role="button"]');
-                let loadMoreBtn = null;
-
-                for (const btn of buttons) {
-                    const text = await page.evaluate(el => el.textContent, btn);
-                    if (text && text.trim().toUpperCase() === 'DAHA FAZLA') {
-                        const isVisible = await page.evaluate((el: any) => {
-                            const style = window.getComputedStyle(el);
-                            return style && style.display !== 'none' && style.visibility !== 'hidden' && el.offsetParent !== null;
-                        }, btn);
-                        if (isVisible) {
-                            loadMoreBtn = btn;
-                            break;
-                        }
-                    }
-                }
-
-                if (loadMoreBtn) {
-                    process.stdout.write('.');
-                    await page.evaluate((el) => el.click(), loadMoreBtn);
-                    await sleep(3000);
-                    buttonClickCount++;
-                } else {
-                    hasMore = false;
-                }
-            } catch (e) {
-                console.error('   ⚠️  Error in load more loop:', e);
-                hasMore = false;
-            }
-        }
-        console.log(`\n   ✅ Loaded list after ${buttonClickCount} clicks.`);
-
-        // Extract Links
-        const allCampaignLinks = await page.evaluate(() => {
-            const links: string[] = [];
-            // @ts-ignore
-            const elements = document.querySelectorAll('.cmp-list--campaigns .cmp-teaser__title a');
-            elements.forEach((a: any) => {
-                const href = a.getAttribute('href');
-                if (href && href.includes('/kampanyalar/')) {
-                    links.push(href);
-                }
-            });
-            return [...new Set(links)];
+        // 1. Fetch Campaign List
+        console.log(`   📄 Fetching campaigns from ${CAMPAIGNS_URL}...`);
+        const response = await axios.get(CAMPAIGNS_URL, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7'
+            },
+            timeout: 30000
         });
 
-        const campaignLinks = allCampaignLinks.slice(0, limit);
-        console.log(`   🎉 Found ${allCampaignLinks.length} campaigns. Processing first ${campaignLinks.length}...`);
+        const $ = cheerio.load(response.data);
+        const campaignLinks: string[] = [];
 
-        // Check for new and incomplete campaigns
-        const fullUrls = campaignLinks.map(link =>
-            link.startsWith('http') ? link : `${BASE_URL}${link}`
-        );
+        // Extract campaign links
+        $('a').each((_, el) => {
+            const href = $(el).attr('href');
+            if (href && href.includes('/kampanyalar/') && !href.endsWith('.html') && href.split('/').length > 4) {
+                // Valid campaign URLs: /tr/kampanyalar/kategori/kampanya-adi.html
+                if (!['#', 'javascript'].some(x => href.includes(x))) {
+                    let fullUrl = href.startsWith('http') ? href : `${BASE_URL}${href}`;
 
-        const { urlsToProcess } = await optimizeCampaigns(fullUrls, normalizedCard);
+                    // Normalize URL
+                    try {
+                        fullUrl = new URL(fullUrl).href;
+                        if (!campaignLinks.includes(fullUrl) && fullUrl.endsWith('.html')) {
+                            campaignLinks.push(fullUrl);
+                        }
+                    } catch (e) {
+                        // Invalid URL, skip
+                    }
+                }
+            }
+        });
 
-        // Process New + Incomplete Campaigns
+        console.log(`\n   🎉 Found ${campaignLinks.length} campaigns.`);
+
+        // Apply limit
+        const limitedLinks = limit ? campaignLinks.slice(0, limit) : campaignLinks;
+        console.log(`   Processing first ${limitedLinks.length}...`);
+
+        // 2. Optimize
+        const { urlsToProcess } = await optimizeCampaigns(limitedLinks, normalizedCard);
+
+        // 3. Process Details
         for (const fullUrl of urlsToProcess) {
             console.log(`\n   🔍 Processing: ${fullUrl}`);
 
             try {
-                await retryNavigation(page, fullUrl);
+                await sleep(500); // Rate limiting
 
-                // Wait for title
-                try {
-                    await page.waitForSelector('.master-banner__content h1', { timeout: 5000 });
-                } catch { }
+                const detailResponse = await axios.get(fullUrl, {
+                    headers: {
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+                    },
+                    timeout: 20000
+                });
 
-                const html = await page.content();
+                const detail$ = cheerio.load(detailResponse.data);
 
                 // Extract basic info for fallback
-                const fallbackData = await page.evaluate((baseUrl) => {
-                    // @ts-ignore
-                    const titleEl = document.querySelector('.master-banner__content h1') || document.querySelector('h1');
-                    // @ts-ignore
-                    const title = titleEl ? titleEl.innerText.trim() : 'Başlıksız Kampanya';
+                const title = detail$('.master-banner__content h1').first().text().trim() ||
+                    detail$('h1').first().text().trim() ||
+                    'Başlıksız Kampanya';
 
-                    let image = null;
-
-                    // PRIORITY 1: Campaign teaser image (most specific)
-                    // @ts-ignore
-                    const teaserImg = document.querySelector('.cmp-teaser__image img');
-                    if (teaserImg && teaserImg.getAttribute('src')?.includes('/kampanyalar/')) {
-                        image = teaserImg.getAttribute('src');
-                    }
-
-                    // PRIORITY 2: Banner image
-                    if (!image) {
-                        // @ts-ignore
-                        const bannerImg = document.querySelector('.master-banner__image img');
-                        if (bannerImg) image = bannerImg.getAttribute('src');
-                    }
-
+                // Extract image
+                let image: string | null = null;
+                const teaserImg = detail$('.cmp-teaser__image img').first();
+                if (teaserImg.length && teaserImg.attr('src')?.includes('/kampanyalar/')) {
+                    image = teaserImg.attr('src');
                     if (image && !image.startsWith('http')) {
-                        image = baseUrl + image;
+                        image = `${BASE_URL}${image}`;
                     }
+                }
 
-                    // @ts-ignore
-                    const descEl = document.querySelector('.cmp-text p');
-                    // @ts-ignore
-                    const description = descEl ? descEl.innerText.trim() : title;
+                // Get full HTML for AI
+                const html = detailResponse.data;
 
-                    return { title, image, description };
-                }, BASE_URL);
-
-                let campaignData;
+                let campaignData: any;
 
                 if (isAIEnabled) {
                     campaignData = await parseWithGemini(html, fullUrl, normalizedBank, normalizedCard);
 
-                    // Merge fallback image if AI missed it
-                    if (!campaignData.image && fallbackData.image) {
-                        campaignData.image = fallbackData.image;
-                        console.log('      🔧 Used Puppeteer fallback image');
+                    // Fallback image if AI missed it
+                    if (!campaignData.image && image) {
+                        campaignData.image = image;
+                        console.log('      🔧 Used fallback image');
+                    }
+
+                    // Paraf-specific: Default participation method if missing
+                    if (!campaignData.participation_method) {
+                        // Check if HTML mentions specific participation
+                        if (html.includes('Paraf Mobil') || html.includes('Halkbank Mobil') || html.includes('HEMEN KATIL')) {
+                            campaignData.participation_method = "Paraf Mobil veya Halkbank Mobil uygulamasından 'Hemen Katıl' butonuna tıklayın";
+                        }
                     }
                 } else {
+                    // No AI mode - basic data
                     campaignData = {
-                        title: fallbackData.title,
-                        description: fallbackData.description,
-                        image: fallbackData.image,
+                        title,
+                        description: title,
+                        image,
                         category: 'Diğer',
                         sector_slug: 'genel',
                         card_name: normalizedCard,
@@ -236,52 +161,45 @@ async function runParafScraper() {
                     campaignData.publish_status = 'processing';
                     campaignData.publish_updated_at = new Date().toISOString();
 
-                    // Check expiration
-                    if (campaignData.end_date) {
-                        const today = new Date();
-                        today.setHours(0, 0, 0, 0);
-                        const endDate = new Date(campaignData.end_date);
-                        if (endDate < today) {
-                            console.log(`      ⚠️  Expired (${campaignData.end_date}), skipping...`);
-                            continue;
-                        }
+                    // Set default min_spend
+                    if (campaignData.min_spend === undefined || campaignData.min_spend === null) {
+                        campaignData.min_spend = 0;
                     }
 
-                    // Set default min_spend
-                    campaignData.min_spend = campaignData.min_spend || 0;
-                    // Lookup and assign IDs from master tables
-                    const ids = await lookupIDs(
-                        campaignData.bank,
-                        campaignData.card_name,
-                        campaignData.brand,
-                        campaignData.sector_slug
-                    );
-                    Object.assign(campaignData, ids);
-                    // Assign badge based on campaign content
-                    const badge = assignBadge(campaignData);
-                    campaignData.badge_text = badge.text;
-                    campaignData.badge_color = badge.color;
-                    // Mark as generic if it's a non-brand-specific campaign
-                    markGenericBrand(campaignData);
+                    // Lookup IDs
+                    const idsResult = await lookupIDs(campaignData);
+                    Object.assign(campaignData, idsResult);
 
+                    // Assign badge
+                    const badgeResult = await assignBadge(campaignData);
+                    campaignData.badge = badgeResult.badge;
+
+                    // Mark generic brand
+                    const brandResult = await markGenericBrand(campaignData);
+                    campaignData.brand = brandResult.brand;
+                    campaignData.is_generic = brandResult.is_generic;
+
+                    // Upsert to database
                     const { error } = await supabase.from('campaigns').upsert(campaignData, { onConflict: 'reference_url' });
+
                     if (error) {
                         console.error(`      ❌ Error saving: ${error.message}`);
                     } else {
                         console.log(`      ✅ Saved: ${campaignData.title}`);
                     }
                 }
+
             } catch (error: any) {
-                console.error(`      ❌ Error scraping detail: ${error.message}`);
+                console.error(`      ❌ Error processing campaign: ${error.message}`);
+                continue;
             }
         }
 
-    } catch (error) {
-        console.error('❌ General error:', error);
-    } finally {
-        await browser.close();
         console.log('\n✅ Scraper finished.');
-        process.exit(0);
+
+    } catch (error: any) {
+        console.error(`❌ Fatal error: ${error.message}`);
+        process.exit(1);
     }
 }
 
