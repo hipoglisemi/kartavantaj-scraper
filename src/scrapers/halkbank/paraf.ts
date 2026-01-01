@@ -1,6 +1,5 @@
 
-import axios from 'axios';
-import * as cheerio from 'cheerio';
+import puppeteer from 'puppeteer';
 import { createClient } from '@supabase/supabase-js';
 import * as dotenv from 'dotenv';
 import { parseWithGemini } from '../../services/geminiParser';
@@ -35,42 +34,58 @@ async function runParafScraper() {
     const limit = limitArg ? parseInt(limitArg.split('=')[1]) : 999;
     const isAIEnabled = args.includes('--ai');
 
-    try {
-        // 1. Fetch Campaign List
-        console.log(`   📄 Fetching campaigns from ${CAMPAIGNS_URL}...`);
-        const response = await axios.get(CAMPAIGNS_URL, {
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-                'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7'
-            },
-            timeout: 30000
-        });
+    const browser = await puppeteer.launch({
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
+    });
 
-        const $ = cheerio.load(response.data);
-        const campaignLinks: string[] = [];
+    try {
+        const page = await browser.newPage();
+        await page.setViewport({ width: 1920, height: 1080 });
+
+        // 1. Load campaign list and click "Load More"
+        console.log(`   📄 Loading ${CAMPAIGNS_URL}...`);
+        await page.goto(CAMPAIGNS_URL, { waitUntil: 'networkidle2', timeout: 30000 });
+
+        // Wait for campaign list
+        await page.waitForSelector('.cmp-list--campaigns', { timeout: 10000 });
+
+        // Click "Load More" button multiple times
+        let clickCount = 0;
+        const maxClicks = 30;
+
+        while (clickCount < maxClicks) {
+            try {
+                const loadMoreBtn = await page.$('.button--more-campaign a');
+                if (!loadMoreBtn) break;
+
+                await loadMoreBtn.scrollIntoView();
+                await sleep(500);
+                await loadMoreBtn.click();
+                await sleep(2000);
+                clickCount++;
+                console.log(`   -\u003e Clicked 'Load More' (${clickCount})`);
+            } catch {
+                console.log(`   -\u003e All campaigns loaded after ${clickCount} clicks`);
+                break;
+            }
+        }
 
         // Extract campaign links
-        $('a').each((_, el) => {
-            const href = $(el).attr('href');
-            if (href && href.includes('/kampanyalar/') && href.endsWith('.html')) {
-                const segments = href.split('/').filter(s => s);
-                // Valid campaign: at least 4 segments (tr, kampanyalar, kategori, kampanya.html)
-                if (segments.length >= 4 && !href.includes('gecmis') && !['#', 'javascript'].some(x => href.includes(x))) {
-                    let fullUrl = href.startsWith('http') ? href : `${BASE_URL}${href}`;
-
-                    // Normalize URL
-                    try {
-                        fullUrl = new URL(fullUrl).href;
-                        if (!campaignLinks.includes(fullUrl)) {
-                            campaignLinks.push(fullUrl);
-                        }
-                    } catch (e) {
-                        // Invalid URL, skip
+        const campaignLinks = await page.evaluate((baseUrl) => {
+            const links: string[] = [];
+            const anchors = document.querySelectorAll('.cmp-list--campaigns .cmp-teaser__title a');
+            anchors.forEach(a => {
+                const href = (a as HTMLAnchorElement).getAttribute('href');
+                if (href && href.includes('/kampanyalar/')) {
+                    const fullUrl = href.startsWith('http') ? href : baseUrl + href;
+                    if (!links.includes(fullUrl)) {
+                        links.push(fullUrl);
                     }
                 }
-            }
-        });
+            });
+            return links;
+        }, BASE_URL);
 
         console.log(`\n   🎉 Found ${campaignLinks.length} campaigns.`);
 
@@ -81,40 +96,55 @@ async function runParafScraper() {
         // 2. Optimize
         const { urlsToProcess } = await optimizeCampaigns(limitedLinks, normalizedCard);
 
-        // 3. Process Details
+        // 3. Process each campaign
         for (const fullUrl of urlsToProcess) {
             console.log(`\n   🔍 Processing: ${fullUrl}`);
 
             try {
-                await sleep(500); // Rate limiting
+                await page.goto(fullUrl, { waitUntil: 'networkidle2', timeout: 20000 });
+                await sleep(500);
 
-                const detailResponse = await axios.get(fullUrl, {
-                    headers: {
-                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
-                    },
-                    timeout: 20000
-                });
+                // Wait for title
+                try {
+                    await page.waitForSelector('h1', { timeout: 5000 });
+                } catch { }
 
-                const detail$ = cheerio.load(detailResponse.data);
+                const html = await page.content();
 
-                // Extract basic info for fallback
-                const title = detail$('.master-banner__content h1').first().text().trim() ||
-                    detail$('h1').first().text().trim() ||
-                    'Başlıksız Kampanya';
+                // Extract fallback data
+                const fallbackData = await page.evaluate((baseUrl) => {
+                    const titleEl = document.querySelector('.master-banner__content h1') || document.querySelector('h1');
+                    const title = titleEl ? titleEl.textContent?.trim() : 'Başlıksız Kampanya';
 
-                // Extract image
-                let image: string | null = null;
-                const teaserImg = detail$('.cmp-teaser__image img').first();
-                if (teaserImg.length && teaserImg.attr('src')?.includes('/kampanyalar/')) {
-                    image = teaserImg.attr('src');
-                    if (image && !image.startsWith('http')) {
-                        image = `${BASE_URL}${image}`;
+                    // Extract image
+                    let image: string | null = null;
+                    const bannerDiv = document.querySelector('.master-banner__image') as HTMLElement;
+                    if (bannerDiv && bannerDiv.style.backgroundImage) {
+                        const match = bannerDiv.style.backgroundImage.match(/url\(['"]?(.*?)['"]?\)/);
+                        if (match && !match[1].includes('logo.svg')) {
+                            image = match[1].startsWith('http') ? match[1] : baseUrl + match[1];
+                        }
                     }
-                }
 
-                // Get full HTML for AI
-                const html = detailResponse.data;
+                    if (!image) {
+                        const imgs = document.querySelectorAll('img');
+                        for (const img of imgs) {
+                            const src = img.getAttribute('src') || img.getAttribute('data-src');
+                            if (src && !src.includes('logo') && !src.includes('icon') && !src.includes('.svg')) {
+                                if (src.includes('/content/')) {
+                                    image = src.startsWith('http') ? src : baseUrl + src;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    if (!image) {
+                        image = 'https://www.paraf.com.tr/content/dam/parafcard/paraf-logos/paraf-logo-yeni.png';
+                    }
+
+                    return { title, image };
+                }, BASE_URL);
 
                 let campaignData: any;
 
@@ -122,24 +152,28 @@ async function runParafScraper() {
                     campaignData = await parseWithGemini(html, fullUrl, normalizedBank, normalizedCard);
 
                     // Fallback image if AI missed it
-                    if (!campaignData.image && image) {
-                        campaignData.image = image;
+                    if (!campaignData.image && fallbackData.image) {
+                        campaignData.image = fallbackData.image;
                         console.log('      🔧 Used fallback image');
                     }
 
                     // Paraf-specific: Default participation method if missing
                     if (!campaignData.participation_method) {
-                        // Check if HTML mentions specific participation
                         if (html.includes('Paraf Mobil') || html.includes('Halkbank Mobil') || html.includes('HEMEN KATIL')) {
                             campaignData.participation_method = "Paraf Mobil veya Halkbank Mobil uygulamasından 'Hemen Katıl' butonuna tıklayın";
+                        } else if (html.includes('3404')) {
+                            const smsMatch = html.match(/([A-Z0-9]{3,})\s*yazıp\s*3404/i);
+                            if (smsMatch) {
+                                campaignData.participation_method = `SMS (${smsMatch[1].toUpperCase()} -> 3404)`;
+                            }
                         }
                     }
                 } else {
-                    // No AI mode - basic data
+                    // No AI mode
                     campaignData = {
-                        title,
-                        description: title,
-                        image,
+                        title: fallbackData.title,
+                        description: fallbackData.title,
+                        image: fallbackData.image,
                         category: 'Diğer',
                         sector_slug: 'genel',
                         card_name: normalizedCard,
@@ -191,7 +225,7 @@ async function runParafScraper() {
                 }
 
             } catch (error: any) {
-                console.error(`      ❌ Error processing campaign: ${error.message}`);
+                console.error(`      ❌ Error processing: ${error.message}`);
                 continue;
             }
         }
@@ -201,6 +235,8 @@ async function runParafScraper() {
     } catch (error: any) {
         console.error(`❌ Fatal error: ${error.message}`);
         process.exit(1);
+    } finally {
+        await browser.close();
     }
 }
 
