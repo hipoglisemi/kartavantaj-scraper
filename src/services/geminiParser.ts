@@ -447,9 +447,6 @@ export async function parseWithGemini(campaignText: string, url: string, bank: s
     const htmlCleaned = campaignText
         .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
         .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
-        .replace(/<[^>]+>/g, ' ')
-        .replace(/\s+/g, ' ')
-        .trim();
 
     // Decode HTML entities (e.g., &ndash; -> -, &ouml; -> ö)
     const entityDecoded = htmlCleaned
