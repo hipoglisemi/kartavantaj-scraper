@@ -30,8 +30,8 @@ async function runParafScraper() {
     console.log(`   Bank: ${normalizedBank}, Card: ${normalizedCard}`);
 
     const args = process.argv.slice(2);
-    const limitArgIndex = args.indexOf('--limit');
-    const limit = limitArgIndex !== -1 ? parseInt(args[limitArgIndex + 1]) : 999;
+    const limitArg = args.find(arg => arg.startsWith('--limit='));
+    const limit = limitArg ? parseInt(limitArg.split('=')[1]) : 999;
     const isAIEnabled = args.includes('--ai');
 
     const browser = await puppeteer.launch({
@@ -49,13 +49,27 @@ async function runParafScraper() {
         window.chrome = { runtime: {} };
     });
 
+    // Retry Navigation Helper
+    async function retryNavigation(page: any, url: string, retries = 3) {
+        for (let i = 0; i < retries; i++) {
+            try {
+                await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
+                return;
+            } catch (e: any) {
+                console.log(`      ⚠️  Navigation error (Attempt ${i + 1}/${retries}): ${e.message}`);
+                if (i === retries - 1) throw e;
+                const waitTime = 5000 * Math.pow(2, i); // Exponential backoff: 5s, 10s, 20s
+                await sleep(waitTime);
+            }
+        }
+    }
+
     try {
-        await page.goto(CAMPAIGNS_URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
+        await retryNavigation(page, CAMPAIGNS_URL);
 
         // Wait for campaigns to load dynamically
         try {
             await page.waitForSelector('.cmp-list--campaigns', { visible: true, timeout: 20000 });
-            // Wait a bit more for items inside list
             await sleep(2000);
         } catch (e) {
             console.log('   ⚠️  Campaign list did not load within timeout.');
@@ -64,31 +78,32 @@ async function runParafScraper() {
         // Load more campaigns logic
         let hasMore = true;
         let buttonClickCount = 0;
-        const maxClicks = 20; // Increase max clicks just in case
+        const maxClicks = 20;
 
         while (hasMore && buttonClickCount < maxClicks) {
+            // Optimization: Check if we have enough items
+            const currentCount = await page.evaluate(() => document.querySelectorAll('.cmp-list--campaigns .cmp-teaser__title a').length);
+            if (currentCount >= limit) {
+                console.log(`   ✨ Reached limit (${currentCount} >= ${limit}), stopping load more.`);
+                break;
+            }
+
             try {
-                // Scroll to bottom to trigger any lazy loads or button visibility
-                await page.evaluate(() => {
-                    // @ts-ignore
-                    window.scrollTo(0, document.body.scrollHeight);
-                });
+                // Scroll to bottom
+                await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
                 await sleep(1000);
 
-                // Look for "DAHA FAZLA" button using Text Content Scan (most robust)
+                // Look for "DAHA FAZLA" button
                 const buttons = await page.$$('a, button, div[role="button"]');
                 let loadMoreBtn = null;
 
                 for (const btn of buttons) {
                     const text = await page.evaluate(el => el.textContent, btn);
                     if (text && text.trim().toUpperCase() === 'DAHA FAZLA') {
-                        // Check visibility
                         const isVisible = await page.evaluate((el: any) => {
-                            // @ts-ignore
                             const style = window.getComputedStyle(el);
                             return style && style.display !== 'none' && style.visibility !== 'hidden' && el.offsetParent !== null;
                         }, btn);
-
                         if (isVisible) {
                             loadMoreBtn = btn;
                             break;
@@ -97,12 +112,11 @@ async function runParafScraper() {
                 }
 
                 if (loadMoreBtn) {
-                    console.log(`   👇 Clicking 'More' button (${buttonClickCount + 1}/${maxClicks})...`);
+                    process.stdout.write('.');
                     await page.evaluate((el) => el.click(), loadMoreBtn);
-                    await sleep(3000); // Wait longer for content load
+                    await sleep(3000);
                     buttonClickCount++;
                 } else {
-                    console.log('   ℹ️  No "DAHA FAZLA" button found (or hidden).');
                     hasMore = false;
                 }
             } catch (e) {
@@ -123,7 +137,6 @@ async function runParafScraper() {
                     links.push(href);
                 }
             });
-            // @ts-ignore
             return [...new Set(links)];
         });
 
@@ -142,7 +155,7 @@ async function runParafScraper() {
             console.log(`\n   🔍 Processing: ${fullUrl}`);
 
             try {
-                await page.goto(fullUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+                await retryNavigation(page, fullUrl);
 
                 // Wait for title
                 try {
@@ -236,22 +249,22 @@ async function runParafScraper() {
 
                     // Set default min_spend
                     campaignData.min_spend = campaignData.min_spend || 0;
-                // Lookup and assign IDs from master tables
-                const ids = await lookupIDs(
-                    campaignData.bank,
-                    campaignData.card_name,
-                    campaignData.brand,
-                    campaignData.sector_slug
-                );
-                Object.assign(campaignData, ids);
-                // Assign badge based on campaign content
-                const badge = assignBadge(campaignData);
-                campaignData.badge_text = badge.text;
-                campaignData.badge_color = badge.color;
-                // Mark as generic if it's a non-brand-specific campaign
-                markGenericBrand(campaignData);
+                    // Lookup and assign IDs from master tables
+                    const ids = await lookupIDs(
+                        campaignData.bank,
+                        campaignData.card_name,
+                        campaignData.brand,
+                        campaignData.sector_slug
+                    );
+                    Object.assign(campaignData, ids);
+                    // Assign badge based on campaign content
+                    const badge = assignBadge(campaignData);
+                    campaignData.badge_text = badge.text;
+                    campaignData.badge_color = badge.color;
+                    // Mark as generic if it's a non-brand-specific campaign
+                    markGenericBrand(campaignData);
 
-                const { error } = await supabase.from('campaigns').upsert(campaignData, { onConflict: 'reference_url' });
+                    const { error } = await supabase.from('campaigns').upsert(campaignData, { onConflict: 'reference_url' });
                     if (error) {
                         console.error(`      ❌ Error saving: ${error.message}`);
                     } else {

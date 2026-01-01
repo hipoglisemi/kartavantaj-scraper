@@ -1,9 +1,11 @@
 import { createClient } from '@supabase/supabase-js';
 import * as dotenv from 'dotenv';
 dotenv.config();
+
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!);
-async function check() {
-    const { data } = await supabase.from('bank_configs').select('*');
-    console.log('Bank Configs:', JSON.stringify(data, null, 2));
+
+async function getUrl() {
+    const { data } = await supabase.from('campaigns').select('url').eq('id', 16068).single();
+    console.log(data?.url);
 }
-check();
+getUrl();

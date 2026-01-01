@@ -634,9 +634,13 @@ ${metadataInstruction}
    - **SENARYO 3: YÜZDE İNDİRİM**
      - GİRDİ: "Teknosa'da %10 indirim, maksimum 500 TL"
      - ÇIKTI: earning: "500 TL İndirim", percent: "%10", min_spend: 5000 (Formül: 500/0.10)
-   - **SENARYO 4: EKSİK METİN (BAŞLIK KURTARMA)**
-     - GİRDİ: Başlık="1.000 TL İndirim", Metin="Detaylar için tıklayın..." (Para yok)
-     - ÇIKTI: earning: "1.000 TL İndirim", min_spend: 0 (Metin olmadığı için hesaplanamaz)
+    - **SENARYO 4: HER HARCAMAYA PUAN Y (KATLANAN / CUMULATIVE) - KRİTİK**
+      - GİRDİ: "Market ve Restoran... tek seferde yapılacak 2.000 TL ve üzeri her harcamaya 125 TL, toplam 1.500 TL ParafPara..."
+      - MANTIK: Kullanıcı 1.500 TL kazanmak için kaç tane 2.000 TL harcamalı? (1500 / 125 = 12 adet). Toplam Harcama = 12 * 2.000 = 24.000 TL.
+      - ÇIKTI: earning: "1.500 TL Puan" (Toplam ödül), min_spend: 24000 (Toplam gereken harcama), max_discount: 1500
+    - **SENARYO 5: EKSİK METİN (BAŞLIK KURTARMA)**
+      - GİRDİ: Başlık="1.000 TL İndirim", Metin="Detaylar için tıklayın..." (Para yok)
+      - ÇIKTI: earning: "1.000 TL İndirim", min_spend: 0 (Metin olmadığı için hesaplanamaz)
 
 5. **KART TESPİTİ (eligible_customers):**
    - Metin içinde "Ticari", "Business", "KOBİ" geçiyorsa, eligible_customers listesine ilgili kartları (Axess Business, Wings Business vb.) MUTLAKA ekle. Bireysel kartları EKSİK ETME.
