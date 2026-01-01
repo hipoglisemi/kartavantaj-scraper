@@ -32,7 +32,7 @@ jobs:
       
       - name: Install Python Dependencies
         run: |
-          pip install requests beautifulsoup4 lxml
+          pip install requests beautifulsoup4 lxml selenium undetected-chromedriver
       
       - name: Run Maximum Scraper
         run: python3 src/scrapers/isbankasi/maximum.py ${{ github.event.inputs.limit != '0' && format('--limit {0}', github.event.inputs.limit) || '' }}
