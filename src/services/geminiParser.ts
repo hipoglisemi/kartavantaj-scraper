@@ -150,10 +150,17 @@ function getBankInstructions(bankName: string, cardName: string): string {
 - SMS: Usually 3340.
 `,
         'yapı kredi': `
-🚨 YAPI KREDI/WORLD SPECIFIC RULES:
-- TERMINOLOGY: Uses "Worldpuan". 1 Worldpuan = 0.005 TL (unless stated otherwise).
-- PARTICIPATION: Primary method is "World Mobil" app. "Hemen Katıl" button.
-- SMS: Usually 4454.
+🚨 YAPI KREDI (WORLD) SPECIFIC RULES:
+- TERMINOLOGY: "Worldpuan" is the currency.
+    - ⚠️ IMPORTANT: "TL Worldpuan" means the value is in TL. If it says "100 TL Worldpuan", earning is "100 TL Worldpuan".
+    - If it says "1000 Worldpuan", check context. Usually 1 Worldpuan = 0.005 TL. prefer explicitly stated TL value if available.
+- ELIGIBLE CARDS:
+    - Look for: "Yapı Kredi Kredi Kartları", "Worldcard", "Opet Worldcard", "Gold", "Platinum", "Business", "World Eko", "Adios", "Crystal", "Play".
+    - "Bireysel kredi kartları" implies all consumer cards (World, Gold, Platinum, Opet, Play, Adios, Crystal).
+    - "Business" / "Ticari" implies World Business.
+- PARTICIPATION:
+    - "World Mobil" or "Yapı Kredi Mobil" is the primary method. Look for "Hemen Katıl", "Katıl" button.
+    - SMS: Look for SMS keywords sent to 4454.
 `,
         'iş bankası': `
 🚨 IS BANKASI/MAXIMUM SPECIFIC RULES:
