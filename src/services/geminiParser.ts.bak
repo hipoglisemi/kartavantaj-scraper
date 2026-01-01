@@ -60,119 +60,6 @@ async function fetchMasterData(): Promise<MasterData> {
     return cachedMasterData;
 }
 
-/**
- * Bank-Aware HTML Cleaner
- */
-function bankAwareCleaner(rawHtml: string, bank: string): string {
-    if (!rawHtml) return '';
-
-    let cleaned = rawHtml;
-    const bankLower = bank.toLowerCase();
-    const isAkbank = bankLower.includes('akbank');
-
-    // 1. Tag Stripping Logic
-    if (isAkbank) {
-        // Akbank/Wings sites are SPAs, data is often in scripts. Keep scripts, strip styles.
-        cleaned = cleaned.replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '');
-    } else {
-        // Standard cleaning for non-SPA sites
-        cleaned = cleaned
-            .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-            .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '');
-
-        // For general sites, aggressive tag stripping usually helps AI focus
-        cleaned = cleaned.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
-    }
-
-    // 2. Entity Decoding
-    let decoded = cleaned
-        .replace(/&ndash;/g, '-')
-        .replace(/&mdash;/g, '—')
-        .replace(/&rsquo;/g, "'")
-        .replace(/&lsquo;/g, "'")
-        .replace(/&rdquo;/g, '"')
-        .replace(/&ldquo;/g, '"')
-        .replace(/&ouml;/g, 'ö')
-        .replace(/&uuml;/g, 'ü')
-        .replace(/&ccedil;/g, 'ç')
-        .replace(/&nbsp;/g, ' ')
-        .replace(/&amp;/g, '&')
-        .replace(/&lt;/g, '<')
-        .replace(/&gt;/g, '>')
-        .replace(/&#(\d+);/g, (match, dec) => String.fromCharCode(dec));
-
-    // 3. Custom Sorthand Entities (Akbank specific)
-    if (isAkbank) {
-        decoded = decoded
-            .replace(/&q;/g, '"')
-            .replace(/&l;/g, '<')
-            .replace(/&g;/g, '>');
-    }
-
-    return decoded;
-}
-
-/**
- * Bank-Specific AI Instructions
- */
-function getBankInstructions(bankName: string, cardName: string): string {
-    const bank = bankName.toLowerCase();
-
-    const instructions: Record<string, string> = {
-        'akbank': `
-🚨 AKBANK SPECIFIC RULES:
-- TERMINOLOGY: 
-    - For Axess/Free/Akbank Kart: Uses "chip-para" instead of "puan". 1 chip-para = 1 TL.
-    - For Wings: Uses "Mil" or "Mil Puan". 1 Mil = 0.01 TL (unless specified as '1 TL değerinde').
-- PARTICIPATION: Primary method is "Jüzdan" app. Always look for "Jüzdan'dan Hemen Katıl" button.
-- SMS: Usually 4566. SMS keyword is usually a single word (e.g., "A101", "TEKNOSA").
-- REWARD: If it says "8 aya varan taksit", it's an installment campaign. Earning: "Taksit İmkanı".
-- ELIGIBLE CARDS (CRITICAL):
-    - 🚨 TITLE TRAP: Even if the title says "Axess'e Özel" or "Wings'e Özel", most Akbank campaigns apply to multiple cards. You MUST scan the footer/details for phrases like "Axess, Wings, Free, Akbank Kart dahildir".
-    - Scan for keywords: "Axess", "Wings", "Free", "Akbank Kart", "Ticari", "Business", "KOBİ", "TROY", "Bank’O Card Axess".
-    - If it says "Axess, Wings, Free, Akbank Kart, Ticari kartlar dahildir", include ALL of them.
-    - "Ticari kartlar" / "Business" / "KOBİ" = ["Axess Business", "Wings Business"].
-    - "Akbank Kart" = ["Akbank Kart"].
-    - "Bank’O Card Axess" = ["Bank’O Card Axess"].
-    - 🚨 EXCLUSIONS: If "Bank’O Card Axess dahil değildir" or "hariçtir" is mentioned, ensure it's NOT in the list. IF IT SAYS "DAHİLDİR", MUST INCLUDE "Bank’O Card Axess".
-    - 🚨 TROY: If "TROY" is mentioned for specific cards, use formats like "Axess TROY", "Akbank Kart TROY".
-`,
-        'halkbank': `
-🚨 HALKBANK/PARAF SPECIFIC RULES:
-- TERMINOLOGY: Uses "ParafPara". 1 ParafPara = 1 TL.
-- PARTICIPATION: Primary method is "Paraf Mobil" or "Halkbank Mobil". 
-- SMS: Usually 3404. Look for keyword + 3404 patterns.
-`,
-        'garanti': `
-🚨 GARANTI/BONUS SPECIFIC RULES:
-- TERMINOLOGY: Uses "Bonus". 1 Bonus = 1 TL.
-- PARTICIPATION: Primary method is "BonusFlaş" app.
-- SMS: Usually 3340.
-`,
-        'yapı kredi': `
-🚨 YAPI KREDI/WORLD SPECIFIC RULES:
-- TERMINOLOGY: Uses "Worldpuan". 1 Worldpuan = 0.005 TL (unless stated otherwise).
-- PARTICIPATION: Primary method is "World Mobil" app. "Hemen Katıl" button.
-- SMS: Usually 4454.
-`,
-        'iş bankası': `
-🚨 IS BANKASI/MAXIMUM SPECIFIC RULES:
-- TERMINOLOGY: Uses "Maxipuan" or "MaxiMil".
-- PARTICIPATION: Primary method is "Maximum Mobil" or "İşCep".
-- SMS: Usually 4402.
-`,
-        'ziraat': `
-🚨 ZIRAAT/BANKKART SPECIFIC RULES:
-- TERMINOLOGY: Uses "Bankkart Lira". 1 Bankkart Lira = 1 TL.
-- PARTICIPATION: Primary method is "Bankkart Mobil".
-- SMS: Usually 4757.
-`
-    };
-
-    const key = Object.keys(instructions).find(k => bank.includes(k));
-    return key ? instructions[key] : '';
-}
-
 // Rate limiting: Track last request time
 let lastRequestTime = 0;
 const MIN_REQUEST_INTERVAL_MS = 1000; // Minimum 1 second between requests (unlimited RPM with 2.5-flash)
@@ -347,11 +234,15 @@ export async function parseSurgical(
     bank?: string,
     metadata?: any
 ): Promise<any> {
-    const cleaned = bankAwareCleaner(html, bank || '');
-    const text = cleaned.substring(0, 20000);
+    const text = html
+        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+        .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .substring(0, 15000);
 
     const masterData = await fetchMasterData();
-    const bankInstructions = getBankInstructions(bank || '', existingData.card_name || '');
 
     // Use Python for surgical if complexity is detected or if it's a critical math field
     const usePython = shouldUseThinking(text, metadata?.category || existingData?.category) || missingFields.some(f => ['min_spend', 'max_discount'].includes(f));
@@ -360,7 +251,6 @@ export async function parseSurgical(
 You are a precision data extraction tool. We have an existing campaign entry, but it's missing specific info.
 DO NOT guess other fields. ONLY extract the fields requested.
 ${usePython ? `🚨 ZORUNLU PYTHON İŞ AKIŞI: Python code execution tool'u kullanarak matematiksel hesaplamaları doğrula.` : ''}
-${bankInstructions}
 
 EXISTING DATA (for context):
 Title: ${existingData.title}
@@ -553,8 +443,32 @@ async function cleanupBrands(brandInput: any, masterData: MasterData): Promise<{
 }
 
 export async function parseWithGemini(campaignText: string, url: string, bank: string, card: string, metadata?: any): Promise<any> {
-    const cleaned = bankAwareCleaner(campaignText, bank);
-    const text = cleaned.substring(0, 30000);
+    // Clean HTML tags first, then apply text cleaning
+    const htmlCleaned = campaignText
+        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+        .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+    // Decode HTML entities (e.g., &ndash; -> -, &ouml; -> ö)
+    const entityDecoded = htmlCleaned
+        .replace(/&ndash;/g, '-')
+        .replace(/&mdash;/g, '—')
+        .replace(/&rsquo;/g, "'")
+        .replace(/&lsquo;/g, "'")
+        .replace(/&rdquo;/g, '"')
+        .replace(/&ldquo;/g, '"')
+        .replace(/&ouml;/g, 'ö')
+        .replace(/&uuml;/g, 'ü')
+        .replace(/&ccedil;/g, 'ç')
+        .replace(/&nbsp;/g, ' ')
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&#(\d+);/g, (match, dec) => String.fromCharCode(dec));
+
+    const text = cleanCampaignText(entityDecoded)
+        .substring(0, 20000); // Increased to 20k to capture more context including dates
 
     const masterData = await fetchMasterData();
 
@@ -585,27 +499,19 @@ Metadata: ${JSON.stringify(metadata)}
 
     const pythonWorkflowPrompt = usePython ? `
 🚨 ZORUNLU PYTHON İŞ AKIŞI (MANDATORY WORKFLOW):
-  ADIM 1: Metindeki tüm sayıları, tutarları ve yüzde sembollerini tespit et.
-  ADIM 2: Kampanya türünü belirle:
-    A) Sabit: "X TL harcaya Y TL"
-    B) Yüzde: "Harcamanın %X'i kadar, max Y TL"
-    C) Periyodik/Kademeli: "Her X TL harcamaya Y TL, toplam max Z TL"
-    D) Çoklu Tier: "50k'ya 5k, 100k'ya 12k reward"
-  ADIM 3: Python code execution tool'u KULLANARAK hesabı yap:
-    - B (Yüzde) için: min_spend = max_discount / (percentage / 100).
-    - C (Periyodik) için: min_spend = (max_discount / per_transaction_reward) * per_transaction_spend.
-    - D (Çoklu Tier) için: max_discount (en yüksek olan) değerini al ve BU DEĞERE ULAŞMAK İÇİN GEREKLİ olan harcamayı (min_spend) al. ASLA düşük tier harcamasıyla yüksek tier rewardını eşleştirme!
-    - 🚨 TOPLAMA KURALI: Eğer "30k harca 500 kazan, toplamda 1.000 kazanabilirsin" diyorsa; 1.000 kazanmak için 2 adet 30k (yani 60k) harcamak gerektiği için min_spend = 60.000 olmalıdır.
-  ADIM 4: Python çıktısını JSON alanlarına YAZ.
-  ADIM 5: Final JSON'u DÖNDÜR.
-🚨 UYARI: Matematik içeren kampanyalarda Python kullanmadan işlem yapmak KESİNLİKLE YASAK!
-` : '';
+  ADIM 1: Metindeki tüm sayıları ve yüzde sembollerini tespit et
+  ADIM 2: Kampanya türünü belirle (yüzde bazlı mı, sabit tutar mı, kademeli mi)
+  ADIM 3: Python code execution tool'u KULLANARAK matematiksel hesaplamaları YAP:
+    - Yüzde bazlı ise: min_spend = max_discount / (percentage / 100)
+    - Kademeli ise: min_spend = (total_reward / per_transaction_reward) * per_transaction_spend
+  ADIM 4: Python çıktısını JSON alanlarına YAZ
+  ADIM 5: Final JSON'u DÖNDÜR
+🚨 UYARI: Python kullanmadan matematik içeren kampanyaları parse etmek YASAKTIR!` : '';
 
     const staticPrefix = `
 Extract campaign data into JSON matching this EXACT schema.
 ${pythonWorkflowPrompt}
 ${metadataInstruction}
-${getBankInstructions(bank, card)}
 
 {
   "title": "string (catchy campaign title, clear and concise)",
@@ -614,12 +520,13 @@ ${getBankInstructions(bank, card)}
   "category": "string (MUST be one of: ${sortedCategories})",
   "discount": "string (Use ONLY for installment info, e.g. '9 Taksit', '+3 Taksit'. FORMAT: '{Number} Taksit'. NEVER mention fees/interest.)",
   "earning": "string (🚨 HİYERARŞİ KURALI - ÖNCE YÜZDE KONTROL ET:\n    1️⃣ Metinde '%' sembolü VARSA:\n       → MUTLAKA '%{X} (max {Y}TL)' formatını kullan\n       → Örnek: '%10 (max 500TL)', '%25 (max 300TL)'\n       → 🚨 ASLA '500 TL Puan' gibi sabit tutar YAZMA!\n    2️⃣ Metinde '%' sembolü YOKSA:\n       → '{Amount} TL Puan' veya '{Amount} TL İndirim' kullan\n       → 🚨 MİL PUAN: 'Mil' kelimesi varsa 'Mil Puan' yaz\n       → 🚨 SAYI FORMATI: 1.000+ sayılarda NOKTA kullan (örn: '30.000 TL Puan')\n    3️⃣ Sayısal ödül YOKSA:\n       → 2-3 kelime özet: 'Uçak Bileti', 'Taksit İmkanı', 'Özel Fırsat'\n    ⚠️  UYARI: Yüzde bazlı kampanyayı '500 TL Puan' şeklinde kısaltmak min_spend hesaplamasını BOZAR!)",
-  "min_spend": number (CRITICAL: Total required spend for MAXIMUM REWARD. If title says '500 TL harca 50 TL kazan, toplam 500 TL kazan', min_spend is 5.000 (10 steps). If there are tiers like 50k->4k, 100k->10k, and max_discount is 10k, then min_spend MUST be 100.000. ASLA sadece giriş harcamasını yazma.),
+  "min_spend": number (CRITICAL: Total required spend. If title says '500 TL ve üzeri', min_spend is 500. Total sum if multiple steps. 🚨 ARALIK KURALI: Eğer "1.000 TL - 20.000 TL arası" gibi aralık varsa, min_spend = MİNİMUM değer (1.000), ASLA maksimum değer (20.000) KULLANMA!),
   "min_spend_currency": "string (Currency code: TRY, USD, EUR, GBP. Default: TRY. ONLY change if campaign explicitly mentions foreign currency like 'yurt dışı', 'dolar', 'USD', 'euro')",
   "max_discount": number (Max reward limit per customer/campaign),
   "max_discount_currency": "string (Currency code: TRY, USD, EUR, GBP. Default: TRY. ONLY change if reward is in foreign currency)",
   "earning_currency": "string (Currency code: TRY, USD, EUR, GBP. Default: TRY. Match the currency mentioned in earning)",
   "discount_percentage": number (If % based reward, e.g. 15 for %15),
+  "valid_from": "YYYY-MM-DD",
   "valid_from": "YYYY-MM-DD",
   "valid_until": "YYYY-MM-DD",
   "eligible_customers": ["array of strings (Simple card names: Axess, Wings, Business, Free etc. IMPORTANT: ALWAYS include 'TROY' if specifically mentioned for these cards, e.g. 'Axess TROY', 'Akbank Kart TROY')"],
@@ -640,7 +547,7 @@ ${getBankInstructions(bank, card)}
   "bank": "string (AUTHORITY: MUST be exactly as provided. Allowed: ${sortedBanks})",
   "card_name": "string (AUTHORITY: MUST be exactly as provided.)",
   "brand": [
-    "array of strings (🚨 SADECE GERÇEK MARKA İSİMLERİ! Official brand names. YASAK: Kart isimleri (Axess, Wings, Bonus, Free, Juzdan, World, Play, Crystal), Banka isimleri (Akbank, Yapı Kredi, vb.), Genel terimler. 🚨 SEKTÖR KAMPANYASI KURALI: Eğer metinde belirli bir marka adı GEÇMİYOR, sadece 'Marketlerde geçerli', 'Giyim sektöründe' deniyorsa markayı ['Genel'] yap. ÖRNEK: ['CarrefourSA'], ['Teknosa'], ['Genel']. MAX 3 marka. Her marka max 40 karakter.)"
+    "array of strings (🚨 SADECE GERÇEK MARKA İSİMLERİ! Official brand names. YASAK: Kart isimleri (Axess, Wings, Bonus, Free, Juzdan, World, Play, Crystal), Banka isimleri (Akbank, Yapı Kredi, vb.), Genel terimler. ÖRNEK: ['CarrefourSA'], ['Teknosa'], ['Nespresso']. MAX 3 marka. Her marka max 40 karakter.)"
   ],
   "ai_enhanced": true
 }
@@ -875,7 +782,6 @@ You are refining campaign data. The following fields are MISSING and MUST be ext
 ${missingFields.map(field => `- ${field}`).join('\n')}
 
 Extract ONLY these missing fields from the text below. Return JSON with ONLY these fields.
-${getBankInstructions(bank || '', card || '')}
 
 FIELD DEFINITIONS:
 - valid_until: Campaign end date in YYYY-MM-DD format

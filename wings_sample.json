@@ -1,0 +1,621 @@
+{
+  "status": true,
+  "data": {
+    "list": [
+      {
+        "id": 8835,
+        "order": 0,
+        "startDate": "2026-01-01T00:00:00",
+        "endDate": "2026-01-31T23:55:00",
+        "createDate": "2025-12-30T17:53:38",
+        "title": "Onur Market Mağazalarında 100 TL Chip-Para!",
+        "list_image": "https://www.wingscard.com.tr/api/uploads/9dc5602a-3bbb-4686-8437-3fd3cd10bf8a.jpg",
+        "logo": null,
+        "category": "chip-para",
+        "sector": "Gıda/Market",
+        "sectorvalue": [
+          "gida-market"
+        ],
+        "brand_image": null,
+        "url": "/kampanyalar/onur-market-magazalarinda-100-tl-chip-para",
+        "isActive": true,
+        "overSoon": false,
+        "card_type": "wings,wings-black,wings-private,wings-business",
+        "list_type": null
+      },
+      {
+        "id": 8808,
+        "order": 0,
+        "startDate": "2026-01-01T00:00:00",
+        "endDate": "2026-01-31T23:55:00",
+        "createDate": "2025-11-27T15:43:43",
+        "title": "Tatilsepeti.com'da 7.500 TL'ye Varan Chip-Para!",
+        "list_image": "https://www.wingscard.com.tr/api/uploads/51fe9b45-1ca2-43f9-81e6-82131e7ac655.jpg",
+        "logo": null,
+        "category": "chip-para",
+        "sector": "Turizm/Seyahat",
+        "sectorvalue": [
+          "turizm-seyahat"
+        ],
+        "brand_image": null,
+        "url": "/kampanyalar/tatilsepeti-7500-chip-para-1225",
+        "isActive": true,
+        "overSoon": false,
+        "card_type": "wings,wings-black,wings-elite",
+        "list_type": null
+      },
+      {
+        "id": 8793,
+        "order": 0,
+        "startDate": "2026-01-01T00:00:00",
+        "endDate": "2026-01-31T23:55:00",
+        "createDate": "2025-10-30T14:06:07",
+        "title": "Enplus'ta Peşin Fiyatına 9 Taksit!",
+        "list_image": "https://www.wingscard.com.tr/api/uploads/920c3f33-4723-4fca-87db-60bcc4d79393.jpg",
+        "logo": null,
+        "category": "taksit",
+        "sector": "Ev/Mobilya/Beyaz Eşya",
+        "sectorvalue": [
+          "ev-mobilya-beyaz-esya"
+        ],
+        "brand_image": null,
+        "url": "/kampanyalar/enplusta-pesin-fiyatina-9-taksit",
+        "isActive": true,
+        "overSoon": false,
+        "card_type": "wings,wings-black,wings-ek-kart,wings-sanalkart,wings-elite",
+        "list_type": null
+      },
+      {
+        "id": 8792,
+        "order": 0,
+        "startDate": "2026-01-01T00:00:00",
+        "endDate": "2026-01-31T23:55:00",
+        "createDate": "2025-10-30T10:27:15",
+        "title": "Enplus'ta 500 TL Chip-Para!",
+        "list_image": "https://www.wingscard.com.tr/api/uploads/6af53bff-1057-4e9a-9f20-f1aff2c65711.jpg",
+        "logo": null,
+        "category": "chip-para",
+        "sector": "Ev/Mobilya/Beyaz Eşya",
+        "sectorvalue": [
+          "ev-mobilya-beyaz-esya"
+        ],
+        "brand_image": null,
+        "url": "/kampanyalar/enplusta-500-tl-chip-para-ocak",
+        "isActive": true,
+        "overSoon": false,
+        "card_type": "wings,wings-black,wings-private,wings-ek-kart,wings-sanalkart,wings-elite",
+        "list_type": null
+      },
+      {
+        "id": 8780,
+        "order": 0,
+        "startDate": "2026-01-01T00:00:00",
+        "endDate": "2026-03-31T23:55:00",
+        "createDate": "2025-10-07T14:33:41",
+        "title": "Vestel'de Peşin Fiyatına 9 Taksit!",
+        "list_image": "https://www.wingscard.com.tr/api/uploads/2741b2fd-57f9-4e5a-9475-9d41f156aad9.png",
+        "logo": null,
+        "category": "taksit",
+        "sector": "Ev/Mobilya/Beyaz Eşya",
+        "sectorvalue": [
+          "ev-mobilya-beyaz-esya"
+        ],
+        "brand_image": null,
+        "url": "/kampanyalar/vestelde-pesin-fiyatina-12-taksit",
+        "isActive": true,
+        "overSoon": false,
+        "card_type": "wings,wings-black,wings-ek-kart,wings-sanalkart,wings-elite",
+        "list_type": null
+      },
+      {
+        "id": 8758,
+        "order": 0,
+        "startDate": "2026-01-01T00:00:00",
+        "endDate": "2026-01-31T23:55:00",
+        "createDate": "2025-09-01T08:43:13",
+        "title": "Eera-İtopya Mağazalarında ve www.itopya.com’da 5 Taksit Fırsatı!",
+        "list_image": "https://www.wingscard.com.tr/api/uploads/e75f336f-3ad8-4a78-8518-d27410a8414a.jpg",
+        "logo": null,
+        "category": "taksit",
+        "sector": "Elektronik/İletişim",
+        "sectorvalue": [
+          "elektronik-iletisim"
+        ],
+        "brand_image": null,
+        "url": "/kampanyalar/itopya-magazalarinda-pesin-fiyatina-5-taksit-firsati",
+        "isActive": true,
+        "overSoon": false,
+        "card_type": "wings,wings-black,wings-ek-kart,wings-sanalkart,wings-elite",
+        "list_type": null
+      },
+      {
+        "id": 8754,
+        "order": 0,
+        "startDate": "2026-01-01T00:00:00",
+        "endDate": "2026-01-31T23:55:00",
+        "createDate": "2025-08-28T11:24:40",
+        "title": "Yemeksepeti'nde 300 TL'ye Varan Chip-Para!",
+        "list_image": "https://www.wingscard.com.tr/api/uploads/0fb95be2-d12d-4b0c-9a74-3175baa126e6.jpg",
+        "logo": null,
+        "category": "chip-para",
+        "sector": "Gıda/Market",
+        "sectorvalue": [
+          "gida-market"
+        ],
+        "brand_image": null,
+        "url": "/kampanyalar/wingse-ozel-yemeksepetinde-300-tl-chip-para-1",
+        "isActive": true,
+        "overSoon": false,
+        "card_type": "wings,wings-black,wings-ek-kart,wings-sanalkart,wings-elite",
+        "list_type": null
+      },
+      {
+        "id": 8751,
+        "order": 0,
+        "startDate": "2025-08-27T00:00:00",
+        "endDate": "2026-01-15T23:55:00",
+        "createDate": "2025-08-26T17:34:11",
+        "title": "Özdilek Mağazalarında Vade Farksız 6 Taksit Fırsatı!",
+        "list_image": "https://www.wingscard.com.tr/api/uploads/42d3d606-cfc7-46da-8d5c-55c36777b66e.png",
+        "logo": null,
+        "category": "taksit",
+        "sector": "Gıda/Market",
+        "sectorvalue": [
+          "gida-market"
+        ],
+        "brand_image": null,
+        "url": "/kampanyalar/ozdilek-magazalarinda-vade-farksiz-6-taksit-firsati-0",
+        "isActive": true,
+        "overSoon": false,
+        "card_type": "wings,wings-black,wings-private,wings-sanalkart,wings-elite",
+        "list_type": null
+      },
+      {
+        "id": 8737,
+        "order": 0,
+        "startDate": "2026-01-01T00:00:00",
+        "endDate": "2026-01-31T23:55:00",
+        "createDate": "2025-08-06T11:52:06",
+        "title": "Columbia’da 1.500 TL Chip-Para!",
+        "list_image": "https://www.wingscard.com.tr/api/uploads/611a9b12-3037-4a6f-ba40-a72f84d5f231.png",
+        "logo": null,
+        "category": "chip-para",
+        "sector": "Giyim/Kozmetik/Aksesuar",
+        "sectorvalue": [
+          "giyim-kozmetik-aksesuar"
+        ],
+        "brand_image": null,
+        "url": "/kampanyalar/columbia-1500-tl-chip-para1",
+        "isActive": true,
+        "overSoon": false,
+        "card_type": "wings,wings-black,wings-ek-kart,wings-sanalkart,wings-elite",
+        "list_type": null
+      }
+    ],
+    "overSoonList": [],
+    "passiveList": [
+      {
+        "id": 8778,
+        "order": 0,
+        "startDate": "2025-12-01T00:00:00",
+        "endDate": "2025-12-31T23:55:00",
+        "createDate": "2025-09-30T15:30:20",
+        "title": "Daniel Wellington’da 9 Aya Varan Taksit!",
+        "list_image": "https://www.wingscard.com.tr/api/uploads/8bdac56e-4f7c-4088-b3b5-ca6405d4906b.jpg",
+        "logo": null,
+        "category": "taksit",
+        "sector": "Giyim/Kozmetik/Aksesuar",
+        "sectorvalue": [
+          "giyim-kozmetik-aksesuar"
+        ],
+        "brand_image": null,
+        "url": "/kampanyalar/daniel-wellingtonda-9-aya-varan-taksit",
+        "isActive": false,
+        "overSoon": false,
+        "card_type": "wings,wings-black,wings-ek-kart,wings-sanalkart,wings-elite",
+        "list_type": null
+      },
+      {
+        "id": 8744,
+        "order": 0,
+        "startDate": "2025-12-01T00:00:00",
+        "endDate": "2025-12-31T23:55:00",
+        "createDate": "2025-08-15T11:13:18",
+        "title": "Konyalı Saat'te 9 Aya Varan Taksit!",
+        "list_image": "https://www.wingscard.com.tr/api/uploads/85c1bfd0-19ca-48ef-afcf-1b0e58d56751.jpg",
+        "logo": null,
+        "category": "taksit",
+        "sector": "Giyim/Kozmetik/Aksesuar",
+        "sectorvalue": [
+          "giyim-kozmetik-aksesuar"
+        ],
+        "brand_image": null,
+        "url": "/kampanyalar/konyali-saatte-6-aya-varan-taksit",
+        "isActive": false,
+        "overSoon": false,
+        "card_type": "wings,wings-black,wings-private,wings-sanalkart,wings-elite",
+        "list_type": null
+      },
+      {
+        "id": 8739,
+        "order": 0,
+        "startDate": "2025-05-27T00:00:00",
+        "endDate": "2025-12-31T23:55:00",
+        "createDate": "2025-08-08T09:46:50",
+        "title": "Nespresso Türkiye Mağazalarında Peşin Fiyatına 6 Taksit!",
+        "list_image": "https://www.wingscard.com.tr/api/uploads/376fd040-9d78-4949-aaae-d081bc198362.jpg",
+        "logo": null,
+        "category": null,
+        "sector": null,
+        "sectorvalue": null,
+        "brand_image": null,
+        "url": "/kampanyalar/nespresso-turkiye-magazalarinda-pesin-fiyatina-6-taksit",
+        "isActive": false,
+        "overSoon": false,
+        "card_type": "wings,wings-black,wings-ek-kart,wings-sanalkart,wings-elite",
+        "list_type": null
+      },
+      {
+        "id": 8719,
+        "order": 0,
+        "startDate": "2025-10-01T00:00:00",
+        "endDate": "2025-12-31T23:55:00",
+        "createDate": "2025-07-08T10:58:09",
+        "title": "A101'de Peşin Fiyatına 6 Taksit!",
+        "list_image": "https://www.wingscard.com.tr/api/uploads/6b96c309-df70-49b0-bbc9-90818664ca45.jpg",
+        "logo": null,
+        "category": null,
+        "sector": "Gıda/Market",
+        "sectorvalue": [
+          "gida-market"
+        ],
+        "brand_image": null,
+        "url": "/kampanyalar/a101-pesin-fiyatina-6-taksit",
+        "isActive": false,
+        "overSoon": false,
+        "card_type": "wings,wings-black,wings-private,wings-sanalkart,wings-elite",
+        "list_type": null
+      },
+      {
+        "id": 8656,
+        "order": 0,
+        "startDate": "2025-10-16T00:00:00",
+        "endDate": "2025-12-31T23:55:00",
+        "createDate": "2025-02-25T09:34:50",
+        "title": "reebok.com.tr’de 1.000 TL İndirim!",
+        "list_image": "https://www.wingscard.com.tr/api/uploads/c47079d0-730c-4f29-8985-7059f44b18e9.jpg",
+        "logo": null,
+        "category": "indirimler",
+        "sector": "Giyim/Kozmetik/Aksesuar",
+        "sectorvalue": [
+          "giyim-kozmetik-aksesuar"
+        ],
+        "brand_image": null,
+        "url": "/kampanyalar/reebokcomtrde-1000-tl-indirim",
+        "isActive": false,
+        "overSoon": false,
+        "card_type": "wings,wings-black,wings-elite",
+        "list_type": null
+      },
+      {
+        "id": 8653,
+        "order": 0,
+        "startDate": "2025-10-16T00:00:00",
+        "endDate": "2025-12-31T23:55:00",
+        "createDate": "2025-02-19T12:23:03",
+        "title": "reebok.com.tr’de %25 İndirim!",
+        "list_image": "https://www.wingscard.com.tr/api/uploads/828bbfe7-4f2f-4808-8899-cfb967f3a1f5.jpg",
+        "logo": null,
+        "category": "indirimler",
+        "sector": "Giyim/Kozmetik/Aksesuar",
+        "sectorvalue": [
+          "giyim-kozmetik-aksesuar"
+        ],
+        "brand_image": null,
+        "url": "/kampanyalar/reebokcomtrde-15-indirim",
+        "isActive": false,
+        "overSoon": false,
+        "card_type": "wings,wings-black,wings-elite",
+        "list_type": null
+      },
+      {
+        "id": 8652,
+        "order": 0,
+        "startDate": "2025-10-16T00:00:00",
+        "endDate": "2025-12-31T23:55:00",
+        "createDate": "2025-02-19T12:18:46",
+        "title": "instreet.com.tr’de 250 TL İndirim!",
+        "list_image": "https://www.wingscard.com.tr/api/uploads/fbcee9a0-10e2-4d68-9235-f07937c9dd6a.jpg",
+        "logo": null,
+        "category": "indirimler",
+        "sector": "Giyim/Kozmetik/Aksesuar",
+        "sectorvalue": [
+          "giyim-kozmetik-aksesuar"
+        ],
+        "brand_image": null,
+        "url": "/kampanyalar/instreetcomtrde-250-tl-indirim",
+        "isActive": false,
+        "overSoon": false,
+        "card_type": "wings,wings-black,wings-elite",
+        "list_type": null
+      },
+      {
+        "id": 8651,
+        "order": 0,
+        "startDate": "2025-10-16T00:00:00",
+        "endDate": "2025-12-31T23:55:00",
+        "createDate": "2025-02-19T12:03:47",
+        "title": "ninewest.com.tr’de %15 İndirim!",
+        "list_image": "https://www.wingscard.com.tr/api/uploads/561dbccb-55e7-43b7-a13c-ab0744962de6.jpg",
+        "logo": null,
+        "category": "indirimler",
+        "sector": "Giyim/Kozmetik/Aksesuar",
+        "sectorvalue": [
+          "giyim-kozmetik-aksesuar"
+        ],
+        "brand_image": null,
+        "url": "/kampanyalar/ninewestcomtrde-15-indirim",
+        "isActive": false,
+        "overSoon": false,
+        "card_type": "wings,wings-black,wings-elite",
+        "list_type": null
+      },
+      {
+        "id": 8649,
+        "order": 0,
+        "startDate": "2025-10-16T00:00:00",
+        "endDate": "2025-12-31T23:55:00",
+        "createDate": "2025-02-18T12:22:24",
+        "title": "instreet.com.tr’de 1.000 TL İndirim!",
+        "list_image": "https://www.wingscard.com.tr/api/uploads/ff624e89-3020-4b4e-8a4a-ae07d958ea50.jpg",
+        "logo": null,
+        "category": "indirimler",
+        "sector": "Giyim/Kozmetik/Aksesuar",
+        "sectorvalue": [
+          "giyim-kozmetik-aksesuar"
+        ],
+        "brand_image": null,
+        "url": "/kampanyalar/instreetcomtrde-1000-tl-indirim",
+        "isActive": false,
+        "overSoon": false,
+        "card_type": "wings,wings-black,wings-elite",
+        "list_type": null
+      }
+    ],
+    "categories": [
+      {
+        "text": "Mil Puan",
+        "value": "mil-puan",
+        "count": 6
+      },
+      {
+        "text": "Chip-Para",
+        "value": "chip-para",
+        "count": 19
+      },
+      {
+        "text": "Okul-Eğitim",
+        "value": "egitim",
+        "count": 1
+      },
+      {
+        "text": "Programlar",
+        "value": "programlar",
+        "count": 7
+      },
+      {
+        "text": "Yurtdışı Kampanyaları",
+        "value": "yurtdisi-kampanyalari",
+        "count": 2
+      },
+      {
+        "text": "İndirim",
+        "value": "indirimler",
+        "count": 5
+      },
+      {
+        "text": "Taksit",
+        "value": "taksit",
+        "count": 27
+      },
+      {
+        "text": " Havalimani",
+        "value": "Havalimani",
+        "count": 3
+      }
+    ],
+    "randomList": [
+      {
+        "id": 8474,
+        "order": 0,
+        "startDate": "2026-01-01T00:00:00",
+        "endDate": "2026-01-31T23:55:00",
+        "createDate": "2024-07-03T11:04:17",
+        "title": "Reebok’ta 250 TL Chip-Para!",
+        "list_image": "https://www.wingscard.com.tr/api/uploads/63f4365e-021a-4465-bb40-d934d47043b7.jpg",
+        "logo": null,
+        "category": "chip-para",
+        "sector": "Giyim/Kozmetik/Aksesuar",
+        "sectorvalue": [
+          "giyim-kozmetik-aksesuar"
+        ],
+        "brand_image": null,
+        "url": "/kampanyalar/reebokta-chip-para-firsati",
+        "isActive": true,
+        "overSoon": false,
+        "card_type": "wings,wings-black,wings-elite",
+        "list_type": null
+      },
+      {
+        "id": 7337,
+        "order": 0,
+        "startDate": "2026-01-01T00:00:00",
+        "endDate": "2026-06-30T23:55:00",
+        "createDate": "2024-01-08T15:48:59",
+        "title": "Desa’da 6 Aya Varan Taksit!",
+        "list_image": "https://www.wingscard.com.tr/api/uploads/b5fcae0b-7d32-4670-9ebd-7e93f5c8287f.jpg",
+        "logo": null,
+        "category": null,
+        "sector": "Giyim/Kozmetik/Aksesuar",
+        "sectorvalue": [
+          "giyim-kozmetik-aksesuar"
+        ],
+        "brand_image": null,
+        "url": "/kampanyalar/desada-6-taksit-firsati00",
+        "isActive": true,
+        "overSoon": false,
+        "card_type": "wings,wings-black,wings-elite",
+        "list_type": null
+      },
+      {
+        "id": 8737,
+        "order": 0,
+        "startDate": "2026-01-01T00:00:00",
+        "endDate": "2026-01-31T23:55:00",
+        "createDate": "2025-08-06T11:52:06",
+        "title": "Columbia’da 1.500 TL Chip-Para!",
+        "list_image": "https://www.wingscard.com.tr/api/uploads/611a9b12-3037-4a6f-ba40-a72f84d5f231.png",
+        "logo": null,
+        "category": "chip-para",
+        "sector": "Giyim/Kozmetik/Aksesuar",
+        "sectorvalue": [
+          "giyim-kozmetik-aksesuar"
+        ],
+        "brand_image": null,
+        "url": "/kampanyalar/columbia-1500-tl-chip-para1",
+        "isActive": true,
+        "overSoon": false,
+        "card_type": "wings,wings-black,wings-ek-kart,wings-sanalkart,wings-elite",
+        "list_type": null
+      },
+      {
+        "id": 8620,
+        "order": 0,
+        "startDate": "2026-01-01T00:00:00",
+        "endDate": "2026-01-31T23:55:00",
+        "createDate": "2025-01-13T10:33:35",
+        "title": "Wings'e Özel Gürgençler’de 9 Aya Varan Taksit İmkanı!",
+        "list_image": "https://www.wingscard.com.tr/api/uploads/50e8dd99-ca13-474b-b7d2-4c0fefbae68f.jpg",
+        "logo": null,
+        "category": "taksit",
+        "sector": "Elektronik/İletişim",
+        "sectorvalue": [
+          "elektronik-iletisim"
+        ],
+        "brand_image": null,
+        "url": "/kampanyalar/gurgencler-9-taksit-2025",
+        "isActive": true,
+        "overSoon": false,
+        "card_type": "wings,wings-black,wings-elite",
+        "list_type": null
+      },
+      {
+        "id": 7377,
+        "order": 0,
+        "startDate": "2026-01-01T00:00:00",
+        "endDate": "2026-06-30T23:55:00",
+        "createDate": "2024-02-29T17:45:59",
+        "title": "Teknosa'da 6 Aya Varan Taksit Ayrıcalığı!",
+        "list_image": "https://www.wingscard.com.tr/api/uploads/cbf5fb36-8ec2-43d0-ad5d-f96f7fcc3064.jpg",
+        "logo": null,
+        "category": null,
+        "sector": "Elektronik/İletişim",
+        "sectorvalue": [
+          "elektronik-iletisim"
+        ],
+        "brand_image": null,
+        "url": "/kampanyalar/teknosada-6-aya-varan-taksit-ayricaligi-0324",
+        "isActive": true,
+        "overSoon": false,
+        "card_type": "wings,wings-black",
+        "list_type": null
+      },
+      {
+        "id": 7325,
+        "order": 0,
+        "startDate": "2026-01-01T00:00:00",
+        "endDate": "2026-06-30T23:55:00",
+        "createDate": "2024-01-03T15:37:14",
+        "title": "IN Street'te Peşin Fiyatına 6 Aya Varan Taksit!",
+        "list_image": "https://www.wingscard.com.tr/api/uploads/a7b3052d-fbfb-483e-8a60-1847a5ed65d9.JPG",
+        "logo": null,
+        "category": null,
+        "sector": "Giyim/Kozmetik/Aksesuar",
+        "sectorvalue": [
+          "giyim-kozmetik-aksesuar"
+        ],
+        "brand_image": null,
+        "url": "/kampanyalar/in-streette-pesin-fiyatina-6-aya-varan-taksit",
+        "isActive": true,
+        "overSoon": false,
+        "card_type": "wings,wings-black",
+        "list_type": null
+      },
+      {
+        "id": 6768,
+        "order": 1,
+        "startDate": "2026-01-01T00:00:00",
+        "endDate": "2026-01-31T23:55:00",
+        "createDate": "2022-10-17T10:22:52",
+        "title": "Wings ile Elektronik Alışverişlerinde 100.000 Mil Puan",
+        "list_image": "https://www.wingscard.com.tr/api/uploads/0f99ddf6-7613-48ea-86b9-62249cf4fdd4.png",
+        "logo": null,
+        "category": "mil-puan",
+        "sector": "Elektronik/İletişim",
+        "sectorvalue": [
+          "elektronik-iletisim"
+        ],
+        "brand_image": null,
+        "url": "/kampanyalar/wings-ile-elektronik-harcamalariniza-100000-mp03",
+        "isActive": true,
+        "overSoon": false,
+        "card_type": "wings,wings-black",
+        "list_type": null
+      },
+      {
+        "id": 2218,
+        "order": 0,
+        "startDate": "2026-01-01T00:00:00",
+        "endDate": "2026-01-31T23:55:00",
+        "createDate": "2022-10-02T13:30:32",
+        "title": "TheatreClix.com'da Yıllık Sınırsız Tiyatro İzleme Paketi 1.499 TL! ",
+        "list_image": "https://www.wingscard.com.tr/api/uploads/090f6724-d094-4576-addb-46f080033acb.jpg",
+        "logo": null,
+        "category": "indirimler",
+        "sector": "Online Alışveriş/Eğlence",
+        "sectorvalue": [
+          "online-alisveris-eglence"
+        ],
+        "brand_image": null,
+        "url": "/kampanyalar/theatreclixcomda-yillik-sinirsiz-tiyatro-izleme-paketi-1499-tl",
+        "isActive": true,
+        "overSoon": false,
+        "card_type": "wings,wings-private,wings-elite",
+        "list_type": null
+      },
+      {
+        "id": 7329,
+        "order": 0,
+        "startDate": "2026-01-01T00:00:00",
+        "endDate": "2026-06-30T23:55:00",
+        "createDate": "2024-01-03T15:58:47",
+        "title": "Reebok’ta Peşin Fiyatına 6 Aya Varan Taksit!",
+        "list_image": "https://www.wingscard.com.tr/api/uploads/c994cd65-8182-4890-92c8-9a5d37c75125.jpg",
+        "logo": null,
+        "category": "taksit",
+        "sector": "Giyim/Kozmetik/Aksesuar",
+        "sectorvalue": [
+          "giyim-kozmetik-aksesuar"
+        ],
+        "brand_image": null,
+        "url": "/kampanyalar/reebokta-pesin-fiyatina-6-aya-varan-taksit",
+        "isActive": true,
+        "overSoon": false,
+        "card_type": "wings,wings-black",
+        "list_type": null
+      }
+    ],
+    "totalCount": 85
+  },
+  "pageCount": 10
+}

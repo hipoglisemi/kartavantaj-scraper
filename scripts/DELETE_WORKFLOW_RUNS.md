@@ -38,6 +38,7 @@ deleteAllRuns();
 
 **Not**: Bu script bir seferde görünen run'ları siler. Daha fazla varsa sayfayı yenile ve tekrar çalıştır.
 
+
 ## Yöntem 2: GitHub CLI (Gelişmiş)
 
 ### GitHub CLI Kurulumu

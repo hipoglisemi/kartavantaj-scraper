@@ -66,9 +66,12 @@ export async function optimizeCampaigns(
             const isBrandMissing = !campaign.brand;
             const isSectorGeneric = campaign.sector_slug === 'genel';
 
-            // Maximum-specific checks
-            const isParticipationMissing = Array.isArray(campaign.participation_method) && campaign.participation_method.length === 0;
-            const isSingleCard = Array.isArray(campaign.eligible_customers) && campaign.eligible_customers.length === 1 && campaign.eligible_customers[0] === 'Maximum';
+            // Akbank/Maximum/Yapı Kredi specific checks (usually share campaigns across cards)
+            const isParticipationMissing = Array.isArray(campaign.participation_method) && (campaign.participation_method.length === 0 || campaign.participation_method === null);
+
+            const bankLower = (cardName.toLowerCase() === 'wings' || cardName.toLowerCase() === 'axess' || cardName.toLowerCase() === 'free' || cardName.toLowerCase() === 'business') ? 'akbank' : '';
+            const isSingleCard = Array.isArray(campaign.eligible_customers) && campaign.eligible_customers.length === 1 &&
+                (['Maximum', 'Wings', 'Axess', 'Free', 'World', 'Paraf', 'Bankkart'].includes(campaign.eligible_customers[0]) || bankLower === 'akbank');
 
             // You can customize this logic based on strictness
             if (isImageMissing || isBrandMissing || isParticipationMissing || isSingleCard) {
