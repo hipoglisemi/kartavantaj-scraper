@@ -137,18 +137,7 @@ function getBankInstructions(bankName: string, cardName: string): string {
     - 🚨 EXCLUSIONS: If "Bank’O Card Axess dahil değildir" or "hariçtir" is mentioned, ensure it's NOT in the list. IF IT SAYS "DAHİLDİR", MUST INCLUDE "Bank’O Card Axess".
     - 🚨 TROY: If "TROY" is mentioned for specific cards, use formats like "Axess TROY", "Akbank Kart TROY".
 `,
-        'halkbank': `
-🚨 HALKBANK/PARAF SPECIFIC RULES:
-- TERMINOLOGY: Uses "ParafPara". 1 ParafPara = 1 TL.
-- PARTICIPATION: Primary method is "Paraf Mobil" or "Halkbank Mobil". 
-- SMS: Usually 3404. Look for keyword + 3404 patterns.
-`,
-        'garanti': `
-🚨 GARANTI/BONUS SPECIFIC RULES:
-- TERMINOLOGY: Uses "Bonus". 1 Bonus = 1 TL.
-- PARTICIPATION: Primary method is "BonusFlaş" app.
-- SMS: Usually 3340.
-`,
+
         'yapı kredi': `
 🚨 YAPI KREDI (WORLD) SPECIFIC RULES:
 - TERMINOLOGY: "Worldpuan" is the currency.
@@ -162,17 +151,53 @@ function getBankInstructions(bankName: string, cardName: string): string {
     - "World Mobil" or "Yapı Kredi Mobil" is the primary method. Look for "Hemen Katıl", "Katıl" button.
     - SMS: Look for SMS keywords sent to 4454.
 `,
-        'iş bankası': `
-🚨 IS BANKASI/MAXIMUM SPECIFIC RULES:
-- TERMINOLOGY: Uses "Maxipuan" or "MaxiMil".
-- PARTICIPATION: Primary method is "Maximum Mobil" or "İşCep".
-- SMS: Usually 4402.
+        'garanti': `
+🚨 GARANTI BBVA/BONUS SPECIFIC RULES:
+- TERMINOLOGY: "Bonus" is the currency. 1 Bonus = 1 TL. "Mil" for Shop&Fly/Miles&Smiles.
+- ELIGIBLE CARDS:
+    - Keywords: "Bonus", "Bonus Gold", "Bonus Platinum", "Bonus American Express", "Shop&Fly", "Miles&Smiles", "Flexi", "Money Bonus".
+    - "Ticari" means "Bonus Business".
+- PARTICIPATION:
+    - Primary: "BonusFlaş" app. Look for "Hemen Katıl" button in app.
+    - SMS: Often 3340.
+`,
+        'halkbank': `
+🚨 HALKBANK/PARAF SPECIFIC RULES:
+- TERMINOLOGY: "ParafPara" is the currency. 1 ParafPara = 1 TL.
+- ELIGIBLE CARDS:
+    - Keywords: "Paraf", "Paraf Gold", "Paraf Platinum", "Parafly", "Paraf Genç", "Halkcard".
+    - "Esnaf"/"Kobi" means "Paraf Esnaf" or "Paraf Kobi".
+- PARTICIPATION:
+    - Primary: "Paraf Mobil" or "Halkbank Mobil".
+    - SMS: Often 3404.
+`,
+        'vakıfbank': `
+🚨 VAKIFBANK/WORLD SPECIFIC RULES:
+- TERMINOLOGY: "Worldpuan". 1 Worldpuan = 0.005 TL usually, BUT "TL Worldpuan" means raw TL.
+- ELIGIBLE CARDS:
+    - Keywords: "VakıfBank Worldcard", "Platinum", "Rail&Miles", "Bankomat Kart" (Debit).
+- PARTICIPATION:
+    - Primary: "Cepte Kazan" app or "VakıfBank Mobil".
+    - SMS: Often 6635.
 `,
         'ziraat': `
 🚨 ZIRAAT/BANKKART SPECIFIC RULES:
-- TERMINOLOGY: Uses "Bankkart Lira". 1 Bankkart Lira = 1 TL.
-- PARTICIPATION: Primary method is "Bankkart Mobil".
-- SMS: Usually 4757.
+- TERMINOLOGY: "Bankkart Lira" is the currency. 1 Bankkart Lira = 1 TL.
+- ELIGIBLE CARDS:
+    - Keywords: "Bankkart", "Bankkart Genç", "Bankkart Başak" (Commercial), "Bankkart Combo".
+- PARTICIPATION:
+    - Primary: "Bankkart Mobil".
+    - SMS: Often 4757.
+`,
+        'iş bankası': `
+🚨 IS BANKASI/MAXIMUM SPECIFIC RULES:
+- TERMINOLOGY: "Maxipuan" (Points) or "MaxiMil" (Miles).
+- ELIGIBLE CARDS:
+    - Keywords: "Maximum Kart", "Maximum Gold", "Maximum Platinum", "Maximiles", "Privia", "İş Bankası Bankamatik Kartı".
+    - "Ticari" means "Maximum Ticari".
+- PARTICIPATION:
+    - Primary: "Maximum Mobil" or "İşCep". Look for "Katıl" button.
+    - SMS: Usually 4402.
 `
     };
 
