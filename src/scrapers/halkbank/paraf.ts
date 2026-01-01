@@ -53,15 +53,16 @@ async function runParafScraper() {
         // Extract campaign links
         $('a').each((_, el) => {
             const href = $(el).attr('href');
-            if (href && href.includes('/kampanyalar/') && !href.endsWith('.html') && href.split('/').length > 4) {
-                // Valid campaign URLs: /tr/kampanyalar/kategori/kampanya-adi.html
-                if (!['#', 'javascript'].some(x => href.includes(x))) {
+            if (href && href.includes('/kampanyalar/') && href.endsWith('.html')) {
+                const segments = href.split('/').filter(s => s);
+                // Valid campaign: at least 4 segments (tr, kampanyalar, kategori, kampanya.html)
+                if (segments.length >= 4 && !href.includes('gecmis') && !['#', 'javascript'].some(x => href.includes(x))) {
                     let fullUrl = href.startsWith('http') ? href : `${BASE_URL}${href}`;
 
                     // Normalize URL
                     try {
                         fullUrl = new URL(fullUrl).href;
-                        if (!campaignLinks.includes(fullUrl) && fullUrl.endsWith('.html')) {
+                        if (!campaignLinks.includes(fullUrl)) {
                             campaignLinks.push(fullUrl);
                         }
                     } catch (e) {
