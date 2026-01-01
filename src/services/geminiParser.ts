@@ -443,8 +443,16 @@ async function cleanupBrands(brandInput: any, masterData: MasterData): Promise<{
 }
 
 export async function parseWithGemini(campaignText: string, url: string, bank: string, card: string, metadata?: any): Promise<any> {
-    const text = cleanCampaignText(campaignText)
-        .substring(0, 12000); // 12k chars is enough for most campaigns after cleaning
+    // Clean HTML tags first, then apply text cleaning
+    const htmlCleaned = campaignText
+        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+        .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+    const text = cleanCampaignText(htmlCleaned)
+        .substring(0, 20000); // Increased to 20k to capture more context including dates
 
     const masterData = await fetchMasterData();
 
