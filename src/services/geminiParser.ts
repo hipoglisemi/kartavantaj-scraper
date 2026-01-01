@@ -60,6 +60,108 @@ async function fetchMasterData(): Promise<MasterData> {
     return cachedMasterData;
 }
 
+/**
+ * Bank-Aware HTML Cleaner
+ */
+function bankAwareCleaner(rawHtml: string, bank: string): string {
+    if (!rawHtml) return '';
+
+    let cleaned = rawHtml;
+    const bankLower = bank.toLowerCase();
+    const isAkbank = bankLower.includes('akbank');
+
+    // 1. Tag Stripping Logic
+    if (isAkbank) {
+        // Akbank/Wings sites are SPAs, data is often in scripts. Keep scripts, strip styles.
+        cleaned = cleaned.replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '');
+    } else {
+        // Standard cleaning for non-SPA sites
+        cleaned = cleaned
+            .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+            .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '');
+
+        // For general sites, aggressive tag stripping usually helps AI focus
+        cleaned = cleaned.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
+    }
+
+    // 2. Entity Decoding
+    let decoded = cleaned
+        .replace(/&ndash;/g, '-')
+        .replace(/&mdash;/g, '—')
+        .replace(/&rsquo;/g, "'")
+        .replace(/&lsquo;/g, "'")
+        .replace(/&rdquo;/g, '"')
+        .replace(/&ldquo;/g, '"')
+        .replace(/&ouml;/g, 'ö')
+        .replace(/&uuml;/g, 'ü')
+        .replace(/&ccedil;/g, 'ç')
+        .replace(/&nbsp;/g, ' ')
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&#(\d+);/g, (match, dec) => String.fromCharCode(dec));
+
+    // 3. Custom Sorthand Entities (Akbank specific)
+    if (isAkbank) {
+        decoded = decoded
+            .replace(/&q;/g, '"')
+            .replace(/&l;/g, '<')
+            .replace(/&g;/g, '>');
+    }
+
+    return decoded;
+}
+
+/**
+ * Bank-Specific AI Instructions
+ */
+function getBankInstructions(bankName: string, cardName: string): string {
+    const bank = bankName.toLowerCase();
+
+    const instructions: Record<string, string> = {
+        'akbank': `
+🚨 AKBANK/AXESS SPECIFIC RULES:
+- TERMINOLOGY: Uses "chip-para" instead of "puan". 1 chip-para = 1 TL.
+- PARTICIPATION: Primary method is "Jüzdan" app. Always look for "Jüzdan'dan Hemen Katıl" button.
+- SMS: Usually 4566. SMS keyword is usually a single word (e.g., "A101", "TEKNOSA").
+- REWARD: If it says "8 aya varan taksit", it's an installment campaign. Earning: "Taksit İmkanı".
+`,
+        'halkbank': `
+🚨 HALKBANK/PARAF SPECIFIC RULES:
+- TERMINOLOGY: Uses "ParafPara". 1 ParafPara = 1 TL.
+- PARTICIPATION: Primary method is "Paraf Mobil" or "Halkbank Mobil". 
+- SMS: Usually 3404. Look for keyword + 3404 patterns.
+`,
+        'garanti': `
+🚨 GARANTI/BONUS SPECIFIC RULES:
+- TERMINOLOGY: Uses "Bonus". 1 Bonus = 1 TL.
+- PARTICIPATION: Primary method is "BonusFlaş" app.
+- SMS: Usually 3340.
+`,
+        'yapı kredi': `
+🚨 YAPI KREDI/WORLD SPECIFIC RULES:
+- TERMINOLOGY: Uses "Worldpuan". 1 Worldpuan = 0.005 TL (unless stated otherwise).
+- PARTICIPATION: Primary method is "World Mobil" app. "Hemen Katıl" button.
+- SMS: Usually 4454.
+`,
+        'iş bankası': `
+🚨 IS BANKASI/MAXIMUM SPECIFIC RULES:
+- TERMINOLOGY: Uses "Maxipuan" or "MaxiMil".
+- PARTICIPATION: Primary method is "Maximum Mobil" or "İşCep".
+- SMS: Usually 4402.
+`,
+        'ziraat': `
+🚨 ZIRAAT/BANKKART SPECIFIC RULES:
+- TERMINOLOGY: Uses "Bankkart Lira". 1 Bankkart Lira = 1 TL.
+- PARTICIPATION: Primary method is "Bankkart Mobil".
+- SMS: Usually 4757.
+`
+    };
+
+    const key = Object.keys(instructions).find(k => bank.includes(k));
+    return key ? instructions[key] : '';
+}
+
 // Rate limiting: Track last request time
 let lastRequestTime = 0;
 const MIN_REQUEST_INTERVAL_MS = 1000; // Minimum 1 second between requests (unlimited RPM with 2.5-flash)
@@ -234,15 +336,11 @@ export async function parseSurgical(
     bank?: string,
     metadata?: any
 ): Promise<any> {
-    const text = html
-        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-        .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
-        .replace(/<[^>]+>/g, ' ')
-        .replace(/\s+/g, ' ')
-        .trim()
-        .substring(0, 15000);
+    const cleaned = bankAwareCleaner(html, bank || '');
+    const text = cleaned.substring(0, 20000);
 
     const masterData = await fetchMasterData();
+    const bankInstructions = getBankInstructions(bank || '', existingData.card_name || '');
 
     // Use Python for surgical if complexity is detected or if it's a critical math field
     const usePython = shouldUseThinking(text, metadata?.category || existingData?.category) || missingFields.some(f => ['min_spend', 'max_discount'].includes(f));
@@ -251,6 +349,7 @@ export async function parseSurgical(
 You are a precision data extraction tool. We have an existing campaign entry, but it's missing specific info.
 DO NOT guess other fields. ONLY extract the fields requested.
 ${usePython ? `🚨 ZORUNLU PYTHON İŞ AKIŞI: Python code execution tool'u kullanarak matematiksel hesaplamaları doğrula.` : ''}
+${bankInstructions}
 
 EXISTING DATA (for context):
 Title: ${existingData.title}
@@ -443,30 +542,8 @@ async function cleanupBrands(brandInput: any, masterData: MasterData): Promise<{
 }
 
 export async function parseWithGemini(campaignText: string, url: string, bank: string, card: string, metadata?: any): Promise<any> {
-    // Clean HTML tags first, then apply text cleaning
-    const htmlCleaned = campaignText
-        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-        .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
-
-    // Decode HTML entities (e.g., &ndash; -> -, &ouml; -> ö)
-    const entityDecoded = htmlCleaned
-        .replace(/&ndash;/g, '-')
-        .replace(/&mdash;/g, '—')
-        .replace(/&rsquo;/g, "'")
-        .replace(/&lsquo;/g, "'")
-        .replace(/&rdquo;/g, '"')
-        .replace(/&ldquo;/g, '"')
-        .replace(/&ouml;/g, 'ö')
-        .replace(/&uuml;/g, 'ü')
-        .replace(/&ccedil;/g, 'ç')
-        .replace(/&nbsp;/g, ' ')
-        .replace(/&amp;/g, '&')
-        .replace(/&lt;/g, '<')
-        .replace(/&gt;/g, '>')
-        .replace(/&#(\d+);/g, (match, dec) => String.fromCharCode(dec));
-
-    const text = cleanCampaignText(entityDecoded)
-        .substring(0, 20000); // Increased to 20k to capture more context including dates
+    const cleaned = bankAwareCleaner(campaignText, bank);
+    const text = cleaned.substring(0, 30000);
 
     const masterData = await fetchMasterData();
 
@@ -510,6 +587,7 @@ Metadata: ${JSON.stringify(metadata)}
 Extract campaign data into JSON matching this EXACT schema.
 ${pythonWorkflowPrompt}
 ${metadataInstruction}
+${getBankInstructions(bank, card)}
 
 {
   "title": "string (catchy campaign title, clear and concise)",
@@ -780,6 +858,7 @@ You are refining campaign data. The following fields are MISSING and MUST be ext
 ${missingFields.map(field => `- ${field}`).join('\n')}
 
 Extract ONLY these missing fields from the text below. Return JSON with ONLY these fields.
+${getBankInstructions(bank || '', card || '')}
 
 FIELD DEFINITIONS:
 - valid_until: Campaign end date in YYYY-MM-DD format
