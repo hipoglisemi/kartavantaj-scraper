@@ -12,7 +12,7 @@ from bs4 import BeautifulSoup
 # --- AYARLAR ---
 BASE_URL = "https://www.maximum.com.tr"
 CAMPAIGNS_URL = "https://www.maximum.com.tr/kampanyalar"
-OUTPUT_FILE = "maximum_kampanyalar_hibrit.json"
+OUTPUT_FILE = "maximum_kampanyalar_raw.json"
 IMPORT_SOURCE_NAME = "Maximum Kart"
 CAMPAIGN_LIMIT = 1000 
 
@@ -217,11 +217,14 @@ def main():
     driver = None
     try:
         options = uc.ChromeOptions()
+        options.add_argument("--headless=new")
         options.add_argument("--no-first-run")
         options.add_argument("--password-store=basic")
         options.add_argument('--ignore-certificate-errors')
         options.add_argument("--window-position=-10000,0") 
         options.add_argument("--no-sandbox")
+        options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--disable-gpu")
         
         driver = uc.Chrome(options=options, use_subprocess=True)
         driver.set_page_load_timeout(60)
