@@ -778,30 +778,37 @@ TEXT TO PROCESS:
     console.log(`   🔄 Stage 2: Filling missing fields: ${missingFields.join(', ')} `);
 
     const stage2Prompt = `
-You are refining campaign data.The following fields are MISSING and MUST be extracted:
+You are refining campaign data. The following fields are MISSING and MUST be extracted:
 
 ${missingFields.map(field => `- ${field}`).join('\n')}
 
-Extract ONLY these missing fields from the text below.Return JSON with ONLY these fields.
+Extract ONLY these missing fields from the text below. Return JSON with ONLY these fields.
 
 FIELD DEFINITIONS:
-    - valid_until: Campaign end date in YYYY - MM - DD format
-        - eligible_customers: Array of eligible card types
-            - min_spend: Minimum spending amount as a number
-                - earning: Reward amount or description(e.g. "500 TL Puan")
-                    - category: MUST be EXACTLY one of: ${masterData.categories.join(', ')}. If unsure, return "Diğer".
+- valid_until: Campaign end date in YYYY-MM-DD format
+  🚨 DATE EXTRACTION RULES:
+  1. Look for patterns like: "1 Ocak - 31 Aralık 2026", "31 Aralık 2026'ya kadar", "2026 yılı sonuna kadar"
+  2. Turkish months: Ocak=01, Şubat=02, Mart=03, Nisan=04, Mayıs=05, Haziran=06, Temmuz=07, Ağustos=08, Eylül=09, Ekim=10, Kasım=11, Aralık=12
+  3. For date ranges (e.g., "1 Ocak - 31 Aralık 2026"), use the END date (31 Aralık 2026 → 2026-12-31)
+  4. If only month+year mentioned (e.g., "Aralık 2026"), use last day of that month (2026-12-31)
+  5. If "yıl sonuna kadar" or similar, use December 31 of that year
+  6. Format: YYYY-MM-DD (e.g., 2026-12-31)
+  7. If NO date found, return null
+- eligible_customers: Array of eligible card types
+- min_spend: Minimum spending amount as a number
+- earning: Reward amount or description (e.g. "500 TL Puan")
+  - If it's JUST an installment campaign (taksit) and NO points/rewards mentioned, earning MUST be a 2-3 word summary (e.g., "Taksit İmkanı", "Vade Farksız")
+- category: MUST be EXACTLY one of: ${masterData.categories.join(', ')}. If unsure, return "Diğer".
 - bank: MUST be EXACTLY one of: ${masterData.banks.join(', ')}. ${bank ? `(Source: ${bank})` : ''}
-    - brand: Array of strings representing ALL mentioned merchants / brands.DO NOT include card names(Axess, Wings, etc.).
+- brand: Array of strings representing ALL mentioned merchants/brands. DO NOT include card names (Axess, Wings, etc.).
 
 ### 🛑 CRITICAL: NO HALLUCINATION
-        - If the requested field is NOT clearly present in the text, return null. 
-        - If the requested field is NOT clearly present in the text, return null.
-- DO NOT invent numbers.
+- If the requested field is NOT clearly present in the text, return null.
+- DO NOT invent numbers or dates.
 - DO NOT use previous campaign values.
-- If it's JUST an installment campaign (taksit) and NO points/rewards mentioned, earning MUST be a 2-3 word summary of the installment benefit (e.g. "Vade Farksız").
 
-    TEXT:
-    "${text.replace(/"/g, '\\"')}"
+TEXT:
+"${text.replace(/"/g, '\\"')}"
 
 Return ONLY valid JSON with the missing fields, no markdown.
 `;
