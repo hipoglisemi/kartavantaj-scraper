@@ -451,7 +451,24 @@ export async function parseWithGemini(campaignText: string, url: string, bank: s
         .replace(/\s+/g, ' ')
         .trim();
 
-    const text = cleanCampaignText(htmlCleaned)
+    // Decode HTML entities (e.g., &ndash; -> -, &ouml; -> ö)
+    const entityDecoded = htmlCleaned
+        .replace(/&ndash;/g, '-')
+        .replace(/&mdash;/g, '—')
+        .replace(/&rsquo;/g, "'")
+        .replace(/&lsquo;/g, "'")
+        .replace(/&rdquo;/g, '"')
+        .replace(/&ldquo;/g, '"')
+        .replace(/&ouml;/g, 'ö')
+        .replace(/&uuml;/g, 'ü')
+        .replace(/&ccedil;/g, 'ç')
+        .replace(/&nbsp;/g, ' ')
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&#(\d+);/g, (match, dec) => String.fromCharCode(dec));
+
+    const text = cleanCampaignText(entityDecoded)
         .substring(0, 20000); // Increased to 20k to capture more context including dates
 
     const masterData = await fetchMasterData();
