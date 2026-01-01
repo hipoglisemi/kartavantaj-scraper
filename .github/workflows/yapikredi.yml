@@ -39,6 +39,8 @@ jobs:
         if: ${{ github.event.inputs.card == 'World' || github.event.inputs.card == 'Tümü' }}
         run: npx tsx src/scrapers/yapikredi/world.ts ${{ github.event.inputs.limit != '0' && format('--limit {0}', github.event.inputs.limit) || '' }}
         env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
       
       - name: Import World Campaigns
@@ -53,6 +55,8 @@ jobs:
         if: ${{ github.event.inputs.card == 'Adios' || github.event.inputs.card == 'Tümü' }}
         run: npx tsx src/scrapers/yapikredi/adios.ts ${{ github.event.inputs.limit != '0' && format('--limit {0}', github.event.inputs.limit) || '' }}
         env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
       
       - name: Import Adios Campaigns
@@ -67,6 +71,8 @@ jobs:
         if: ${{ github.event.inputs.card == 'Crystal' || github.event.inputs.card == 'Tümü' }}
         run: npx tsx src/scrapers/yapikredi/crystal.ts ${{ github.event.inputs.limit != '0' && format('--limit {0}', github.event.inputs.limit) || '' }}
         env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
       
       - name: Import Crystal Campaigns
@@ -81,6 +87,8 @@ jobs:
         if: ${{ github.event.inputs.card == 'Play' || github.event.inputs.card == 'Tümü' }}
         run: npx tsx src/scrapers/yapikredi/play.ts ${{ github.event.inputs.limit != '0' && format('--limit {0}', github.event.inputs.limit) || '' }}
         env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
       
       - name: Import Play Campaigns

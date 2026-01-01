@@ -39,6 +39,8 @@ jobs:
         if: ${{ github.event.inputs.card == 'Axess' || github.event.inputs.card == 'Tümü' }}
         run: npx tsx src/scrapers/akbank/axess.ts ${{ github.event.inputs.limit != '0' && format('--limit {0}', github.event.inputs.limit) || '' }}
         env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
       
       - name: Import Axess Campaigns
@@ -53,6 +55,8 @@ jobs:
         if: ${{ github.event.inputs.card == 'Wings' || github.event.inputs.card == 'Tümü' }}
         run: npx tsx src/scrapers/akbank/wings.ts ${{ github.event.inputs.limit != '0' && format('--limit {0}', github.event.inputs.limit) || '' }}
         env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
       
       - name: Import Wings Campaigns
@@ -67,6 +71,8 @@ jobs:
         if: ${{ github.event.inputs.card == 'Business' || github.event.inputs.card == 'Tümü' }}
         run: npx tsx src/scrapers/akbank/business.ts ${{ github.event.inputs.limit != '0' && format('--limit {0}', github.event.inputs.limit) || '' }}
         env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
       
       - name: Import Business Campaigns
@@ -81,6 +87,8 @@ jobs:
         if: ${{ github.event.inputs.card == 'Free' || github.event.inputs.card == 'Tümü' }}
         run: npx tsx src/scrapers/akbank/free.ts ${{ github.event.inputs.limit != '0' && format('--limit {0}', github.event.inputs.limit) || '' }}
         env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
       
       - name: Import Free Campaigns

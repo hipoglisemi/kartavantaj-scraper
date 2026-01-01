@@ -28,6 +28,8 @@ jobs:
       - name: Run Bonus Scraper
         run: npx tsx src/scrapers/garanti/bonus.ts ${{ github.event.inputs.limit != '0' && format('--limit {0}', github.event.inputs.limit) || '' }}
         env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
       
       - name: Import Bonus Campaigns
