@@ -18,7 +18,7 @@ from urllib.parse import urljoin
 ssl._create_default_https_context = ssl._create_unverified_context
 
 BASE_URL = "https://www.vakifkart.com.tr"
-LIST_URL_TEMPLATE = "https://www.vakifkart.com.tr/kampanyalar?SayfaId={}"
+LIST_URL_TEMPLATE = "https://www.vakifkart.com.tr/kampanyalar/sayfa/{}"
 OUTPUT_FILE = "vakifbank_kampanyalar_raw.json"
 
 def get_driver():
@@ -51,7 +51,11 @@ def scrape_list_page(driver, limit=None):
     page = 1
     
     while True:
-        url = LIST_URL_TEMPLATE.format(page)
+        if page == 1:
+            url = "https://www.vakifkart.com.tr/kampanyalar"
+        else:
+            url = LIST_URL_TEMPLATE.format(page)
+            
         print(f"   Getting page {page}: {url}")
         
         if not robust_get(driver, url):
