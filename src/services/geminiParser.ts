@@ -476,16 +476,46 @@ function normalizeBrandName(name: string): string {
     // 1. Remove common domain extensions and noise suffixes
     let cleanName = name
         .replace(/\.com\.tr|\.com|\.net|\.org/gi, '')
-        .replace(/\s+notebook$|\s+market$|\s+marketleri$/gi, '')
+        .replace(/\s+notebook$|\s+market$|\s+marketleri$|[\s-]online$|[\s-]türkiye$|[\s-]turkiye$/gi, '')
         .trim();
 
     // 2. Specialized Merges (Canonical Mapping)
     const lower = cleanName.toLowerCase();
+
+    // Amazon Group
+    if (lower.includes('amazon')) return 'Amazon';
+
+    // Migros Group
+    if (lower.includes('migros') || lower === 'sanal market') return 'Migros';
+
+    // Getir Group
+    if (lower.startsWith('getir')) return 'Getir';
+
+    // Yemeksepeti Group
+    if (lower.includes('yemeksepeti') || lower === 'banabi') return 'Yemeksepeti';
+
+    // Carrefour Group
+    if (lower.includes('carrefoursa') || lower.includes('carrefour')) return 'CarrefourSA';
+
+    // Netflix
+    if (lower.includes('netflix')) return 'Netflix';
+
+    // Disney
+    if (lower.includes('disney')) return 'Disney+';
+
+    // Other common ones
     if (lower === 'monsternotebook') return 'Monster';
     if (lower === 'mediamarkt') return 'Media Markt';
-    if (lower === 'trendyolmilla') return 'TrendyolMilla';
+    if (lower === 'trendyolmilla' || lower === 'trendyol man') return 'Trendyol';
     if (lower === 'hepsiburada') return 'Hepsiburada';
     if (lower === 'n11') return 'n11';
+    if (lower.includes('boyner')) return 'Boyner';
+    if (lower.includes('beymen')) return 'Beymen';
+    if (lower.includes('teknosa')) return 'Teknosa';
+    if (lower.includes('vatan bilgisayar')) return 'Vatan Bilgisayar';
+    if (lower.includes('şok market') || lower === 'cepte şok') return 'Şok';
+    if (lower.includes('a101')) return 'A101';
+    if (lower.includes('bim')) return 'BİM';
 
     // 3. Title Case with Turkish support
     return cleanName.split(' ').map(word => {
