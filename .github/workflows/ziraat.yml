@@ -1,6 +1,8 @@
 name: 🏦 Ziraat Scraper
 
 on:
+  schedule:
+    - cron: '0 0 * * *' # 00:00 UTC = 03:00 TSI
   workflow_dispatch:
     inputs:
       limit:
