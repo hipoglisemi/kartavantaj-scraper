@@ -546,11 +546,15 @@ async function cleanupBrands(brandInput: any, masterData: MasterData): Promise<{
     if (brands.length === 0) return { brand: '', suggestion: '' };
 
     const forbiddenTerms = [
-        'yapı kredi', 'world', 'worldcard', 'worldpuan', 'puan', 'taksit', 'indirim',
+        'yapı kredi', 'yapı', 'world', 'worldcard', 'worldpuan', 'puan', 'taksit', 'indirim',
         'kampanya', 'fırsat', 'troy', 'visa', 'mastercard', 'express', 'bonus', 'maximum',
         'axess', 'bankkart', 'paraf', 'card', 'kredi kartı', 'nakit', 'chippin', 'adios', 'play',
-        'wings', 'free', 'wings card', 'black', 'mil', 'chip-para', 'puan',
-        ...masterData.banks.map(b => b.toLowerCase())
+        'wings', 'free', 'wings card', 'black', 'mil', 'chip-para', 'puan', 'tl', 'ödeme', 'alisveris', 'alişveriş',
+        'juzdan', 'jüzdan', 'bonusflaş', 'bonusflas', 'ayrıcalık', 'avantaj', 'pos', 'üye işyeri', 'üye iş yerleri',
+        'mobilya', 'sigorta', 'nalburiye', 'kozmetik', 'akaryakıt', 'giyim', 'aksesuar', 'elektronik', 'market', 'gıda',
+        'restoran', 'kafe', 'e-ticaret', 'ulaşım', 'turizm', 'konaklama', 'otomotiv', 'kamu', 'eğitim',
+        ...masterData.banks.map(b => b.toLowerCase()),
+        ...masterData.categories.map(c => c.toLowerCase())
     ];
 
     const matched: string[] = [];
