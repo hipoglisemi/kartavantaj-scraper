@@ -2,7 +2,7 @@ name: 📅 Tarih Tarama
 
 on:
   schedule:
-    - cron: '0 2 * * *' # 02:00 UTC = 05:00 TSI
+    - cron: '0 3 * * *' # 03:00 UTC = 06:00 TSI
   workflow_dispatch: # Manuel çalıştırma izni
 
 jobs:
