@@ -1,0 +1,32 @@
+name: 📅 Tarih Tarama
+
+on:
+  schedule:
+    - cron: '0 2 * * *' # 02:00 UTC = 05:00 TSI
+  workflow_dispatch: # Manuel çalıştırma izni
+
+jobs:
+  audit-dates:
+    name: Kampanya Tarihlerini Denetle ve Düzelt
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install Dependencies
+        run: npm ci
+      
+      - name: 📅 Run Date Audit Script
+        run: npx tsx audit_dates.ts
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}

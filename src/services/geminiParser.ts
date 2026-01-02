@@ -621,13 +621,15 @@ Metadata: ${JSON.stringify(metadata)}
   ADIM 2: Kampanya türünü belirle:
     A) Sabit: "X TL harcaya Y TL"
     B) Yüzde: "Harcamanın %X'i kadar, max Y TL"
-    C) Periyodik/Kademeli: "Her X TL harcamaya Y TL, toplam max Z TL"
+    C) Periyodik/Kademeli (KATLANAN): "Her X TL harcamaya Y TL, toplam max Z TL"
     D) Çoklu Tier: "50k'ya 5k, 100k'ya 12k reward"
   ADIM 3: Python code execution tool'u KULLANARAK hesabı yap:
     - B (Yüzde) için: min_spend = max_discount / (percentage / 100).
-    - C (Periyodik) için: min_spend = (max_discount / per_transaction_reward) * per_transaction_spend.
-    - D (Çoklu Tier) için: max_discount (en yüksek olan) değerini al ve BU DEĞERE ULAŞMAK İÇİN GEREKLİ olan harcamayı (min_spend) al. ASLA düşük tier harcamasıyla yüksek tier rewardını eşleştirme!
-    - 🚨 TOPLAMA KURALI: Eğer "30k harca 500 kazan, toplamda 1.000 kazanabilirsin" diyorsa; 1.000 kazanmak için 2 adet 30k (yani 60k) harcamak gerektiği için min_spend = 60.000 olmalıdır.
+    - C (Periyodik/Katlanan) için: 
+        n = max_discount / per_transaction_reward
+        min_spend = n * per_transaction_spend
+        🚨 ÖRNEK: Her 1500'e 100 bonus, toplam 1200 bonus -> n=12 -> min_spend = 12 * 1500 = 18.000 TL.
+    - D (Çoklu Tier) için: max_discount (en yüksek olan) değerini al ve BU DEĞERE ULAŞMAK İÇİN GEREKLİ olan harcamayı (min_spend) al. 
   ADIM 4: Python çıktısını JSON alanlarına YAZ.
   ADIM 5: Final JSON'u DÖNDÜR.
 🚨 UYARI: Matematik içeren kampanyalarda Python kullanmadan işlem yapmak KESİNLİKLE YASAK!
@@ -652,8 +654,8 @@ ${getBankInstructions(bank, card)}
   "max_discount_currency": "string (Currency code: TRY, USD, EUR, GBP. Default: TRY. ONLY change if reward is in foreign currency)",
   "earning_currency": "string (Currency code: TRY, USD, EUR, GBP. Default: TRY. Match the currency mentioned in earning)",
   "discount_percentage": number (If % based reward, e.g. 15 for %15),
-  "valid_from": "YYYY-MM-DD",
-  "valid_until": "YYYY-MM-DD",
+  "valid_from": "string (🚨 FORMAT: 'YYYY-MM-DD' - örn: '2024-01-01'. Yıl yoksa 2024 veya 2025 al. Ay isimlerini (Ocak, Şubat...) sayıya çevir.)",
+  "valid_until": "string (🚨 FORMAT: 'YYYY-MM-DD'. Metinde 'Şu tarihe kadar', 'Son gün: X' gibi ifadeleri ara. ⚠️ Belirsizse '2026-12-31' yazma, null veya mantıklı bir tarih (ay sonu) yaz.)",
   "eligible_customers": ["array of strings (Simple card names: Axess, Wings, Business, Free etc. IMPORTANT: ALWAYS include 'TROY' if specifically mentioned for these cards, e.g. 'Axess TROY', 'Akbank Kart TROY')"],
   "eligible_cards_detail": {
     "variants": ["array of strings (ONLY if text mentions: Gold, Platinum, Business, Classic, etc.)"],
@@ -735,11 +737,9 @@ ${getBankInstructions(bank, card)}
         - ÖRNEK: "2.000 TL - 500.000 TL arası 3 taksit" → min_spend: 2000 (500000 DEĞİL!)
       - 🚨 KRİTİK KURAL (KATLANAN HARCAMA): Metinde "her X TL harcamaya Y TL, toplam Z TL" veya "X TL ve üzeri her harcamaya..." kalıbı varsa, SAKIN "X" değerini yazma!
         - FORMÜL: min_spend = (Toplam Kazanç / Sefer Başı Kazanç) * Sefer Başı Harcama
-        - ÖRNEK 1: "Her 7.500 TL'ye 750 TL, toplam 3.000 TL" → (3000/750)*7500 = 30.000 TL (7500 DEĞİL!)
-        - ÖRNEK 2: "Her 800 TL'ye 40 TL, toplam 120 TL" → (120/40)*800 = 2.400 TL (800 DEĞİL!)
-        - ÖRNEK 3: "Her 5.000 TL'ye 750 TL, toplam 1.500 TL" → (1500/750)*5000 = 10.000 TL (5000 DEĞİL!)
-        - ÖRNEK 4: "5.000 TL ve üzeri her harcamaya 50 TL, toplam 300 TL" → (300/50)*5000 = 30.000 TL
-        - ⚠️  DİKKAT: "Her X TL'ye Y TL" gördüğünde MUTLAKA formülü uygula, sadece X'i yazma!
+        - 🚨 ÖRNEK 1: "Her 1.500 TL'ye 80 TL, toplam 1.200 TL" → (1200/80)*1500 = 22.500 TL (1500 DEĞİL!)
+        - ÖRNEK 2: "Her 500 TL'ye 300 TL, toplam 1.200 TL" → (1200/300)*500 = 2.000 TL (500 DEĞİL!)
+        - ⚠️  DİKKAT: "Her X TL'ye Y TL" gördüğünde MUTLAKA toplam kazanç için gereken toplam harcamayı hesapla! SADECE X'i yazarsan veri HATALI olur.
       - 🚨 ÇOKLU İŞLEM KAMPANYALARI: "3 farklı günde 750 TL", "4 işlemde 100 TL" gibi kampanyalar:
         - FORMÜL: min_spend = İşlem Başı Tutar * İşlem Sayısı
         - ÖRNEK 1: "3 farklı günde 750 TL ve üzeri" → 750 * 3 = 2.250 TL
@@ -752,6 +752,11 @@ ${getBankInstructions(bank, card)}
       - Örnek (Tek Sefer): "Tek seferde 2.000 TL harcamanıza" → 2000 TL.
       - Örnek (X. Harcama): "İkinci 500 TL harcamaya" → 1000 TL (500+500).
       - ÖNEMLİ: Eğer metinde "Tek seferde en az 500 TL harcama yapmanız gerekir" yazsa BİLE, yukarıdaki hesaplama daha yüksek bir tutar çıkarıyorsa ONU YAZ.
+   - 3- TARİH TESPİTİ (DATE DETECTION):
+     - Metinde "Ocak, Şubat, Mart..." gibi ay isimlerini bul ve sayısal formata çevir.
+     - "31 Aralık 2024" -> 2024-12-31.
+     - "X Ocak - Y Şubat" -> valid_from: 2025-01-X, valid_until: 2025-02-Y.
+     - 🚨 ÖNEMLİ: Eğer yıl belirtilmemişse ve kampanya geleceğe dönükse 2025, geçmişe dönükse ve hala aktifse 2025 veya 2026 yılına göre akıl yürüt.
    - max_discount: Kampanyadan kazanılabilecek EN YÜKSEK (TOPLAM) tutar. Eğer "toplamda 500 TL" diyorsa, bu değer 500 olmalı.
    - 🚨 PARA BİRİMİ TESPİTİ (CURRENCY DETECTION):
      - Varsayılan: TRY (Türk Lirası)
