@@ -66,7 +66,7 @@ async function reprocessCampaigns(limit?: number) {
 
             // Parse with AI
             console.log('   🔍 Parsing with Gemini AI...');
-            const aiData = await parseWithGemini(html, campaign.url);
+            const aiData = await parseWithGemini(html, campaign.url, campaign.bank, campaign.card_name);
 
             // Assign badge based on AI data
             const badge = assignBadge(aiData);

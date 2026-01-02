@@ -182,41 +182,11 @@ export async function extractDirectly(
     let ai_marketing_text = '';
     let conditions: string[] = [];
 
-    // 3. Date & Math Referee Check (Referee Mode - Restricted)
+    // 3. Date & Math Referee Check (DEPRECATED - Moved to Full Surgical Pipeline)
     let ai_suggested_valid_until: string | null = null;
     let ai_suggested_math: any = null;
     let math_method = 'deterministic';
     let needs_manual_math = false;
-
-    // AI Math Referee Trigger Logic
-    const hasMathSignal = /(?:tl|%|puan|chip|bonus|indirim|maxipuan|parafpara|kazan)/i.test(normalizedText);
-    const isMathSuspicious = math.math_flags.length > 0 || math.min_spend === 0 || !math.earning;
-
-    if (hasMathSignal && isMathSuspicious) {
-        try {
-            const { parseMathReferee } = await import('../services/geminiParser');
-            const aiMath = await parseMathReferee(title, cleanText, math);
-            if (aiMath) {
-                ai_suggested_math = aiMath;
-                console.log('   🤖 AI Math Referee suggested logic:', aiMath);
-
-                // OVERRIDE deterministic math with AI (Phase 8 Strategy)
-                if (aiMath.min_spend !== undefined) math.min_spend = aiMath.min_spend;
-                if (aiMath.earning) math.earning = aiMath.earning;
-                if (aiMath.max_discount !== undefined) math.max_discount = aiMath.max_discount;
-                if (aiMath.reward_type) math.reward_type = aiMath.reward_type;
-
-                // Rule 1: Always re-calculate requirement deterministically (AI never overrides it directly)
-                recalculateMathRequirement(math, cleanText);
-
-                if (aiMath.conditions) {
-                    conditions = [...new Set([...conditions, ...aiMath.conditions])];
-                }
-            }
-        } catch (e) {
-            console.warn('   ⚠️ AI Math Referee failed.');
-        }
-    }
 
     // 5. Classification (Deterministic ONLY)
     const localBrands = [...masterBrands];
@@ -243,27 +213,7 @@ export async function extractDirectly(
         (spend_channel === 'UNKNOWN');
 
     if (isUncertainReward) {
-        try {
-            const { parseRewardTypeAI } = await import('../services/geminiParser');
-            const aiReward = await parseRewardTypeAI(title, cleanText);
-            if (aiReward) {
-                if (!math.reward_type || math.reward_type === 'unknown') math.reward_type = aiReward.reward_type;
-                if (!math.perk_text) math.perk_text = aiReward.perk_text;
-                if (!math.coupon_code) math.coupon_code = aiReward.coupon_code;
-
-                if (aiReward.reward_type === 'unknown') needs_manual_reward = true;
-
-                if (aiReward.participation_method) participation_method = aiReward.participation_method;
-                if (aiReward.eligible_cards && aiReward.eligible_cards.length > 0) (math as any).eligible_cards = aiReward.eligible_cards;
-                if (aiReward.ai_marketing_text) ai_marketing_text = aiReward.ai_marketing_text;
-
-                if (aiReward.conditions) {
-                    conditions = [...new Set([...conditions, ...aiReward.conditions])];
-                }
-            }
-        } catch (e) {
-            console.warn('   ⚠️ AI Reward Labeler failed.');
-        }
+        needs_manual_reward = true;
     }
 
     // 7. Final Marketing Enhancement (Sync with V7)
