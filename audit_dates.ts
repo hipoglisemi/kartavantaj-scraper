@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import * as dotenv from 'dotenv';
-import { parseCampaignWithAI } from './src/services/geminiParser';
+import { parseSurgical } from './src/services/geminiParser';
 
 dotenv.config();
 
@@ -36,13 +36,13 @@ async function auditDates() {
         console.log(`🔍 Auditing ID ${c.id}: "${c.title.substring(0, 50)}..."`);
 
         // Use Gemini Surgical mode for dates
-        const result = await parseCampaignWithAI(c.description + '\n' + (c.conditions?.join('\n') || ''), {
-            bank: c.bank,
-            cardName: c.card_name,
-            url: c.url,
-            isSurgical: true, // Assuming your parser supports surgical mode or we simulate it
-            surgicalField: 'dates'
-        });
+        const result = await parseSurgical(
+            c.description + '\n' + (c.conditions?.join('\n') || ''),
+            c,
+            ['valid_from', 'valid_until'],
+            c.url,
+            c.bank
+        );
 
         if (result && result.valid_until && result.valid_until !== c.valid_until) {
             console.log(`   ✨ Correction: ${c.valid_until} -> ${result.valid_until}`);
