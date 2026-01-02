@@ -29,6 +29,18 @@ jobs:
       - name: Install Dependencies
         run: npm ci
       
+      - name: 🧹 Purge Junk Brands
+        run: npx tsx scripts/purge_junk_brands.ts
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+
+      - name: 🧬 Audit Brand Duplicates
+        run: npx tsx scripts/audit_brands_dupes.ts
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+
       - name: 🛡️ Run Master Audit
         run: npx tsx MasterAuditManager.ts
         env:

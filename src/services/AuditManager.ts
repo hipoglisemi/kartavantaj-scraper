@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { parseSurgical } from './geminiParser';
 import { generateSectorSlug } from '../utils/slugify';
+import { lookupIDs } from '../utils/idMapper';
 
 // Types for audit results
 export interface AuditNeeds {
@@ -50,8 +51,8 @@ export class AuditManager {
             needs.cards = true;
         }
 
-        // 🏷️ Brand/Sector Logic: null brand or "Diğer" category
-        if (!c.brand || c.category === 'Diğer' || !c.category) {
+        // 🏷️ Brand/Sector Logic: null brand, "Diğer" category, or MISSING IDs
+        if (!c.brand || c.category === 'Diğer' || !c.category || !c.brand_id || !c.sector_id) {
             needs.brand = true;
         }
 
@@ -104,6 +105,12 @@ export class AuditManager {
                     }
                 }
             });
+
+            // CRITICAL: Lookup and assign IDs for consistency
+            const finalBrand = updates.brand || c.brand;
+            const finalSectorSlug = updates.sector_slug || c.sector_slug;
+            const ids = await lookupIDs(c.bank, c.card_name, finalBrand, finalSectorSlug);
+            Object.assign(updates, ids);
 
             const { error } = await this.supabase
                 .from('campaigns')
