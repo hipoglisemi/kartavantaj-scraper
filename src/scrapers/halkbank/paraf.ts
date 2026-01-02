@@ -127,7 +127,7 @@ async function runParafScraper() {
                     }
 
                     if (!image) {
-                        const imgs = document.querySelectorAll('img');
+                        const imgs = Array.from(document.querySelectorAll('img'));
                         for (const img of imgs) {
                             const src = img.getAttribute('src') || img.getAttribute('data-src');
                             if (src && !src.includes('logo') && !src.includes('icon') && !src.includes('.svg')) {
@@ -202,17 +202,21 @@ async function runParafScraper() {
                     }
 
                     // Lookup IDs
-                    const idsResult = await lookupIDs(campaignData);
+                    const idsResult = await lookupIDs(
+                        campaignData.bank,
+                        campaignData.card_name,
+                        campaignData.brand,
+                        campaignData.sector_slug
+                    );
                     Object.assign(campaignData, idsResult);
 
                     // Assign badge
-                    const badgeResult = await assignBadge(campaignData);
-                    campaignData.badge = badgeResult.badge;
+                    const badgeResult = assignBadge(campaignData);
+                    campaignData.badge_text = badgeResult.text;
+                    campaignData.badge_color = badgeResult.color;
 
                     // Mark generic brand
-                    const brandResult = await markGenericBrand(campaignData);
-                    campaignData.brand = brandResult.brand;
-                    campaignData.is_generic = brandResult.is_generic;
+                    markGenericBrand(campaignData);
 
                     // Upsert to database
                     const { error } = await supabase.from('campaigns').upsert(campaignData, { onConflict: 'reference_url' });

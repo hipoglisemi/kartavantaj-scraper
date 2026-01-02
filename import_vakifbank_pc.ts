@@ -110,6 +110,8 @@ async function importCampaigns() {
                 conditions: validatedData.conditions,
                 participation_method: validatedData.participation_method,
 
+                eligible_customers: validatedData.eligible_customers,
+                brand: validatedData.brand,
                 is_active: true,
                 slug: validatedData.slug
             };

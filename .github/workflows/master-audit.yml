@@ -1,13 +1,18 @@
-name: 🏷️ Marka & Sektör Tarama
+name: 🛡️ Master Self-Healing Audit
 
 on:
   schedule:
     - cron: '0 3 * * *' # 03:00 UTC = 06:00 TSI
   workflow_dispatch:
+    inputs:
+      limit:
+        description: 'Number of campaigns to audit'
+        required: false
+        default: '100'
 
 jobs:
-  audit-brands-sectors:
-    name: Marka ve Sektörleri Denetle ve Düzelt
+  master-audit:
+    name: Veritabanı Otomatik İyileştirme (Master Audit)
     runs-on: ubuntu-latest
     timeout-minutes: 60
     
@@ -24,8 +29,8 @@ jobs:
       - name: Install Dependencies
         run: npm ci
       
-      - name: 🏷️ Run Brand & Sector Audit Script
-        run: npx tsx mass_audit_and_fix.ts
+      - name: 🛡️ Run Master Audit
+        run: npx tsx MasterAuditManager.ts
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
