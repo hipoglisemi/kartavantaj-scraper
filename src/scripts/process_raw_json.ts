@@ -45,7 +45,7 @@ async function main() {
 
     // Assumptions: rawData items have { url, bank, card, title, detail_html (or description/html) }
     const sample = rawData[0];
-    const bankName = sample.bank || 'Unknown Bank';
+    const bankName = sample.bank || sample.provider || 'Unknown Bank';
     const cardName = sample.card || sample.card_name || 'Unknown Card';
 
     console.log(`💳 Bank: ${bankName}, Card: ${cardName}`);
