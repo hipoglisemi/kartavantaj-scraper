@@ -44,7 +44,7 @@ jobs:
           GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
       
       - name: Import Vakıfbank Campaigns
-        run: npx tsx import_vakifbank_pc.ts
+        run: npx tsx src/scripts/process_raw_json.ts vakifbank_kampanyalar_raw.json
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
