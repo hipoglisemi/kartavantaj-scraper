@@ -21,7 +21,7 @@ from selenium.webdriver.support import expected_conditions as EC
 BASE_URL = "https://www.maximum.com.tr"
 CAMPAIGNS_URL = "https://www.maximum.com.tr/kampanyalar"
 OUTPUT_FILE = "maximum_kampanyalar_raw.json"
-IMPORT_SOURCE_NAME = "Maximum Kart"
+IMPORT_SOURCE_NAME = "İş Bankası"
 
 # --- SSL FIX ---
 try:
