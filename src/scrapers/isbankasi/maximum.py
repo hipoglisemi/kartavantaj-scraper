@@ -325,10 +325,18 @@ def main():
                     full_text = temizle_metin(d_soup.get_text())
                     conditions = [t for t in full_text.split('\n') if len(t)>20]
 
-                # 🔥 GÖRSEL İÇİN V7 TAKTİĞİ: ID SELECTOR
+                # 🔥 GÖRSEL İÇİN V7 TAKTİĞİ: OG TAG + ID SELECTOR
                 image = None
-                img_el = d_soup.select_one("img[id$='CampaignImage']")
-                if img_el: image = urljoin(BASE_URL, img_el['src'])
+                
+                # 1. Öncelik: OG Linki (Genelde en temizi ve hotlink-proof olanı)
+                og_img = d_soup.select_one("meta[property='og:image']")
+                if og_img and og_img.get('content'):
+                    image = og_img['content']
+
+                # 2. Öncelik: Sayfa içi Element
+                if not image:
+                    img_el = d_soup.select_one("img[id$='CampaignImage']")
+                    if img_el: image = urljoin(BASE_URL, img_el['src'])
 
                 cat = get_category(title, full_text)
                 merchant = extract_merchant(title)
