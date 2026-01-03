@@ -1,20 +1,26 @@
 import os
-import sys
 import ssl
 import time
 import json
 import re
 import random
+import argparse
 from datetime import datetime
 from urllib.parse import urljoin
 from bs4 import BeautifulSoup
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
 # --- AYARLAR ---
 BASE_URL = "https://www.maximum.com.tr"
 CAMPAIGNS_URL = "https://www.maximum.com.tr/kampanyalar"
 OUTPUT_FILE = "maximum_kampanyalar_raw.json"
 IMPORT_SOURCE_NAME = "Maximum Kart"
-CAMPAIGN_LIMIT = 1000 
 
 # --- SSL FIX ---
 try:
