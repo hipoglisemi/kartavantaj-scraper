@@ -219,11 +219,16 @@ def extract_participation(text):
 
 # --- ANA AKIŞ ---
 def main():
-    print(f"🚀 Maximum Kart - HIBRIT MOD (Görsel v7 + Logic v8)...")
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--limit", type=int, default=1000, help="Scraping limit")
+    args = parser.parse_args()
+    
+    limit = args.limit
+    print(f"🚀 Maximum Kart - Standard Selenium Mode (Limit: {limit})...")
     
     driver = None
     try:
-        options = uc.ChromeOptions()
+        options = Options()
         options.add_argument("--headless=new")
         options.add_argument("--no-first-run")
         options.add_argument("--password-store=basic")
@@ -233,7 +238,8 @@ def main():
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--disable-gpu")
         
-        driver = uc.Chrome(options=options, use_subprocess=True)
+        service = Service(ChromeDriverManager().install())
+        driver = webdriver.Chrome(service=service, options=options)
         driver.set_page_load_timeout(60)
         
         driver.get(CAMPAIGNS_URL)
@@ -265,7 +271,7 @@ def main():
         count = 0
         
         for i, url in enumerate(unique_links, 1):
-            if count >= CAMPAIGN_LIMIT: break
+            if count >= limit: break
             
             try:
                 # Retry Logic (Bot Koruması İçin)
