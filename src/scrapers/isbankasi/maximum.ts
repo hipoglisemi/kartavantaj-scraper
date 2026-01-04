@@ -77,13 +77,6 @@ async function runMaximumScraperTS() {
     await page.setViewport({ width: 1400, height: 900 });
 
     // --- STEALTH HEADERS ---
-    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
-    await page.setExtraHTTPHeaders({
-        'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
-        'Cache-Control': 'no-cache',
-        'Pragma': 'no-cache'
-    });
-
     // --- STEALTH HEADERS ---
     const userAgents = [
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -94,13 +87,14 @@ async function runMaximumScraperTS() {
 
     await page.setUserAgent(randomUA);
     await page.setExtraHTTPHeaders({
-        'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
+        'Accept-Language': 'tr-TR,tr;q=0.9',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-        'Cache-Control': 'no-cache',
-        'Pragma': 'no-cache',
-        'Sec-Ch-Ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
-        'Sec-Ch-Ua-Mobile': '?0',
-        'Sec-Ch-Ua-Platform': '"Windows"'
+        'Connection': 'keep-alive',
+        'Upgrade-Insecure-Requests': '1',
+        'Sec-Fetch-Dest': 'document',
+        'Sec-Fetch-Mode': 'navigate',
+        'Sec-Fetch-Site': 'none',
+        'Sec-Fetch-User': '?1'
     });
 
     await page.evaluateOnNewDocument(() => {
@@ -115,22 +109,26 @@ async function runMaximumScraperTS() {
 
         let listLoaded = false;
         let listRetries = 0;
-        while (!listLoaded && listRetries < 5) {
+        const maxListRetries = 10;
+
+        while (!listLoaded && listRetries < maxListRetries) {
             try {
-                await page.goto(CAMPAIGNS_URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
+                // Using networkidle2 for more stability, and a shorter timeout per attempt to fail fast and retry
+                await page.goto(CAMPAIGNS_URL, { waitUntil: 'networkidle2', timeout: 45000 });
                 listLoaded = true;
             } catch (e: any) {
                 listRetries++;
-                console.log(`      ⚠️  List load attempt ${listRetries} failed: ${e.message}. Retrying in 5s...`);
-                await sleep(5000);
+                const backoff = Math.min(listRetries * 5000, 30000);
+                console.log(`      ⚠️  List load attempt ${listRetries}/${maxListRetries} failed: ${e.message}. Retrying in ${backoff / 1000}s...`);
+                await sleep(backoff);
                 // Rotate UA on retry
                 await page.setUserAgent(userAgents[listRetries % userAgents.length]);
             }
         }
 
-        if (!listLoaded) throw new Error('Could not load campaign list after 5 attempts');
+        if (!listLoaded) throw new Error(`Could not load campaign list after ${maxListRetries} attempts`);
 
-        await sleep(5000); // 5s wait for JS execution
+        await sleep(3000); // Small wait after networkidle2 
 
         // --- INFINITE SCROLL LOGIC ---
         let hasMore = true;
@@ -205,22 +203,24 @@ async function runMaximumScraperTS() {
             try {
                 await sleep(3000 + Math.random() * 2000); // Increased delay between campaigns (3-5s)
 
-                // Retry logic for connection resets
-                let retryCount = 0;
+                // Improved retry logic for detail page
+                let detailRetries = 0;
                 let success = false;
-                while (retryCount < 3 && !success) {
+                while (detailRetries < 5 && !success) {
                     try {
-                        await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
+                        await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
                         success = true;
                     } catch (e: any) {
-                        retryCount++;
-                        console.error(`      ⚠️ Retry ${retryCount} for ${url}: ${e.message}`);
-                        await sleep(5000 * retryCount);
+                        detailRetries++;
+                        const backoff = 3000 * detailRetries;
+                        console.error(`      ⚠️ Detail load attempt ${detailRetries}/5 for ${url}: ${e.message}. Retrying in ${backoff / 1000}s...`);
+                        await sleep(backoff);
+                        await page.setUserAgent(userAgents[detailRetries % userAgents.length]);
                     }
                 }
 
                 if (!success) {
-                    console.error(`      ❌ Failed to load ${url} after 3 retries.`);
+                    console.error(`      ❌ Failed to load ${url} after 5 retries.`);
                     continue;
                 }
 
