@@ -179,12 +179,34 @@ async function runMaximumScraperTS() {
         const $ = cheerio.load(content);
         let allLinks: string[] = [];
 
+        // Category keywords to exclude
+        const categoryKeywords = [
+            'kampanyalari', 'kampanyalar/', 'kategoriler',
+            'beyaz-esya', 'mobilya', 'elektronik', 'giyim',
+            'market', 'turizm', 'seyahat', 'online-alisveris',
+            'akaryakit', 'egitim', 'otomotiv', 'yeme-icme',
+            'arac-kiralama', 'bankamatik'
+        ];
+
         $('a').each((_, el) => {
             const href = $(el).attr('href');
-            if (href && (href.includes('/kampanyalar/') || href.includes('kampanyalar/')) && !href.includes('arsiv') && href.length > 20) {
-                let fullUrl = href.startsWith('http') ? href : `${BASE_URL}${href.startsWith('/') ? '' : '/'}${href}`;
-                if (!allLinks.includes(fullUrl)) {
-                    allLinks.push(fullUrl);
+            if (href && (href.includes('/kampanyalar/') || href.includes('kampanyalar/')) && !href.includes('arsiv')) {
+                // Skip if it's a category page
+                const isCategoryPage = categoryKeywords.some(keyword =>
+                    href.toLowerCase().includes(keyword.toLowerCase())
+                );
+
+                // Only include if it's a real campaign (has ID-like structure, longer URL)
+                // Real campaigns have long alphanumeric IDs, categories are short descriptive names
+                const urlParts = href.split('/');
+                const lastPart = urlParts[urlParts.length - 1] || urlParts[urlParts.length - 2];
+                const looksLikeCampaignId = lastPart.length > 40 || /^[A-Z0-9]{10,}$/i.test(lastPart);
+
+                if (!isCategoryPage && looksLikeCampaignId && href.length > 20) {
+                    let fullUrl = href.startsWith('http') ? href : `${BASE_URL}${href.startsWith('/') ? '' : '/'}${href}`;
+                    if (!allLinks.includes(fullUrl)) {
+                        allLinks.push(fullUrl);
+                    }
                 }
             }
         });
