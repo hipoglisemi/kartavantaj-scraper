@@ -119,9 +119,46 @@ async function runChippinScraper() {
 
             console.log(`\n   🔍 Processing [${++processedCount}/${campaigns.length}]: ${title}`);
 
+            // VISIT DETAIL PAGE to get "Nasıl Katılırım?" section
+            console.log(`   📄 Visiting detail page: ${referenceUrl}`);
+            let participationInfo = '';
+            try {
+                await page.goto(referenceUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+                await new Promise(r => setTimeout(r, 2000));
+
+                // Extract "Nasıl Katılırım?" section
+                participationInfo = await page.evaluate(() => {
+                    // Look for the participation section
+                    const headings = Array.from(document.querySelectorAll('h1, h2, h3, h4, h5, h6'));
+                    const participationHeading = headings.find(h =>
+                        h.textContent?.includes('Nasıl Katılırım') ||
+                        h.textContent?.includes('Nasıl Katılır')
+                    );
+
+                    if (participationHeading) {
+                        // Get next sibling elements until next heading
+                        let content = '';
+                        let element = participationHeading.nextElementSibling;
+                        while (element && !['H1', 'H2', 'H3', 'H4', 'H5', 'H6'].includes(element.tagName)) {
+                            content += element.textContent + '\n';
+                            element = element.nextElementSibling;
+                        }
+                        return content.trim();
+                    }
+                    return '';
+                });
+
+                if (participationInfo) {
+                    console.log(`   ✅ Found participation info (${participationInfo.length} chars)`);
+                }
+            } catch (e: any) {
+                console.warn(`   ⚠️ Could not load detail page: ${e.message}`);
+            }
+
             const campaignHtml = `
                 <h1>${title}</h1>
                 <div class="description">${descriptionOriginal}</div>
+                ${participationInfo ? `<div class="participation"><h3>Nasıl Katılırım?</h3>${participationInfo}</div>` : ''}
                 <img src="${imageUrl}" />
             `;
 
