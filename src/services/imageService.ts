@@ -29,12 +29,14 @@ export async function downloadImageDirectly(imageUrl: string, title: string, ban
         console.log(`   🖼️  Downloading image: ${imageUrl}`);
 
         // 2. Download image with proper headers
+        const referer = bankName === 'chippin' ? 'https://www.chippin.com/' : 'https://www.maximum.com.tr/';
+
         const response = await fetch(imageUrl, {
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                 'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
                 'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
-                'Referer': 'https://www.chippin.com/',
+                'Referer': referer,
             }
         });
 
