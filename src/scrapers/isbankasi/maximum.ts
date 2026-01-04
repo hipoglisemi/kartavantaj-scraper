@@ -325,14 +325,9 @@ async function runMaximumScraperTS() {
                     }
                 }
 
-                // ID and Card Normalization (Before AI)
-                const cards = extractCardsPrecise(fullText);
-                let cardName = 'Maximum';
-                if (cards.length > 0) {
-                    if (cards.includes('Maximum Kart')) cardName = 'Maximum';
-                    else cardName = cards[0];
-                }
-                const normalizedCardNameVal = await normalizeCardName(bankName, cardName);
+                // ID and Card Normalization
+                // We always want these to be under 'Maximum' brand for the site filter
+                const normalizedCardNameVal = 'Maximum';
 
                 // 🔥 AI PARSING (Gemini Engine)
                 const campaignHtml = `
@@ -350,7 +345,7 @@ async function runMaximumScraperTS() {
                     campaignData.image = image;
                     campaignData.image_url = image;
                     campaignData.bank = bankName;
-                    campaignData.card_name = normalizedCardNameVal;
+                    campaignData.card_name = normalizedCardNameVal; // Always 'Maximum' for site filter
                     campaignData.url = url;
                     campaignData.reference_url = url;
                     campaignData.is_active = true;
@@ -360,17 +355,19 @@ async function runMaximumScraperTS() {
                     campaignData.publish_status = 'processing';
                     campaignData.publish_updated_at = new Date().toISOString();
 
-                    // Lookup IDs for normalized bank/card (which we already have in loop but to be sure)
+                    // Lookup IDs for normalized bank/card
                     const ids = await lookupIDs(
                         campaignData.bank,
                         campaignData.card_name,
                         campaignData.brand,
                         campaignData.sector_slug
                     );
-                    if (ids.brand_id) campaignData.brand_id = ids.brand_id;
-                    if (ids.sector_id) campaignData.sector_id = ids.sector_id;
+
+                    // Force specific IDs for İş Bankası Maximum to ensure they appear in the right filter
                     campaignData.bank_id = ids.bank_id || 'is-bankasi';
                     campaignData.card_id = ids.card_id || 'maximum';
+                    if (ids.brand_id) campaignData.brand_id = ids.brand_id;
+                    if (ids.sector_id) campaignData.sector_id = ids.sector_id;
 
                     // Badges
                     const badge = assignBadge(campaignData);
