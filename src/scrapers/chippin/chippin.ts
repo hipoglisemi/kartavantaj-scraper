@@ -115,7 +115,7 @@ async function runChippinScraper() {
             imageUrl = await processCampaignImage(imageUrl, title, page, 'chippin');
 
             const descriptionOriginal = item.webDescription;
-            const referenceUrl = `${CAMPAIGNS_URL}?id=${item.id}`;
+            const referenceUrl = `${CAMPAIGNS_URL}/${item.id}`; // Correct format: /kampanyalar/{id}
 
             console.log(`\n   🔍 Processing [${++processedCount}/${campaigns.length}]: ${title}`);
 

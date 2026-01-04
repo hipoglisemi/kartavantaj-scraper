@@ -198,6 +198,16 @@ function getBankInstructions(bankName: string, cardName: string): string {
 - PARTICIPATION:
     - Primary: "Maximum Mobil" or "İşCep". Look for "Katıl" button.
     - SMS: Usually 4402.
+`,
+        'chippin': `
+🚨 CHIPPIN SPECIFIC RULES:
+- PARTICIPATION: 
+    - Primary method is "Chippin uygulaması" (Chippin app).
+    - Look for phrases like "Chippin uygulamasından kampanyaya katılın", "Chippin'den katıl", "Kampanyaya katılım için Chippin uygulamasını kullanın".
+    - ALWAYS extract participation_method if campaign text mentions "katıl", "katılım", "uygulama", "Chippin'den".
+    - Format: "Chippin uygulamasından kampanyaya katılın" or similar clear instruction.
+- REWARD: Uses "ChipPuan" or "Worldpuan". 1 ChipPuan = 1 TL, 1 Worldpuan = 1 TL.
+- ELIGIBLE CARDS: Usually just "Chippin" (the card itself).
 `
     };
 
