@@ -111,8 +111,8 @@ async function runChippinScraper() {
             let imageUrl = item.webBanner.startsWith('http') ? item.webBanner : `${BASE_URL}${item.webBanner}`;
 
             // PROXY IMAGE: Download from Chippin -> Upload to Supabase
-            // This bypasses WAF issues on the frontend
-            imageUrl = await processCampaignImage(imageUrl, title, 'chippin');
+            // We pass 'page' to reuse the Puppeteer session for WAF bypass
+            imageUrl = await processCampaignImage(imageUrl, title, page, 'chippin');
 
             const descriptionOriginal = item.webDescription;
             const referenceUrl = `${CAMPAIGNS_URL}?id=${item.id}`;
