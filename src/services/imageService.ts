@@ -13,6 +13,69 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 const BUCKET_NAME = 'campaign-images';
 
 /**
+ * Downloads an image directly via HTTP and uploads to Supabase.
+ * This approach works for publicly accessible images without WAF protection.
+ */
+export async function downloadImageDirectly(imageUrl: string, title: string, bankName: string = 'chippin'): Promise<string> {
+    if (!imageUrl) return '';
+
+    // 1. Generate clean filename
+    const slug = generateCampaignSlug(title).substring(0, 50);
+    const timestamp = Date.now();
+    const extension = imageUrl.split('.').pop()?.split('?')[0] || 'jpg';
+    const filename = `${bankName}/${slug}-${timestamp}.${extension}`;
+
+    try {
+        console.log(`   🖼️  Downloading image: ${imageUrl}`);
+
+        // 2. Download image with proper headers
+        const response = await fetch(imageUrl, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+                'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
+                'Referer': 'https://www.chippin.com/',
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const arrayBuffer = await response.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+        const contentType = response.headers.get('content-type') || 'image/jpeg';
+
+        console.log(`   📦 Downloaded ${buffer.length} bytes (${contentType})`);
+
+        // 3. Upload to Supabase Storage
+        const { error } = await supabase
+            .storage
+            .from(BUCKET_NAME)
+            .upload(filename, buffer, {
+                contentType: contentType,
+                upsert: true
+            });
+
+        if (error) throw error;
+
+        // 4. Get Public URL
+        const { data: publicURL } = supabase
+            .storage
+            .from(BUCKET_NAME)
+            .getPublicUrl(filename);
+
+        console.log(`   ✅ Image uploaded: ${publicURL.publicUrl}`);
+        return publicURL.publicUrl;
+
+    } catch (error: any) {
+        console.error(`   ⚠️  Direct download failed: ${error.message}`);
+        console.log(`   ↩️  Falling back to original URL.`);
+        return imageUrl;
+    }
+}
+
+/**
  * Downloads an image using the Puppeteer page context (to bypass WAF) and uploads to Supabase.
  */
 export async function processCampaignImage(imageUrl: string, title: string, page: Page, bankName: string = 'chippin'): Promise<string> {

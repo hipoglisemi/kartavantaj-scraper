@@ -15,7 +15,7 @@ import { syncEarningAndDiscount } from '../../utils/dataFixer';
 import { lookupIDs } from '../../utils/idMapper';
 import { assignBadge } from '../../services/badgeAssigner';
 import { markGenericBrand } from '../../utils/genericDetector';
-import { processCampaignImage } from '../../services/imageService';
+import { downloadImageDirectly } from '../../services/imageService';
 
 dotenv.config();
 
@@ -111,8 +111,8 @@ async function runChippinScraper() {
             let imageUrl = item.webBanner.startsWith('http') ? item.webBanner : `${BASE_URL}${item.webBanner}`;
 
             // PROXY IMAGE: Download from Chippin -> Upload to Supabase
-            // We pass 'page' to reuse the Puppeteer session for WAF bypass
-            imageUrl = await processCampaignImage(imageUrl, title, page, 'chippin');
+            // Use direct HTTP download since Chippin images are publicly accessible
+            imageUrl = await downloadImageDirectly(imageUrl, title, 'chippin');
 
             const descriptionOriginal = item.webDescription;
             const referenceUrl = `${CAMPAIGNS_URL}/${item.id}`; // Correct format: /kampanyalar/{id}
