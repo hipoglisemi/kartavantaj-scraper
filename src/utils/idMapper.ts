@@ -33,7 +33,7 @@ export async function lookupIDs(
             .maybeSingle();
 
         if (bankData) {
-            ids.bank_id = bankData.id; // USE INTEGER ID, NOT SLUG
+            ids.bank_id = bankData.slug; // USE SLUG, NOT INTEGER ID
 
             // Find card_id within this bank's cards
             if (cardName) {
@@ -45,7 +45,7 @@ export async function lookupIDs(
                     .maybeSingle();
 
                 if (cardData) {
-                    ids.card_id = cardData.id; // USE INTEGER ID, NOT SLUG
+                    ids.card_id = cardData.slug; // USE SLUG, NOT INTEGER ID
                 }
             }
         } else {
