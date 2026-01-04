@@ -110,7 +110,12 @@ async function runDenizBonusScraper() {
                     $detail('img').first().attr('src');
 
                 if (imageUrl && !imageUrl.startsWith('http')) {
-                    imageUrl = `${BASE_URL}${imageUrl}`;
+                    // Normalize relative path: remove leading dots and ensure single leading slash
+                    const cleanPath = imageUrl.replace(/^(\.+)*/, '').replace(/^\/+/, '/');
+                    imageUrl = `${BASE_URL}${cleanPath}`;
+
+                    // Final cleanup for common malformations
+                    imageUrl = imageUrl.replace('com//', 'com/').replace('com../', 'com/');
                 }
 
                 // AI Parsing
