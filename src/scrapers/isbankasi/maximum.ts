@@ -182,6 +182,7 @@ async function runMaximumScraperTS() {
         // Category keywords to exclude (pages that end with these are category lists)
         const categorySuffixes = [
             '-kampanyalari',
+            '-kampanyalar',
             'premium-kampanyalar',
             'tum-kampanyalar',
         ];
