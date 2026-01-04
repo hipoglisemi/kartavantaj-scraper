@@ -27,24 +27,39 @@ export async function processCampaignImage(imageUrl: string, title: string, page
     try {
         console.log(`   🖼️  Proxying image: ${imageUrl}`);
 
-        // STRATEGY: Direct Download via page.goto
-        // Since we're already on the detail page with authenticated session,
-        // we can navigate directly to the image URL and download it.
+        // STRATEGY: High-Quality Element Screenshot
+        // Direct download is blocked by WAF, so we screenshot the rendered element
+        // but with maximum quality settings (PNG format).
 
-        console.log(`   📥 Downloading image via page.goto...`);
-        const response = await page.goto(imageUrl, { waitUntil: 'networkidle0', timeout: 30000 });
+        const filenamePart = imageUrl.split('/').pop()?.split('?')[0];
+        if (!filenamePart) throw new Error('Could not extract filename from URL');
 
-        if (!response || !response.ok()) {
-            throw new Error(`Failed to load image: ${response?.status()}`);
+        console.log(`   📸 Finding image element: ${filenamePart}`);
+        let element = await page.$(`img[src*="${filenamePart}"]`);
+
+        if (!element) {
+            console.log('      ⚠️ Image not found, scrolling...');
+            await page.evaluate(async () => {
+                const distance = 100;
+                const delay = 100;
+                while (document.scrollingElement && document.scrollingElement.scrollTop + window.innerHeight < document.scrollingElement.scrollHeight) {
+                    document.scrollingElement.scrollBy(0, distance);
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                }
+            });
+            element = await page.$(`img[src*="${filenamePart}"]`);
         }
 
-        const buffer = await response.buffer();
-        const contentType = response.headers()['content-type'] || 'image/jpeg';
-
-        // Validate it's actually an image (not HTML error page)
-        if (contentType.includes('html') || buffer.toString('utf8', 0, 50).includes('<html')) {
-            throw new Error('Downloaded content is HTML (WAF blocked). Falling back to screenshot.');
+        if (!element) {
+            throw new Error(`Image element '${filenamePart}' not found`);
         }
+
+        // High-quality screenshot: PNG format for lossless quality
+        const buffer = await element.screenshot({
+            type: 'png',
+            omitBackground: false
+        });
+        const contentType = 'image/png';
 
         // 3. Upload to Supabase Storage
         const { error } = await supabase
