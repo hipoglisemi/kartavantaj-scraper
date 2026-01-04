@@ -40,23 +40,32 @@ async function runMaximumScraperTS() {
     const limitArg = process.argv.find(arg => arg.startsWith('--limit='));
     const limit = limitArg ? parseInt(limitArg.split('=')[1]) : 1000;
 
-    // Connect to existing Chrome instance running in debug mode
-    // Start Chrome with: /Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --remote-debugging-port=9222 --user-data-dir="/tmp/chrome_dev_test"
+    // Connect to existing Chrome instance running in debug mode (Local only)
     let browser;
-    try {
-        console.log('   🔌 Connecting to Chrome debug instance on port 9222...');
-        browser = await puppeteer.connect({
-            browserURL: 'http://localhost:9222',
-            defaultViewport: null
-        });
-        console.log('   ✅ Connected to existing Chrome instance');
-    } catch (error) {
-        console.log('   ⚠️  Could not connect to debug Chrome, launching new instance...');
+    const isCI = process.env.GITHUB_ACTIONS === 'true' || process.env.CI === 'true';
+
+    if (!isCI) {
+        try {
+            console.log('   🔌 Connecting to Chrome debug instance on port 9222...');
+            browser = await puppeteer.connect({
+                browserURL: 'http://localhost:9222',
+                defaultViewport: null
+            });
+            console.log('   ✅ Connected to existing Chrome instance');
+        } catch (error) {
+            console.log('   ⚠️  Could not connect to debug Chrome, launching new instance...');
+        }
+    }
+
+    if (!browser) {
+        console.log(`   🚀 Launching new browser instance (Headless: ${isCI})...`);
         browser = await puppeteer.launch({
-            headless: true,
+            headless: isCI,
             args: [
                 '--no-sandbox',
                 '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage',
+                '--disable-gpu',
                 '--window-position=-10000,0',
                 '--disable-blink-features=AutomationControlled'
             ]
@@ -67,7 +76,7 @@ async function runMaximumScraperTS() {
     // Simulate typical desktop view
     await page.setViewport({ width: 1400, height: 900 });
 
-    // --- STEALTH HEADERS (Simpler is often better for bypassing basic WAFs) ---
+    // --- STEALTH HEADERS ---
     await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
     await page.setExtraHTTPHeaders({
         'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
@@ -97,23 +106,30 @@ async function runMaximumScraperTS() {
                     const loadMore = btns.find(b => b.innerText.includes('Daha Fazla'));
                     if (loadMore) {
                         loadMore.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        return loadMore; // signal existence
+                        return true;
                     }
-                    return null;
+                    return false;
                 });
 
                 if (btnFound) {
                     await sleep(1000);
-                    await page.click('button::-p-text(Daha Fazla)'); // Puppeteer pseudo-selector or use eval click
-                    // Re-implement robust click as evaluate might fail with stealth contexts sometimes
-                    await page.evaluate(() => {
+                    // Re-implement robust click
+                    const clicked = await page.evaluate(() => {
                         const btns = Array.from(document.querySelectorAll('button'));
                         const loadMore = btns.find(b => b.innerText.includes('Daha Fazla'));
-                        if (loadMore) (loadMore as HTMLElement).click();
+                        if (loadMore) {
+                            (loadMore as HTMLElement).click();
+                            return true;
+                        }
+                        return false;
                     });
 
-                    process.stdout.write('.');
-                    await sleep(2500); // 2.5s wait as per Python script
+                    if (clicked) {
+                        process.stdout.write('.');
+                        await sleep(3000); // Wait for content load
+                    } else {
+                        hasMore = false;
+                    }
                 } else {
                     console.log('\n      ✅ All list loaded.');
                     hasMore = false;
@@ -130,8 +146,11 @@ async function runMaximumScraperTS() {
 
         $('a').each((_, el) => {
             const href = $(el).attr('href');
-            if (href && href.includes('/kampanyalar/') && !href.includes('arsiv') && href.length > 25) {
-                allLinks.push(href.startsWith('http') ? href : `${BASE_URL}${href}`); // Handle relative URLs
+            if (href && (href.includes('/kampanyalar/') || href.includes('kampanyalar/')) && !href.includes('arsiv') && href.length > 20) {
+                let fullUrl = href.startsWith('http') ? href : `${BASE_URL}${href.startsWith('/') ? '' : '/'}${href}`;
+                if (!allLinks.includes(fullUrl)) {
+                    allLinks.push(fullUrl);
+                }
             }
         });
 
@@ -266,12 +285,15 @@ async function runMaximumScraperTS() {
                 Object.assign(campaignData, ids);
 
                 // DB Upsert
+                console.log(`      💾 Upserting: ${title.substring(0, 30)}... [bank_id: ${(campaignData as any).bank_id}, card_id: ${(campaignData as any).card_id}]`);
                 const { error } = await supabase
                     .from('campaigns')
                     .upsert(campaignData, { onConflict: 'reference_url' });
 
                 if (error) {
-                    console.error(`      ❌ DB Error: ${error.message}`);
+                    console.error(`      ❌ DB Error for "${title}": ${error.message}`);
+                } else {
+                    console.log(`      ✅ Successfully saved/updated.`);
                 }
 
             } catch (e: any) {
