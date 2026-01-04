@@ -1,0 +1,35 @@
+name: 🍟 Chippin Scraper
+
+on:
+  schedule:
+    - cron: '30 0 * * *' # 00:30 UTC = 03:30 TSI
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: 'Limit campaigns (0 for all)'
+        required: false
+        default: '0'
+
+jobs:
+  scrape-chippin:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Install Dependencies
+        run: npm ci
+      
+      - name: Run Chippin Scraper
+        run: npx tsx src/scrapers/chippin/chippin.ts
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}

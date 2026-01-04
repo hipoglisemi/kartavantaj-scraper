@@ -678,6 +678,7 @@ ${getBankInstructions(bank, card)}
 {
   "title": "string (catchy campaign title, clear and concise)",
   "description": "string (Short, exciting, marketing-style summary. Max 2 sentences. Use 1-2 relevant emojis. Language: Turkish. Do NOT include boring legal terms.)",
+  "ai_marketing_text": "string (Ultra-short, punchy summary for card view. Max 10 words. Focus on the main benefit. E.g. '500 TL Chips Fırsatı' or '%50 İndirim ve Taksit')",
   "conditions": ["string (List of important campaign terms, limits, and exclusions. Extract key rules as separate items.)"],
   "category": "string (MUST be one of: ${sortedCategories})",
   "discount": "string (Use ONLY for installment info, e.g. '9 Taksit', '+3 Taksit'. FORMAT: '{Number} Taksit'. NEVER mention fees/interest.)",

@@ -1,0 +1,195 @@
+
+/**
+ * @file chippin.ts
+ * @description Scraper for Chippin campaigns using Puppeteer to extract Next.js hydration data.
+ */
+
+import puppeteer from 'puppeteer-extra';
+import StealthPlugin from 'puppeteer-extra-plugin-stealth';
+import { createClient } from '@supabase/supabase-js';
+import * as dotenv from 'dotenv';
+import { parseWithGemini } from '../../services/geminiParser';
+import { generateSectorSlug } from '../../utils/slugify';
+import { normalizeBankName, normalizeCardName } from '../../utils/bankMapper';
+import { syncEarningAndDiscount } from '../../utils/dataFixer';
+import { lookupIDs } from '../../utils/idMapper';
+import { assignBadge } from '../../services/badgeAssigner';
+import { markGenericBrand } from '../../utils/genericDetector';
+
+dotenv.config();
+
+// Enable stealth for production run
+puppeteer.use(StealthPlugin());
+
+const supabase = createClient(
+    process.env.SUPABASE_URL!,
+    process.env.SUPABASE_ANON_KEY!
+);
+
+const BASE_URL = 'https://www.chippin.com';
+const CAMPAIGNS_URL = 'https://www.chippin.com/kampanyalar';
+
+interface ChippinCampaign {
+    id: string;
+    webBanner: string;
+    webName: string;
+    webDescription: string;
+    // other props might exist but these are what we saw in inspection
+}
+
+async function runChippinScraper() {
+    console.log('🚀 Starting Chippin Scraper (Production Mode)...');
+
+    // Normalize names first
+    const normalizedBank = await normalizeBankName('Chippin');
+    const normalizedCard = await normalizeCardName(normalizedBank, 'Chippin');
+    console.log(`   Bank: ${normalizedBank}, Card: ${normalizedCard}`);
+
+    // Verify Bank/Card existence and get SLUGS (not IDs)
+    const { data: bankData, error: bankErr } = await supabase
+        .from('master_banks')
+        .select('slug')
+        .eq('slug', 'chippin')
+        .single();
+
+    if (bankErr || !bankData) {
+        throw new Error('Chippin bank not found in master_banks.');
+    }
+
+    const { data: cardData, error: cardErr } = await supabase
+        .from('cards')
+        .select('slug')
+        .eq('slug', 'chippin')
+        .single();
+
+    if (cardErr || !cardData) {
+        throw new Error('Chippin card not found in cards table. Run seed script.');
+    }
+
+    console.log(`   ✅ IDs Found - Bank: ${bankData.slug}, Card: ${cardData.slug}`);
+
+    const browser = await puppeteer.launch({
+        headless: "new", // Production uses standard modern headless
+        args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-blink-features=AutomationControlled'
+        ]
+    });
+
+    try {
+        const page = await browser.newPage();
+
+        // Standard modern UA for production
+        await page.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36');
+
+        console.log(`   📄 Navigating to ${CAMPAIGNS_URL}...`);
+        await page.goto(CAMPAIGNS_URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
+
+        // Moderate wait time
+        await new Promise(r => setTimeout(r, 5000));
+
+        // Extract __NEXT_DATA__
+        const rawData = await page.evaluate(() => {
+            const script = document.getElementById('__NEXT_DATA__');
+            return script ? script.innerHTML : null;
+        });
+
+        if (!rawData) {
+            throw new Error('__NEXT_DATA__ script not found. Page might have changed or is blocked.');
+        }
+
+        const nextData = JSON.parse(rawData);
+        const campaigns: ChippinCampaign[] = nextData?.props?.pageProps?.campaigns || [];
+
+        console.log(`   🎉 Found ${campaigns.length} campaigns in Next.js data.`);
+
+        let processedCount = 0;
+
+        for (const item of campaigns) {
+            const title = item.webName.trim();
+            const imageUrl = item.webBanner.startsWith('http') ? item.webBanner : `${BASE_URL}${item.webBanner}`;
+            const descriptionOriginal = item.webDescription;
+            const referenceUrl = `${CAMPAIGNS_URL}?id=${item.id}`;
+
+            console.log(`\n   🔍 Processing [${++processedCount}/${campaigns.length}]: ${title}`);
+
+            const campaignHtml = `
+                <h1>${title}</h1>
+                <div class="description">${descriptionOriginal}</div>
+                <img src="${imageUrl}" />
+            `;
+
+            const campaignData = await parseWithGemini(campaignHtml, referenceUrl, normalizedBank, normalizedCard);
+
+            if (campaignData) {
+                // Enforce critical fields from source
+                campaignData.title = title;
+                campaignData.description = descriptionOriginal;
+                campaignData.image = imageUrl;
+                campaignData.bank = normalizedBank;
+                campaignData.card_name = normalizedCard;
+
+                // FORCE VALID SLUGS
+                campaignData.bank_id = bankData.slug;
+                campaignData.card_id = cardData.slug;
+
+                campaignData.url = referenceUrl;
+                campaignData.reference_url = referenceUrl;
+                campaignData.is_active = true;
+                campaignData.image_url = imageUrl; // Populate standard image_url field
+
+                // AI Marketing Text fallback
+                if (!campaignData.ai_marketing_text && campaignData.earning) {
+                    campaignData.ai_marketing_text = campaignData.earning;
+                }
+
+                // Defaults / fallbacks
+                campaignData.category = campaignData.category || 'Diğer';
+                campaignData.sector_slug = generateSectorSlug(campaignData.category);
+
+                // Fixes
+                syncEarningAndDiscount(campaignData);
+                campaignData.publish_status = 'processing';
+                campaignData.publish_updated_at = new Date().toISOString();
+
+                // IDs - We do lookup only for brand/sector, preserving our bank/card IDs
+                const ids = await lookupIDs(
+                    campaignData.bank,
+                    campaignData.card_name,
+                    campaignData.brand,
+                    campaignData.sector_slug
+                );
+                // Only merge sector/brand IDs, check existing assignments
+                if (ids.brand_id) campaignData.brand_id = ids.brand_id;
+
+                // Badges
+                const badge = assignBadge(campaignData);
+                campaignData.badge_text = badge.text;
+                campaignData.badge_color = badge.color;
+
+                markGenericBrand(campaignData);
+
+                // Save
+                const { error } = await supabase
+                    .from('campaigns')
+                    .upsert(campaignData, { onConflict: 'reference_url' });
+
+                if (error) {
+                    console.error(`      ❌ Supabase Error: ${error.message}`);
+                } else {
+                    console.log(`      ✅ Saved to DB: ${title}`);
+                }
+            } else {
+                console.error(`      ⚠️ Failed to parse with AI`);
+            }
+        }
+
+    } catch (error: any) {
+        console.error(`❌ Error in Chippin Scraper: ${error.message}`);
+    } finally {
+        await browser.close();
+    }
+}
+
+runChippinScraper();
