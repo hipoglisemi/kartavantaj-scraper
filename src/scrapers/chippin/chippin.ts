@@ -15,6 +15,7 @@ import { syncEarningAndDiscount } from '../../utils/dataFixer';
 import { lookupIDs } from '../../utils/idMapper';
 import { assignBadge } from '../../services/badgeAssigner';
 import { markGenericBrand } from '../../utils/genericDetector';
+import { processCampaignImage } from '../../services/imageService';
 
 dotenv.config();
 
@@ -107,7 +108,12 @@ async function runChippinScraper() {
 
         for (const item of campaigns) {
             const title = item.webName.trim();
-            const imageUrl = item.webBanner.startsWith('http') ? item.webBanner : `${BASE_URL}${item.webBanner}`;
+            let imageUrl = item.webBanner.startsWith('http') ? item.webBanner : `${BASE_URL}${item.webBanner}`;
+
+            // PROXY IMAGE: Download from Chippin -> Upload to Supabase
+            // This bypasses WAF issues on the frontend
+            imageUrl = await processCampaignImage(imageUrl, title, 'chippin');
+
             const descriptionOriginal = item.webDescription;
             const referenceUrl = `${CAMPAIGNS_URL}?id=${item.id}`;
 
