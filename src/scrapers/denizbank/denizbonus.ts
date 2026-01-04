@@ -1,3 +1,17 @@
+/**
+ * @file denizbonus.ts
+ * @status 🟢 STABLE / PROTECTED
+ * @last_verified 2026-01-04
+ * @description This scraper is verified to correctly extract campaign banners and full details.
+ * ⚠️ CRITICAL: DO NOT modify the image selection or manual detail extraction logic unless 
+ * the Denizbank website structure specifically changes.
+ * 
+ * Key Protections:
+ * 1. IMAGE_BLACKLIST: Prevents the generic 'somestir' fallback image.
+ * 2. Banner Priority: Focuses on '.campaign-banner' and excludes '.campaign-card' to avoid thumbnails.
+ * 3. Manual Fallbacks: Explicitly captures 'KATILIM KOŞULLARI' and 'NASIL KAZANIRIM' to 
+ *    ensure DB fields are never empty even if AI returns partial data.
+ */
 
 import axios from 'axios';
 import * as cheerio from 'cheerio';
