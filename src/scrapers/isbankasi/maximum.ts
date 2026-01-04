@@ -18,6 +18,9 @@ import { normalizeBankName, normalizeCardName } from '../../utils/bankMapper';
 import { lookupIDs } from '../../utils/idMapper';
 import { generateSectorSlug } from '../../utils/slugify';
 import { downloadImageDirectly } from '../../services/imageService';
+import { parseWithGemini } from '../../services/geminiParser';
+import { syncEarningAndDiscount, markGenericBrand } from '../../utils/dataFixer';
+import { assignBadge } from '../../utils/badgeAssigner';
 
 dotenv.config();
 
@@ -321,67 +324,67 @@ async function runMaximumScraperTS() {
                     }
                 }
 
-                // V8 Logic Extraction
-                const cat = getCategory(title, fullText);
-                const merchant = extractMerchant(title);
-                const { minS, earn, disc, maxD } = extractFinancialsV8(fullText, title);
-                const cards = extractCardsPrecise(fullText);
-                const participationMethod = extractParticipation(fullText);
-                const sectorSlug = generateSectorSlug(cat);
+                // 🔥 AI PARSING (Gemini Engine)
+                const campaignHtml = `
+                    <h1>${title}</h1>
+                    <div class="dates">${dateText}</div>
+                    <div class="description">${$d("span[id$='CampaignDescription']").html() || fullText}</div>
+                    <img src="${image}" />
+                `;
 
-                // Determine Best Card Name
-                let cardName = 'Maximum';
-                if (cards.length > 0) {
-                    if (cards.includes('Maximum Kart')) cardName = 'Maximum';
-                    else cardName = cards[0];
-                }
-                const normalizedCardNameVal = await normalizeCardName(bankName, cardName);
+                const campaignData = await parseWithGemini(campaignHtml, url, bankName, normalizedCardNameVal);
 
-                count++;
+                if (campaignData) {
+                    // Force critical original fields
+                    campaignData.title = title;
+                    campaignData.image = image;
+                    campaignData.image_url = image;
+                    campaignData.bank = bankName;
+                    campaignData.card_name = normalizedCardNameVal;
+                    campaignData.url = url;
+                    campaignData.reference_url = url;
+                    campaignData.is_active = true;
 
-                const imgStatus = image ? '✅' : '❌';
-                console.log(`      [${count}] ${title.substring(0, 35)}... (M:${minS} E:${earn || 'None'} Img:${imgStatus})`);
+                    // Standard Post-Processing
+                    syncEarningAndDiscount(campaignData);
+                    campaignData.publish_status = 'processing';
+                    campaignData.publish_updated_at = new Date().toISOString();
 
-                const campaignData = {
-                    bank: bankName,
-                    card_name: normalizedCardNameVal,
-                    title: title,
-                    description: conditions[0] || title,
-                    image: image,
-                    image_url: image, // Populate standard image_url field
-                    url: url,
-                    reference_url: url,
-                    category: cat,
-                    sector_slug: sectorSlug,
-                    valid_until: validUntil,
-                    min_spend: minS,
-                    max_discount: maxD,
-                    discount: disc, // Mapped from 'disc' (installments)
-                    earning: earn, // Mapped from 'earn' (e.g. 100 TL Puan)
-                    conditions: conditions,
-                    participation_method: participationMethod,
-                    is_active: true,
-                };
+                    // Lookup IDs for normalized bank/card (which we already have in loop but to be sure)
+                    const ids = await lookupIDs(
+                        campaignData.bank,
+                        campaignData.card_name,
+                        campaignData.brand,
+                        campaignData.sector_slug
+                    );
+                    if (ids.brand_id) campaignData.brand_id = ids.brand_id;
+                    if (ids.sector_id) campaignData.sector_id = ids.sector_id;
+                    campaignData.bank_id = ids.bank_id || 'is-bankasi';
+                    campaignData.card_id = ids.card_id || 'maximum';
 
-                // Lookup and assign IDs from master tables
-                const ids = await lookupIDs(
-                    campaignData.bank,
-                    campaignData.card_name,
-                    undefined, // brand will be determined by AI or generic detector in other scrapers, but here we use simple flow
-                    campaignData.sector_slug
-                );
-                Object.assign(campaignData, ids);
+                    // Badges
+                    const badge = assignBadge(campaignData);
+                    campaignData.badge_text = badge.text;
+                    campaignData.badge_color = badge.color;
 
-                // DB Upsert
-                console.log(`      💾 Upserting: ${title.substring(0, 30)}... [bank_id: ${(campaignData as any).bank_id}, card_id: ${(campaignData as any).card_id}]`);
-                const { error } = await supabase
-                    .from('campaigns')
-                    .upsert(campaignData, { onConflict: 'reference_url' });
+                    markGenericBrand(campaignData);
 
-                if (error) {
-                    console.error(`      ❌ DB Error for "${title}": ${error.message}`);
+                    count++;
+                    console.log(`      [${count}] ${title.substring(0, 35)}... (Img: ${image ? '✅' : '❌'})`);
+
+                    // DB Upsert
+                    console.log(`      💾 Upserting: ${title.substring(0, 30)}... [bank_id: ${campaignData.bank_id}, card_id: ${campaignData.card_id}]`);
+                    const { error } = await supabase
+                        .from('campaigns')
+                        .upsert(campaignData, { onConflict: 'reference_url' });
+
+                    if (error) {
+                        console.error(`      ❌ DB Error for "${title}": ${error.message}`);
+                    } else {
+                        console.log(`      ✅ Successfully saved/updated.`);
+                    }
                 } else {
-                    console.log(`      ✅ Successfully saved/updated.`);
+                    console.error(`      ❌ AI Parsing failed for ${url}`);
                 }
 
             } catch (e: any) {
