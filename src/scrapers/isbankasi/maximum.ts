@@ -348,6 +348,7 @@ async function runMaximumScraperTS() {
                     title: title,
                     description: conditions[0] || title,
                     image: image,
+                    image_url: image, // Populate standard image_url field
                     url: url,
                     reference_url: url,
                     category: cat,
