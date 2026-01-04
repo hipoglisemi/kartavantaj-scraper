@@ -27,37 +27,30 @@ export async function processCampaignImage(imageUrl: string, title: string, page
     try {
         console.log(`   🖼️  Proxying image: ${imageUrl}`);
 
-        // 2. Fetch using Page context (Headless Browser)
-        // This ensures cookies/headers are identical to the successful navigation
-        const imageBuffer = await page.evaluate(async (url) => {
-            const response = await fetch(url);
-            if (!response.ok) throw new Error(`Status ${response.status}`);
-            const blob = await response.blob();
+        // 2. Navigate to Image URL directly (Most reliable WAF bypass)
+        const response = await page.goto(imageUrl, { waitUntil: 'networkidle0', timeout: 30000 });
 
-            // Convert blob to base64 to pass back to Node
-            return new Promise<string>((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onloadend = () => resolve(reader.result as string);
-                reader.onerror = reject;
-                reader.readAsDataURL(blob);
-            });
-        }, imageUrl);
-
-        // 3. Decode Base64 (Data URL)
-        const matches = imageBuffer.match(/^data:(.+);base64,(.+)$/);
-        if (!matches || matches.length !== 3) {
-            throw new Error('Invalid base64 data returned from page');
+        if (!response || !response.ok()) {
+            throw new Error(`Failed to load image page: ${response?.status()} ${response?.statusText()}`);
         }
 
-        const contentType = matches[1];
-        const buffer = Buffer.from(matches[2], 'base64');
+        // 3. Get buffer
+        const buffer = await response.buffer();
 
-        // Check if it's HTML (WAF block page detection)
+        // 4. Validate Content Type
+        // Sometimes headers are "text/html" even for images if blocked, but checking buffer headers is safer
+        const contentType = response.headers()['content-type'] || 'image/jpeg';
+
         if (contentType.includes('text') || contentType.includes('html')) {
-            throw new Error(`Downloaded content is HTML (${contentType}). WAF Blocked.`);
+            // Double check magic bytes if header says html (sometimes misconfigured)
+            // But usually it means error page.
+            const head = buffer.toString('utf8', 0, 50);
+            if (head.includes('<!DOCTYPE') || head.includes('<html')) {
+                throw new Error(`Downloaded content is HTML (${contentType}). WAF Blocked.`);
+            }
         }
 
-        // 4. Upload to Supabase Storage
+        // 5. Upload to Supabase Storage
         const { error } = await supabase
             .storage
             .from(BUCKET_NAME)
