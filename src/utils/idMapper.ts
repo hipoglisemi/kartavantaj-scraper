@@ -23,24 +23,46 @@ export async function lookupIDs(
 ): Promise<IDMapping> {
     const ids: IDMapping = {};
 
-    // 1. Lookup bank_id and card_id from bank_configs
+    // 1. Lookup bank_id and card_id from relational tables (banks/cards)
     if (bank) {
-        const { data: bankConfig } = await supabase
-            .from('bank_configs')
-            .select('bank_id, cards')
-            .ilike('bank_name', bank)
-            .single();
+        // Search banks by name or aliases
+        const { data: bankData } = await supabase
+            .from('banks')
+            .select('id, slug')
+            .or(`name.ilike."${bank}",aliases.cs.{"${bank}"}`)
+            .maybeSingle();
 
-        if (bankConfig) {
-            ids.bank_id = bankConfig.bank_id;
+        if (bankData) {
+            ids.bank_id = bankData.slug;
 
             // Find card_id within this bank's cards
-            if (cardName && bankConfig.cards) {
-                const card = bankConfig.cards.find((c: any) =>
-                    c.name.toLowerCase() === cardName.toLowerCase()
-                );
-                if (card) {
-                    ids.card_id = card.id;
+            if (cardName) {
+                const { data: cardData } = await supabase
+                    .from('cards')
+                    .select('slug')
+                    .eq('bank_id', bankData.id)
+                    .ilike('name', cardName)
+                    .maybeSingle();
+
+                if (cardData) {
+                    ids.card_id = cardData.slug;
+                }
+            }
+        } else {
+            // Fallback for banks not yet in relational table (Legacy lookup)
+            const { data: bankConfig } = await supabase
+                .from('bank_configs')
+                .select('bank_id, cards')
+                .ilike('bank_name', bank)
+                .maybeSingle();
+
+            if (bankConfig) {
+                ids.bank_id = bankConfig.bank_id;
+                if (cardName && bankConfig.cards) {
+                    const card = bankConfig.cards.find((c: any) =>
+                        c.name.toLowerCase() === cardName.toLowerCase()
+                    );
+                    if (card) ids.card_id = card.id;
                 }
             }
         }

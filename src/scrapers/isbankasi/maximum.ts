@@ -15,6 +15,7 @@ import {
     trLower
 } from '../../utils/MaximumHelpers';
 import { normalizeBankName, normalizeCardName } from '../../utils/bankMapper';
+import { lookupIDs } from '../../utils/idMapper';
 import { generateSectorSlug } from '../../utils/slugify';
 
 dotenv.config();
@@ -53,29 +54,25 @@ async function runMaximumScraperTS() {
     // Simulate typical desktop view
     await page.setViewport({ width: 1400, height: 900 });
 
-    // --- STEALTH HEADERS & EVASION (Ported from wings.ts) ---
-    await page.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36');
+    // --- STEALTH HEADERS (Simpler is often better for bypassing basic WAFs) ---
+    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
     await page.setExtraHTTPHeaders({
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
         'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
-        'Accept-Encoding': 'gzip, deflate, br',
-        'Connection': 'keep-alive',
-        'Upgrade-Insecure-Requests': '1',
-        'Sec-Fetch-Dest': 'document',
-        'Sec-Fetch-Mode': 'navigate',
-        'Sec-Fetch-Site': 'none',
-        'Cache-Control': 'max-age=0'
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache'
     });
 
     await page.evaluateOnNewDocument(() => {
         // @ts-ignore
-        Object.defineProperty(navigator, 'webdriver', { get: () => false });
+        Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+        // @ts-ignore
+        navigator.languages = ['tr-TR', 'tr', 'en-US', 'en'];
     });
 
     try {
         console.log(`   🔍 Loading Campaign List: ${CAMPAIGNS_URL}...`);
-        await page.goto(CAMPAIGNS_URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
-        await sleep(5000);
+        await page.goto(CAMPAIGNS_URL, { waitUntil: 'load', timeout: 120000 });
+        await sleep(10000); // Heavy sleep to ensure JS execution
 
         // --- INFINITE SCROLL LOGIC ---
         let hasMore = true;
@@ -135,8 +132,26 @@ async function runMaximumScraperTS() {
             if (count >= limit) break;
 
             try {
-                await sleep(1500); // 1.5s delay
-                await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
+                await sleep(3000 + Math.random() * 2000); // Increased delay between campaigns (3-5s)
+
+                // Retry logic for connection resets
+                let retryCount = 0;
+                let success = false;
+                while (retryCount < 3 && !success) {
+                    try {
+                        await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
+                        success = true;
+                    } catch (e: any) {
+                        retryCount++;
+                        console.error(`      ⚠️ Retry ${retryCount} for ${url}: ${e.message}`);
+                        await sleep(5000 * retryCount);
+                    }
+                }
+
+                if (!success) {
+                    console.error(`      ❌ Failed to load ${url} after 3 retries.`);
+                    continue;
+                }
 
                 // 🔥 VISUAL V7 TACTIC: SCROLL
                 await page.evaluate(() => window.scrollTo(0, 600));
@@ -227,6 +242,15 @@ async function runMaximumScraperTS() {
                     participation_method: participationMethod,
                     is_active: true,
                 };
+
+                // Lookup and assign IDs from master tables
+                const ids = await lookupIDs(
+                    campaignData.bank,
+                    campaignData.card_name,
+                    undefined, // brand will be determined by AI or generic detector in other scrapers, but here we use simple flow
+                    campaignData.sector_slug
+                );
+                Object.assign(campaignData, ids);
 
                 // DB Upsert
                 const { error } = await supabase
