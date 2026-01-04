@@ -133,13 +133,24 @@ async function runChippinScraper() {
 
                 // IMPORTANT: Use ai_marketing_text as description (like other scrapers)
                 // Keep original long description in a backup field if needed
+                let finalDescription = '';
+
                 if (campaignData.ai_marketing_text) {
-                    campaignData.description = campaignData.ai_marketing_text;
+                    finalDescription = campaignData.ai_marketing_text;
                 } else if (campaignData.earning) {
-                    campaignData.description = campaignData.earning;
+                    finalDescription = campaignData.earning;
                 } else {
-                    campaignData.description = descriptionOriginal;
+                    finalDescription = descriptionOriginal;
                 }
+
+                // CHIPPIN-SPECIFIC: Aggressively truncate to max 10 words
+                const words = finalDescription.trim().split(/\s+/);
+                if (words.length > 10) {
+                    console.log(`   ✂️ Truncating description from ${words.length} to 10 words`);
+                    finalDescription = words.slice(0, 10).join(' ');
+                }
+
+                campaignData.description = finalDescription;
 
                 campaignData.image = imageUrl;
                 campaignData.bank = normalizedBank;
