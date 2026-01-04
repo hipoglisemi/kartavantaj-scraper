@@ -179,32 +179,50 @@ async function runMaximumScraperTS() {
         const $ = cheerio.load(content);
         let allLinks: string[] = [];
 
-        // Category keywords to exclude (based on actual Maximum categories)
-        const categoryKeywords = [
-            'kampanyalari', 'kampanyalar/', 'kategoriler',
-            'seyahat', 'turizm', 'akaryakit', 'giyim-aksesuar',
-            'market', 'elektronik', 'beyaz-esya', 'mobilya-dekorasyon',
-            'egitim-kirtasiye', 'online-alisveris', 'otomotiv',
-            'vergi-odemeleri', 'maximum-mobil', 'diger', 'yeme-icme',
-            'maximum-pati-kart', 'arac-kiralama', 'bankamatik',
-            'tum-kampanyalar', 'son-kampanyalar'
+        // Category keywords to exclude (pages that end with these are category lists)
+        const categorySuffixes = [
+            '-kampanyalari',
+            'premium-kampanyalar',
+            'tum-kampanyalar',
+        ];
+
+        // Specific category paths that are NOT real campaigns
+        const categoryPaths = [
+            '/kampanyalar/seyahat',
+            '/kampanyalar/turizm',
+            '/kampanyalar/akaryakit',
+            '/kampanyalar/giyim-aksesuar',
+            '/kampanyalar/market',
+            '/kampanyalar/elektronik',
+            '/kampanyalar/beyaz-esya',
+            '/kampanyalar/mobilya-dekorasyon',
+            '/kampanyalar/egitim-kirtasiye',
+            '/kampanyalar/online-alisveris',
+            '/kampanyalar/otomotiv',
+            '/kampanyalar/vergi-odemeleri',
+            '/kampanyalar/maximum-mobil',
+            '/kampanyalar/diger',
+            '/kampanyalar/yeme-icme',
+            '/kampanyalar/maximum-pati-kart',
+            '/kampanyalar/arac-kiralama',
+            '/kampanyalar/bankamatik'
         ];
 
         $('a').each((_, el) => {
             const href = $(el).attr('href');
             if (href && (href.includes('/kampanyalar/') || href.includes('kampanyalar/')) && !href.includes('arsiv')) {
-                // Skip if it's a category page
-                const isCategoryPage = categoryKeywords.some(keyword =>
-                    href.toLowerCase().includes(keyword.toLowerCase())
-                );
+                const lowerHref = href.toLowerCase();
 
-                // Only include if it's a real campaign (has ID-like structure, longer URL)
-                // Real campaigns have long alphanumeric IDs, categories are short descriptive names
-                const urlParts = href.split('/');
-                const lastPart = urlParts[urlParts.length - 1] || urlParts[urlParts.length - 2];
-                const looksLikeCampaignId = lastPart.length > 40 || /^[A-Z0-9]{10,}$/i.test(lastPart);
+                // Skip if it's a known category path
+                const isExactCategory = categoryPaths.some(path => lowerHref.endsWith(path));
 
-                if (!isCategoryPage && looksLikeCampaignId && href.length > 20) {
+                // Skip if it ends with category suffix
+                const isCategorySuffix = categorySuffixes.some(suffix => lowerHref.endsWith(suffix));
+
+                // Skip common non-campaign pages
+                const isCommonPage = lowerHref.includes('ozellikler') || lowerHref.includes('basvuru') || lowerHref.endsWith('/kampanyalar');
+
+                if (!isExactCategory && !isCategorySuffix && !isCommonPage && href.length > 25) {
                     let fullUrl = href.startsWith('http') ? href : `${BASE_URL}${href.startsWith('/') ? '' : '/'}${href}`;
                     if (!allLinks.includes(fullUrl)) {
                         allLinks.push(fullUrl);
