@@ -130,7 +130,17 @@ async function runChippinScraper() {
             if (campaignData) {
                 // Enforce critical fields from source
                 campaignData.title = title;
-                campaignData.description = descriptionOriginal;
+
+                // IMPORTANT: Use ai_marketing_text as description (like other scrapers)
+                // Keep original long description in a backup field if needed
+                if (campaignData.ai_marketing_text) {
+                    campaignData.description = campaignData.ai_marketing_text;
+                } else if (campaignData.earning) {
+                    campaignData.description = campaignData.earning;
+                } else {
+                    campaignData.description = descriptionOriginal;
+                }
+
                 campaignData.image = imageUrl;
                 campaignData.bank = normalizedBank;
                 campaignData.card_name = normalizedCard;
@@ -143,11 +153,6 @@ async function runChippinScraper() {
                 campaignData.reference_url = referenceUrl;
                 campaignData.is_active = true;
                 campaignData.image_url = imageUrl; // Populate standard image_url field
-
-                // AI Marketing Text fallback
-                if (!campaignData.ai_marketing_text && campaignData.earning) {
-                    campaignData.ai_marketing_text = campaignData.earning;
-                }
 
                 // Defaults / fallbacks
                 campaignData.category = campaignData.category || 'Diğer';
