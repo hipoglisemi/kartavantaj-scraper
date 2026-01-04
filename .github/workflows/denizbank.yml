@@ -1,0 +1,42 @@
+name: 🏦 Denizbank Scraper
+
+on:
+  schedule:
+    - cron: '0 8 * * *' # 08:00 UTC = 11:00 TSI
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: 'Kampanya limiti (0 = tümü)'
+        required: false
+        default: '0'
+      use_ai:
+        description: 'AI (Gemini) kullanılsın mı?'
+        type: boolean
+        default: true
+
+jobs:
+  scrape-denizbank:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Install Node Dependencies
+        run: npm ci
+      
+      - name: Run DenizBonus Scraper
+        run: npx tsx src/scrapers/denizbank/denizbonus.ts ${{ github.event.inputs.limit != '0' && format('--limit={0}', github.event.inputs.limit) || '' }} ${{ github.event.inputs.use_ai == 'true' && '--ai' || '' }}
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
+      
+      - name: Scraping Complete
+        run: echo "✅ Denizbank DenizBonus scraping completed!"
