@@ -19,8 +19,9 @@ import { lookupIDs } from '../../utils/idMapper';
 import { generateSectorSlug } from '../../utils/slugify';
 import { downloadImageDirectly } from '../../services/imageService';
 import { parseWithGemini } from '../../services/geminiParser';
-import { syncEarningAndDiscount, markGenericBrand } from '../../utils/dataFixer';
-import { assignBadge } from '../../utils/badgeAssigner';
+import { syncEarningAndDiscount } from '../../utils/dataFixer';
+import { assignBadge } from '../../services/badgeAssigner';
+import { markGenericBrand } from '../../utils/genericDetector';
 
 dotenv.config();
 
@@ -323,6 +324,15 @@ async function runMaximumScraperTS() {
                         image = await downloadImageDirectly(imageUrl, title, 'maximum');
                     }
                 }
+
+                // ID and Card Normalization (Before AI)
+                const cards = extractCardsPrecise(fullText);
+                let cardName = 'Maximum';
+                if (cards.length > 0) {
+                    if (cards.includes('Maximum Kart')) cardName = 'Maximum';
+                    else cardName = cards[0];
+                }
+                const normalizedCardNameVal = await normalizeCardName(bankName, cardName);
 
                 // 🔥 AI PARSING (Gemini Engine)
                 const campaignHtml = `
