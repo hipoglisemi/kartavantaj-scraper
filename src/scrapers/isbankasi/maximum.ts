@@ -179,13 +179,15 @@ async function runMaximumScraperTS() {
         const $ = cheerio.load(content);
         let allLinks: string[] = [];
 
-        // Category keywords to exclude
+        // Category keywords to exclude (based on actual Maximum categories)
         const categoryKeywords = [
             'kampanyalari', 'kampanyalar/', 'kategoriler',
-            'beyaz-esya', 'mobilya', 'elektronik', 'giyim',
-            'market', 'turizm', 'seyahat', 'online-alisveris',
-            'akaryakit', 'egitim', 'otomotiv', 'yeme-icme',
-            'arac-kiralama', 'bankamatik'
+            'seyahat', 'turizm', 'akaryakit', 'giyim-aksesuar',
+            'market', 'elektronik', 'beyaz-esya', 'mobilya-dekorasyon',
+            'egitim-kirtasiye', 'online-alisveris', 'otomotiv',
+            'vergi-odemeleri', 'maximum-mobil', 'diger', 'yeme-icme',
+            'maximum-pati-kart', 'arac-kiralama', 'bankamatik',
+            'tum-kampanyalar', 'son-kampanyalar'
         ];
 
         $('a').each((_, el) => {
