@@ -5,7 +5,7 @@
  */
 
 import puppeteer from 'puppeteer-extra';
-import StealthPlugin from 'puppeteer-extra-plugin-stealth';
+// import StealthPlugin from 'puppeteer-extra-plugin-stealth'; // DISABLED - Detected as bot with stealth in this env
 import { createClient } from '@supabase/supabase-js';
 import * as dotenv from 'dotenv';
 import { parseWithGemini } from '../../services/geminiParser';
@@ -18,8 +18,7 @@ import { markGenericBrand } from '../../utils/genericDetector';
 
 dotenv.config();
 
-// Enable stealth for production run
-puppeteer.use(StealthPlugin());
+// puppeteer.use(StealthPlugin());
 
 const supabase = createClient(
     process.env.SUPABASE_URL!,
@@ -38,7 +37,7 @@ interface ChippinCampaign {
 }
 
 async function runChippinScraper() {
-    console.log('🚀 Starting Chippin Scraper (Production Mode)...');
+    console.log('🚀 Starting Chippin Scraper (Production - Legacy Mode)...');
 
     // Normalize names first
     const normalizedBank = await normalizeBankName('Chippin');
@@ -69,25 +68,25 @@ async function runChippinScraper() {
     console.log(`   ✅ IDs Found - Bank: ${bankData.slug}, Card: ${cardData.slug}`);
 
     const browser = await puppeteer.launch({
-        headless: "new", // Production uses standard modern headless
+        headless: true, // Legacy headless - Proven to work
         args: [
             '--no-sandbox',
             '--disable-setuid-sandbox',
-            '--disable-blink-features=AutomationControlled'
+            // '--disable-blink-features=AutomationControlled' // standard args
         ]
     });
 
     try {
         const page = await browser.newPage();
 
-        // Standard modern UA for production
-        await page.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36');
+        // Use standard UA for debug
+        await page.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
 
         console.log(`   📄 Navigating to ${CAMPAIGNS_URL}...`);
         await page.goto(CAMPAIGNS_URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
 
         // Moderate wait time
-        await new Promise(r => setTimeout(r, 5000));
+        await new Promise(r => setTimeout(r, 6000));
 
         // Extract __NEXT_DATA__
         const rawData = await page.evaluate(() => {

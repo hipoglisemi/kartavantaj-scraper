@@ -798,8 +798,7 @@ ${getBankInstructions(bank, card)}
      - Eğer kampanya "yurt dışı", "abroad", "foreign", "dolar", "USD", "euro", "EUR" içeriyorsa:
        - min_spend_currency, max_discount_currency, earning_currency alanlarını uygun para birimine çevir
        - ÖRNEK: "Yurt dışı harcamalarınıza 15 USD indirim" → earning_currency: "USD", max_discount_currency: "USD"
-       - ÖRNEK: "Duty Free'de %15 indirim" → earning_currency: "USD" (yurt dışı olduğu için)
-     - DİKKAT: Para birimi değiştiğinde min_spend hesaplaması da o para biriminde olmalı!
+       - DİKKAT: Para birimi değiştiğinde min_spend hesaplaması da o para biriminde olmalı!
 
 3. **KATILIM ŞEKLİ (participation_method):**
    - **TAM VE NET TALİMAT.** Ne çok kısa ne çok uzun.
@@ -933,6 +932,20 @@ TEXT TO PROCESS:
         if (stage1Data && typeof stage1Data === 'object') {
             stage1Data.ai_method = modelLabel;
             stage1Data.ai_tokens = tokens1;
+
+            // 🚨 FAILSAFE: Truncate marketing text if too long
+            if (stage1Data.ai_marketing_text) {
+                const words = stage1Data.ai_marketing_text.split(/\s+/);
+                if (words.length > 12) { // Tolerance of 12
+                    console.log(`   ✂️ Truncating long marketing text (${words.length} words): "${stage1Data.ai_marketing_text}"`);
+                    // Prefer earning if available, otherwise truncate
+                    if (stage1Data.earning && stage1Data.earning.length < 50 && !stage1Data.earning.includes('%')) {
+                        stage1Data.ai_marketing_text = stage1Data.earning;
+                    } else {
+                        stage1Data.ai_marketing_text = words.slice(0, 10).join(' ') + '...';
+                    }
+                }
+            }
         }
 
         return stage1Data;
@@ -1102,6 +1115,20 @@ Return ONLY valid JSON with the missing fields, no markdown.
     // GENERATE SEO SLUG
     if (finalData.title) {
         finalData.slug = generateCampaignSlug(finalData.title);
+    }
+
+    // 🚨 FAILSAFE: Truncate marketing text if too long (Apply to Final Data too)
+    if (finalData.ai_marketing_text) {
+        const words = finalData.ai_marketing_text.split(/\s+/);
+        if (words.length > 12) { // Tolerance of 12
+            console.log(`   ✂️ Truncating long marketing text (${words.length} words): "${finalData.ai_marketing_text}"`);
+            // Prefer earning if available, otherwise truncate
+            if (finalData.earning && finalData.earning.length < 50 && !finalData.earning.includes('%')) {
+                finalData.ai_marketing_text = finalData.earning;
+            } else {
+                finalData.ai_marketing_text = words.slice(0, 10).join(' ') + '...';
+            }
+        }
     }
 
     return finalData;
