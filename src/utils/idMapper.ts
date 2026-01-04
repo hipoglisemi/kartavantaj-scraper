@@ -33,19 +33,19 @@ export async function lookupIDs(
             .maybeSingle();
 
         if (bankData) {
-            ids.bank_id = bankData.slug;
+            ids.bank_id = bankData.id; // USE INTEGER ID, NOT SLUG
 
             // Find card_id within this bank's cards
             if (cardName) {
                 const { data: cardData } = await supabase
                     .from('cards')
-                    .select('slug')
+                    .select('id, slug')
                     .eq('bank_id', bankData.id)
                     .ilike('name', cardName)
                     .maybeSingle();
 
                 if (cardData) {
-                    ids.card_id = cardData.slug;
+                    ids.card_id = cardData.id; // USE INTEGER ID, NOT SLUG
                 }
             }
         } else {
