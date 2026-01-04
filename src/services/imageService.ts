@@ -27,43 +27,24 @@ export async function processCampaignImage(imageUrl: string, title: string, page
     try {
         console.log(`   🖼️  Proxying image: ${imageUrl}`);
 
-        // STRATEGY: DOM Element Screenshot
-        // The image is likely already loaded on the page. We find it and screenshot it.
-        const filenamePart = imageUrl.split('/').pop()?.split('?')[0];
+        // STRATEGY: Direct Download via page.goto
+        // Since we're already on the detail page with authenticated session,
+        // we can navigate directly to the image URL and download it.
 
-        if (!filenamePart) throw new Error('Could not extract filename from URL');
+        console.log(`   📥 Downloading image via page.goto...`);
+        const response = await page.goto(imageUrl, { waitUntil: 'networkidle0', timeout: 30000 });
 
-        // 1. Find the element in the DOM
-        let element = await page.$(`img[src*="${filenamePart}"]`);
-
-        // Lazy Loading Handling: If not found, scroll and retry
-        if (!element) {
-            console.log('      ⚠️ Image element not found immediately. Scrolling...');
-            try {
-                // Scroll to bottom slowly to trigger loads
-                await page.evaluate(async () => {
-                    const distance = 100;
-                    const delay = 100;
-                    while (document.scrollingElement && document.scrollingElement.scrollTop + window.innerHeight < document.scrollingElement.scrollHeight) {
-                        document.scrollingElement.scrollBy(0, distance);
-                        await new Promise(resolve => setTimeout(resolve, delay));
-                    }
-                });
-
-                // Try again after scroll
-                element = await page.$(`img[src*="${filenamePart}"]`);
-            } catch (e) {
-                console.warn('Scroll failed', e);
-            }
+        if (!response || !response.ok()) {
+            throw new Error(`Failed to load image: ${response?.status()}`);
         }
 
-        if (!element) {
-            throw new Error(`Image element matching '${filenamePart}' not found in DOM after scrolling.`);
-        }
+        const buffer = await response.buffer();
+        const contentType = response.headers()['content-type'] || 'image/jpeg';
 
-        // 2. Screenshot the element (Bypasses WAF network request)
-        const buffer = await element.screenshot({ type: 'jpeg', quality: 90 });
-        const contentType = 'image/jpeg';
+        // Validate it's actually an image (not HTML error page)
+        if (contentType.includes('html') || buffer.toString('utf8', 0, 50).includes('<html')) {
+            throw new Error('Downloaded content is HTML (WAF blocked). Falling back to screenshot.');
+        }
 
         // 3. Upload to Supabase Storage
         const { error } = await supabase
