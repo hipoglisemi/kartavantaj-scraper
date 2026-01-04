@@ -17,6 +17,7 @@ import {
 import { normalizeBankName, normalizeCardName } from '../../utils/bankMapper';
 import { lookupIDs } from '../../utils/idMapper';
 import { generateSectorSlug } from '../../utils/slugify';
+import { downloadImageDirectly } from '../../services/imageService';
 
 dotenv.config();
 
@@ -270,7 +271,11 @@ async function runMaximumScraperTS() {
                 const imgEl = $d("img[id$='CampaignImage']");
                 if (imgEl.length > 0) {
                     const src = imgEl.attr('src');
-                    if (src) image = src.startsWith('http') ? src : `${BASE_URL}${src}`;
+                    if (src) {
+                        const imageUrl = src.startsWith('http') ? src : `${BASE_URL}${src}`;
+                        // Download and proxy image through Supabase
+                        image = await downloadImageDirectly(imageUrl, title, 'maximum');
+                    }
                 }
 
                 // V8 Logic Extraction
