@@ -108,7 +108,16 @@ async function runChippinScraper() {
 
         for (const item of campaigns) {
             const title = item.webName.trim();
-            let imageUrl = item.webBanner.startsWith('http') ? item.webBanner : `${BASE_URL}${item.webBanner}`;
+
+            // FIX: Images are hosted on asset.chippin.com, not www.chippin.com
+            let imageUrl = item.webBanner;
+            if (!imageUrl.startsWith('http')) {
+                // Replace www.chippin.com with asset.chippin.com for images
+                imageUrl = `https://asset.chippin.com${imageUrl}`;
+            } else if (imageUrl.includes('www.chippin.com')) {
+                // Fix existing full URLs that use www instead of asset
+                imageUrl = imageUrl.replace('www.chippin.com', 'asset.chippin.com');
+            }
 
             // PROXY IMAGE: Download from Chippin -> Upload to Supabase
             // Use direct HTTP download since Chippin images are publicly accessible
