@@ -933,8 +933,8 @@ TEXT TO PROCESS:
             stage1Data.ai_method = modelLabel;
             stage1Data.ai_tokens = tokens1;
 
-            // 🚨 FAILSAFE: Truncate marketing text if too long
-            if (stage1Data.ai_marketing_text) {
+            // 🚨 FAILSAFE: Truncate marketing text if too long (ONLY FOR CHIPPIN)
+            if (stage1Data.ai_marketing_text && bank.toLowerCase().includes('chippin')) {
                 const words = stage1Data.ai_marketing_text.split(/\s+/);
                 if (words.length > 12) { // Tolerance of 12
                     console.log(`   ✂️ Truncating long marketing text (${words.length} words): "${stage1Data.ai_marketing_text}"`);
@@ -1118,7 +1118,7 @@ Return ONLY valid JSON with the missing fields, no markdown.
     }
 
     // 🚨 FAILSAFE: Truncate marketing text if too long (Apply to Final Data too)
-    if (finalData.ai_marketing_text) {
+    if (finalData.ai_marketing_text && bank.toLowerCase().includes('chippin')) {
         const words = finalData.ai_marketing_text.split(/\s+/);
         if (words.length > 12) { // Tolerance of 12
             console.log(`   ✂️ Truncating long marketing text (${words.length} words): "${finalData.ai_marketing_text}"`);
