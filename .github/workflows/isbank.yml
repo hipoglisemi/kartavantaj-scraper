@@ -24,35 +24,16 @@ jobs:
         with:
           node-version: '20'
       
-      - name: Setup Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.11'
-      
       - name: Install Node Dependencies
         run: npm ci
       
-      - name: Install Python Dependencies
-        run: |
-          pip install requests beautifulsoup4 lxml selenium webdriver-manager
-      
-      - name: Run Maximum Scraper
-        run: python3 src/scrapers/isbankasi/maximum.py ${{ github.event.inputs.limit != '0' && format('--limit {0}', github.event.inputs.limit) || '' }}
+      - name: Run Maximum Scraper (TypeScript)
+        run: npx tsx src/scrapers/isbankasi/maximum.ts ${{ github.event.inputs.limit != '0' && format('--limit={0}', github.event.inputs.limit) || '' }}
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
       
-      - name: Import Maximum Campaigns
-        run: npx tsx src/scripts/process_raw_json.ts maximum_kampanyalar_raw.json
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-          GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
       
-      - name: Upload Artifacts
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: isbank-campaigns
-          path: maximum_kampanyalar_raw.json
+      - name: Scraping Complete
+        run: echo "✅ İş Bankası Maximum scraping completed!"
