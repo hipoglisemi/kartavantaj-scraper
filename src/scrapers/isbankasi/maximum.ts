@@ -357,7 +357,7 @@ async function runMaximumScraperTS() {
                     max_discount: maxD,
                     discount: disc, // Mapped from 'disc' (installments)
                     earning: earn, // Mapped from 'earn' (e.g. 100 TL Puan)
-                    conditions: conditions.join('\n'),
+                    conditions: conditions,
                     participation_method: participationMethod,
                     is_active: true,
                 };
