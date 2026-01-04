@@ -21,6 +21,12 @@ const supabase = createClient(
 
 const BASE_URL = 'https://www.denizbonus.com';
 const CAMPAIGNS_URL = 'https://www.denizbonus.com/bonus-kampanyalari';
+const IMAGE_BLACKLIST = [
+    'somestir_kampanya_140423.jpg',
+    'popup-logo.png',
+    'app-logo.png',
+    'denizbank_logo.png'
+];
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -42,7 +48,7 @@ async function runDenizBonusScraper() {
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
             },
-            timeout: 30000
+            timeout: 60000
         });
 
         const $ = cheerio.load(response.data);
@@ -105,9 +111,30 @@ async function runDenizBonusScraper() {
                     $detail('title').text().replace('- DenizBonus', '').trim() ||
                     'Başlıksız Kampanya';
 
-                let imageUrl = $detail('img[src*="kampanya"]').first().attr('src') ||
-                    $detail('.campaign-image img').attr('src') ||
-                    $detail('img').first().attr('src');
+                // Manual extraction for fallback/basic data
+                const howToWin = $detail('.campaign-detail-info h5:contains("NASIL KAZANIRIM")').next('p').text().trim();
+                const participationTxt = $detail('.campaign-startend-date h5:contains("KATILMAK İÇİN")').next('p').text().trim();
+                const conditionsList: string[] = [];
+                $detail('.campaign-detail-text ul li').each((_, li) => {
+                    conditionsList.push($detail(li).text().trim());
+                });
+
+                let imageUrl = $detail('.campaign-banner img').first().attr('src') ||
+                    $detail('.campaign-image img').first().attr('src') ||
+                    $detail('.content img').first().attr('src');
+
+                // If not found in primary areas, look for images that are NOT in suggest/other sections
+                if (!imageUrl) {
+                    $detail('img').each((_, el) => {
+                        const src = $detail(el).attr('src');
+                        const isBlacklisted = IMAGE_BLACKLIST.some(b => src?.includes(b));
+                        const isOtherCampaign = $detail(el).closest('.campaign-card, #px-other-campaigns, .campaing-card-image').length > 0;
+
+                        if (src && !isBlacklisted && !isOtherCampaign && !imageUrl) {
+                            imageUrl = src;
+                        }
+                    });
+                }
 
                 if (imageUrl && !imageUrl.startsWith('http')) {
                     // Normalize relative path: remove leading dots and ensure single leading slash
@@ -125,14 +152,16 @@ async function runDenizBonusScraper() {
                 } else {
                     campaignData = {
                         title: title,
-                        description: title,
+                        description: howToWin || title,
                         card_name: normalizedCard,
                         url: fullUrl,
                         reference_url: fullUrl,
                         image: imageUrl || '',
                         category: 'Diğer',
                         sector_slug: 'diger',
-                        is_active: true
+                        is_active: true,
+                        conditions: conditionsList.length > 0 ? conditionsList : null,
+                        participation_method: participationTxt || null
                     };
                 }
 
@@ -147,9 +176,10 @@ async function runDenizBonusScraper() {
                     campaignData.reference_url = fullUrl;
                     campaignData.image = imageUrl;
 
-                    if (!campaignData.image && imageUrl) {
-                        campaignData.image = imageUrl;
-                    }
+                    // Support manual fallbacks if AI misses them
+                    campaignData.description = campaignData.description || howToWin || title;
+                    campaignData.conditions = (campaignData.conditions && campaignData.conditions.length > 0) ? campaignData.conditions : (conditionsList.length > 0 ? conditionsList : null);
+                    campaignData.participation_method = campaignData.participation_method || participationTxt || null;
                     campaignData.category = campaignData.category || 'Diğer';
                     campaignData.sector_slug = generateSectorSlug(campaignData.category);
                     syncEarningAndDiscount(campaignData);
