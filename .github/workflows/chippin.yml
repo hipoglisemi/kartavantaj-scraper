@@ -1,8 +1,8 @@
 name: 🍟 Chippin Scraper
 
 on:
-  schedule:
-    - cron: '30 0 * * *' # 00:30 UTC = 03:30 TSI
+  # schedule:
+  #   - cron: '30 0 * * *' # 00:30 UTC = 03:30 TSI
   workflow_dispatch:
     inputs:
       limit:
