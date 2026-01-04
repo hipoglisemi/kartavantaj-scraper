@@ -40,15 +40,28 @@ async function runMaximumScraperTS() {
     const limitArg = process.argv.find(arg => arg.startsWith('--limit='));
     const limit = limitArg ? parseInt(limitArg.split('=')[1]) : 1000;
 
-    const browser = await puppeteer.launch({
-        headless: true, // Start headless
-        args: [
-            '--no-sandbox',
-            '--disable-setuid-sandbox',
-            '--window-position=-10000,0', // Move window offscreen if headful
-            '--disable-blink-features=AutomationControlled'
-        ]
-    });
+    // Connect to existing Chrome instance running in debug mode
+    // Start Chrome with: /Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --remote-debugging-port=9222 --user-data-dir="/tmp/chrome_dev_test"
+    let browser;
+    try {
+        console.log('   🔌 Connecting to Chrome debug instance on port 9222...');
+        browser = await puppeteer.connect({
+            browserURL: 'http://localhost:9222',
+            defaultViewport: null
+        });
+        console.log('   ✅ Connected to existing Chrome instance');
+    } catch (error) {
+        console.log('   ⚠️  Could not connect to debug Chrome, launching new instance...');
+        browser = await puppeteer.launch({
+            headless: true,
+            args: [
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--window-position=-10000,0',
+                '--disable-blink-features=AutomationControlled'
+            ]
+        });
+    }
 
     const page = await browser.newPage();
     // Simulate typical desktop view
