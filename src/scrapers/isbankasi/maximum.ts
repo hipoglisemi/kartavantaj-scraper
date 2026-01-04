@@ -84,6 +84,25 @@ async function runMaximumScraperTS() {
         'Pragma': 'no-cache'
     });
 
+    // --- STEALTH HEADERS ---
+    const userAgents = [
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+    ];
+    const randomUA = userAgents[Math.floor(Math.random() * userAgents.length)];
+
+    await page.setUserAgent(randomUA);
+    await page.setExtraHTTPHeaders({
+        'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache',
+        'Sec-Ch-Ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+        'Sec-Ch-Ua-Mobile': '?0',
+        'Sec-Ch-Ua-Platform': '"Windows"'
+    });
+
     await page.evaluateOnNewDocument(() => {
         // @ts-ignore
         Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
@@ -93,8 +112,25 @@ async function runMaximumScraperTS() {
 
     try {
         console.log(`   🔍 Loading Campaign List: ${CAMPAIGNS_URL}...`);
-        await page.goto(CAMPAIGNS_URL, { waitUntil: 'load', timeout: 120000 });
-        await sleep(10000); // Heavy sleep to ensure JS execution
+
+        let listLoaded = false;
+        let listRetries = 0;
+        while (!listLoaded && listRetries < 5) {
+            try {
+                await page.goto(CAMPAIGNS_URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
+                listLoaded = true;
+            } catch (e: any) {
+                listRetries++;
+                console.log(`      ⚠️  List load attempt ${listRetries} failed: ${e.message}. Retrying in 5s...`);
+                await sleep(5000);
+                // Rotate UA on retry
+                await page.setUserAgent(userAgents[listRetries % userAgents.length]);
+            }
+        }
+
+        if (!listLoaded) throw new Error('Could not load campaign list after 5 attempts');
+
+        await sleep(5000); // 5s wait for JS execution
 
         // --- INFINITE SCROLL LOGIC ---
         let hasMore = true;
@@ -155,12 +191,15 @@ async function runMaximumScraperTS() {
         });
 
         const uniqueLinks = [...new Set(allLinks)];
-        console.log(`\n   🎉 Found ${uniqueLinks.length} unique campaigns. Processing...`);
+        console.log(`\n   🎉 Found ${uniqueLinks.length} unique campaigns. Processing first ${limit}...`);
 
+        console.log(`   🔍 Normalizing bank name...`);
         const bankName = await normalizeBankName('İş Bankası');
+        console.log(`   ✅ Normalized bank: ${bankName}`);
 
         let count = 0;
         for (const url of uniqueLinks) {
+            console.log(`   🔍 Processing [${count + 1}/${Math.min(uniqueLinks.length, limit)}]: ${url}`);
             if (count >= limit) break;
 
             try {
