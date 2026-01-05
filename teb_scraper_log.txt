@@ -1,0 +1,479 @@
+[Supabase Init] CWD: /Users/hipoglisemi/Desktop/kartavantaj-scraper
+[Supabase Init] __dirname: /Users/hipoglisemi/Desktop/kartavantaj-scraper/src/utils
+[Supabase Init] SUPABASE_URL present? true
+[Supabase Init] URL Length: 40
+[Supabase Init] URL Start: https://cp...
+[Supabase Init] URL Valid Protocol? true
+🚀 Starting TEB Scraper...
+   🔌 Connecting to Chrome debug instance on port 9222...
+   ⚠️  Could not connect to debug Chrome, launching new instance...
+   🚀 Launching new browser instance (Headless: false)...
+   🔍 Loading Campaign List: https://www.teb.com.tr/sizin-icin/kampanyalar/...
+
+   🎉 Found 56 unique campaigns.
+   🔍 Normalizing bank name...
+   ✅ Normalized bank: TEB
+   🔍 Checking for new and incomplete campaigns in database...
+      ⚠️  Incomplete (image_missing): https://www.teb.com.tr/sizin-icin/giyim-1200/
+      ⚠️  Incomplete (image_missing): https://www.teb.com.tr/sizin-icin/market-bonus/
+      ⚠️  Incomplete (image_missing): https://www.teb.com.tr/sizin-icin/e-ticaret-600-bonus/
+      ⚠️  Incomplete (image_missing): https://www.teb.com.tr/sizin-icin/beyaz-esya-harcamalariniza-bonus/
+      ⚠️  Incomplete (image_missing): https://www.teb.com.tr/sizin-icin/fatura-indirim-2026/
+      ⚠️  Incomplete (image_missing): https://www.teb.com.tr/sizin-icin/otomotiv-lastik/
+      ⚠️  Incomplete (image_missing): https://www.teb.com.tr/sizin-icin/duty-free-400/
+      ⚠️  Incomplete (image_missing): https://www.teb.com.tr/sizin-icin/yurtdisi-kampanyasi-500/
+      ⚠️  Incomplete (image_missing): https://www.teb.com.tr/sizin-icin/mtv-taksit-kampanyasi/
+      ⚠️  Incomplete (image_missing): https://www.teb.com.tr/sizin-icin/igdas-odemelerinize-taksit/
+      ⚠️  Incomplete (image_missing): https://www.teb.com.tr/sizin-icin/yapi-market-1000/
+      ⚠️  Incomplete (image_missing): https://www.teb.com.tr/sizin-icin/mobilya-1200/
+      ⚠️  Incomplete (image_missing): https://www.teb.com.tr/sizin-icin/istanbulkart/
+      ⚠️  Incomplete (image_missing): https://www.teb.com.tr/sizin-icin/debit-market-kampanyasi/
+      ⚠️  Incomplete (image_missing): https://www.teb.com.tr/sizin-icin/restoran-harcama-kampanyasi/
+      ⚠️  Incomplete (image_missing): https://www.teb.com.tr/sizin-icin/debit-ulasim-indirim/
+      ⚠️  Incomplete (image_missing): https://www.teb.com.tr/sizin-icin/akaryakit-indirim/
+      ⚠️  Incomplete (image_missing, brand_missing): https://www.teb.com.tr/sizin-icin/saglik-taksit/
+      ⚠️  Incomplete (image_missing, brand_missing): https://www.teb.com.tr/sizin-icin/hosgeldin-kredisi/
+      ⚠️  Incomplete (image_missing): https://www.teb.com.tr/sizin-icin/avantajli-kredi/
+      ⚠️  Incomplete (image_missing): https://www.teb.com.tr/sizin-icin/cepteteb-nakit-firsati/
+      ⚠️  Incomplete (image_missing): https://www.teb.com.tr/sizin-icin/my-visa-taksi/
+      ⚠️  Incomplete (image_missing): https://www.teb.com.tr/sizin-icin/my-visa-otel/
+      ⚠️  Incomplete (image_missing): https://www.teb.com.tr/sizin-icin/my-visa-restoran/
+      ⚠️  Incomplete (image_missing): https://www.teb.com.tr/sizin-icin/vitruta/
+      ⚠️  Incomplete (image_missing): https://www.teb.com.tr/sizin-icin/gardrops/
+      ⚠️  Incomplete (image_missing): https://www.teb.com.tr/sizin-icin/walkersapp/
+      ⚠️  Incomplete (image_missing): https://www.teb.com.tr/sizin-icin/osevio/
+      ⚠️  Incomplete (image_missing): https://www.teb.com.tr/sizin-icin/e-sim/
+      ⚠️  Incomplete (image_missing): https://www.teb.com.tr/sizin-icin/n11-indirim/
+      ⚠️  Incomplete (image_missing): https://www.teb.com.tr/sizin-icin/google-play-indirim/
+      ⚠️  Incomplete (image_missing): https://www.teb.com.tr/sizin-icin/ooautos/
+      ⚠️  Incomplete (image_missing): https://www.teb.com.tr/sizin-icin/enuygun-otel-indirim/
+      ⚠️  Incomplete (image_missing): https://www.teb.com.tr/sizin-icin/enuygun-arac-y10-indirim/
+   📊 Total: 56, New: 22, Incomplete: 34, Complete: 0
+   🚀 Processing 56 campaigns (22 new + 34 incomplete)...
+   🚀 Processing details for 56 campaigns (skipping 0 complete/existing)...
+
+   🔍 Processing [1/56]: https://www.teb.com.tr/sizin-icin/giyim-1200/
+📚 Supabase'den ana veriler çekiliyor...
+✅ Veriler Yüklendi: 18 kategori, 671 marka, 12 banka
+   gemini-2.0-flash [PYTHON] Stage 1: Full parse...
+   📊 AI Usage: 10102 tokens (P: 9286, C: 816) [PYTHON]
+   ✅ Stage 1: Complete (all fields extracted)
+      [1] Giyim Alışverişlerinize Toplam 1.20... (Img: ✅)
+      ✅ Successfully saved/updated.
+   🔍 Processing [2/56]: https://www.teb.com.tr/sizin-icin/market-bonus/
+   gemini-2.0-flash [PYTHON] Stage 1: Full parse...
+   📊 AI Usage: 22778 tokens (P: 9240, C: 2430) [PYTHON]
+   ✅ Stage 1: Complete (all fields extracted)
+      [2] Market ve Gıda Harcamalarınıza Topl... (Img: ✅)
+      ✅ Successfully saved/updated.
+   🔍 Processing [3/56]: https://www.teb.com.tr/sizin-icin/e-ticaret-600-bonus/
+   gemini-2.0-flash [PYTHON] Stage 1: Full parse...
+   📊 AI Usage: 10051 tokens (P: 9377, C: 674) [PYTHON]
+   ✅ Stage 1: Complete (all fields extracted)
+      [3] E-Ticaret Harcamalarınıza Toplam 60... (Img: ✅)
+      ✅ Successfully saved/updated.
+   🔍 Processing [4/56]: https://www.teb.com.tr/sizin-icin/beyaz-esya-harcamalariniza-bonus/
+   gemini-2.0-flash [PYTHON] Stage 1: Full parse...
+   📊 AI Usage: 9908 tokens (P: 9322, C: 586) [PYTHON]
+   ✅ Stage 1: Complete (all fields extracted)
+      [4] Beyaz Eşya ve Elektronik Alışverişi... (Img: ✅)
+      ✅ Successfully saved/updated.
+   🔍 Processing [5/56]: https://www.teb.com.tr/sizin-icin/marifetli-kampanyasi/
+   gemini-2.0-flash [PYTHON] Stage 1: Full parse...
+   📊 AI Usage: 10106 tokens (P: 9593, C: 513) [PYTHON]
+   🔄 Stage 2: Filling missing fields: valid_until 
+   📊 AI Usage: 1916 tokens (P: 1900, C: 16) [PYTHON]
+   ✅ Stage 2: Complete
+   ⚠️  WARNING: Still missing critical fields: valid_until 
+      [5] Marifetli Hesap 30+30+30 Hoş Geldin... (Img: ✅)
+      ✅ Successfully saved/updated.
+   🔍 Processing [6/56]: https://www.teb.com.tr/sizin-icin/fatura-indirim-2026/
+   gemini-2.0-flash [PYTHON] Stage 1: Full parse...
+   📊 AI Usage: 9794 tokens (P: 9282, C: 512) [PYTHON]
+   ✅ Stage 1: Complete (all fields extracted)
+      🏷️  Generic campaign detected: "Otomatik Fatura Ödeme Talimatlarınıza %20 İndirim"
+      [6] Otomatik Fatura Ödeme Talimatlarını... (Img: ✅)
+      ✅ Successfully saved/updated.
+   🔍 Processing [7/56]: https://www.teb.com.tr/sizin-icin/otomotiv-lastik/
+   gemini-2.0-flash [PYTHON] Stage 1: Full parse...
+   📊 AI Usage: 9858 tokens (P: 9245, C: 613) [PYTHON]
+   ✅ Stage 1: Complete (all fields extracted)
+      [7] Otomotiv Harcamanıza 750 TL’ye Vara... (Img: ✅)
+      ✅ Successfully saved/updated.
+   🔍 Processing [8/56]: https://www.teb.com.tr/sizin-icin/duty-free-400/
+   gemini-2.0-flash [PYTHON] Stage 1: Full parse...
+   📊 AI Usage: 9754 tokens (P: 9173, C: 581) [PYTHON]
+   ✅ Stage 1: Complete (all fields extracted)
+      [8] Duty Free Harcamalarınıza Toplam 40... (Img: ✅)
+      ✅ Successfully saved/updated.
+   🔍 Processing [9/56]: https://www.teb.com.tr/sizin-icin/yurtdisi-kampanyasi-500/
+   gemini-2.0-flash [PYTHON] Stage 1: Full parse...
+   📊 AI Usage: 9863 tokens (P: 9178, C: 685) [PYTHON]
+   ✅ Stage 1: Complete (all fields extracted)
+      [9] Yurt Dışı Harcamanıza 500 TL Bonus!... (Img: ✅)
+      ✅ Successfully saved/updated.
+   🔍 Processing [10/56]: https://www.teb.com.tr/sizin-icin/mtv-taksit-kampanyasi/
+   gemini-2.0-flash [PYTHON] Stage 1: Full parse...
+   📊 AI Usage: 9508 tokens (P: 8929, C: 579) [PYTHON]
+   ✅ Stage 1: Complete (all fields extracted)
+      [10] MTV Ödemelerinize 4 Taksit Fırsatı!... (Img: ✅)
+      ✅ Successfully saved/updated.
+   🔍 Processing [11/56]: https://www.teb.com.tr/sizin-icin/igdas-odemelerinize-taksit/
+   gemini-2.0-flash [PYTHON] Stage 1: Full parse...
+   📊 AI Usage: 9636 tokens (P: 8951, C: 685) [PYTHON]
+   ✅ Stage 1: Complete (all fields extracted)
+      [11] İgdaş Ödemelerinize Faizsiz 3 Taksi... (Img: ✅)
+      ✅ Successfully saved/updated.
+   🔍 Processing [12/56]: https://www.teb.com.tr/sizin-icin/yapi-market-1000/
+   gemini-2.0-flash [PYTHON] Stage 1: Full parse...
+   📊 AI Usage: 9939 tokens (P: 9332, C: 607) [PYTHON]
+   ✅ Stage 1: Complete (all fields extracted)
+      [12] Yapı Market Harcamanıza 1.000 TL'ye... (Img: ✅)
+      ✅ Successfully saved/updated.
+   🔍 Processing [13/56]: https://www.teb.com.tr/sizin-icin/mobilya-1200/
+   gemini-2.0-flash [PYTHON] Stage 1: Full parse...
+   📊 AI Usage: 10041 tokens (P: 9209, C: 832) [PYTHON]
+   ✅ Stage 1: Complete (all fields extracted)
+      [13] Mobilya Harcamanıza 1.200 TL Bonus!... (Img: ✅)
+      ✅ Successfully saved/updated.
+   🔍 Processing [14/56]: https://www.teb.com.tr/sizin-icin/bonus-akaryakit-kampanyasi/
+   gemini-2.0-flash [PYTHON] Stage 1: Full parse...
+   📊 AI Usage: 9763 tokens (P: 9133, C: 630) [PYTHON]
+   ⚠️  Error: AI returned but no valid JSON object was found in multi-part response.. Retry 1/3 after 2000ms...
+   📊 AI Usage: 9829 tokens (P: 9133, C: 696) [PYTHON]
+   ✅ Stage 1: Complete (all fields extracted)
+      [14] Akaryakıt Harcamalarınıza Toplam 20... (Img: ✅)
+      ✅ Successfully saved/updated.
+   🔍 Processing [15/56]: https://www.teb.com.tr/sizin-icin/istanbulkart/
+   gemini-2.0-flash [PYTHON] Stage 1: Full parse...
+   📊 AI Usage: 9761 tokens (P: 9121, C: 640) [PYTHON]
+   ✅ Stage 1: Complete (all fields extracted)
+   ⚠️  Brand Lookup Failed: "İstanbulkart"
+      [15] İstanbulkart Yüklemelerinize Toplam... (Img: ✅)
+      ✅ Successfully saved/updated.
+   🔍 Processing [16/56]: https://www.teb.com.tr/sizin-icin/debit-market-kampanyasi/
+   gemini-2.0-flash [PYTHON] Stage 1: Full parse...
+   📊 AI Usage: 9764 tokens (P: 9127, C: 637) [PYTHON]
+   ✅ Stage 1: Complete (all fields extracted)
+      [16] TEB Bireysel Banka Kartları ile Mar... (Img: ✅)
+      ✅ Successfully saved/updated.
+   🔍 Processing [17/56]: https://www.teb.com.tr/sizin-icin/egitim-taksit/
+   gemini-2.0-flash [PYTHON] Stage 1: Full parse...
+   📊 AI Usage: 9891 tokens (P: 9357, C: 534) [PYTHON]
+   ✅ Stage 1: Complete (all fields extracted)
+   ⚠️  Validation errors detected:
+      🚨 Mantık hatası! max_discount (2000000) > min_spend (10000)
+   🔄 Triggering Surgical Parse to fix issues...
+   📊 AI Usage: 1909 tokens (P: 1788, C: 121) [PYTHON]
+   ⚠️  WARNING: Still has validation errors after surgical fix:
+      🚨 Mantık hatası! max_discount (2000000) > min_spend (10000)
+      [17] Eğitim Ödemelerinize Faizsiz 4 Taks... (Img: ✅)
+      ❌ DB Error for "Eğitim Ödemelerinize Faizsiz 4 Taksit!": Could not find the 'sms_code' column of 'campaigns' in the schema cache
+   🔍 Processing [18/56]: https://www.teb.com.tr/sizin-icin/giyim-kampanyasi/
+   gemini-2.0-flash [PYTHON] Stage 1: Full parse...
+   📊 AI Usage: 9767 tokens (P: 9141, C: 626) [PYTHON]
+   ✅ Stage 1: Complete (all fields extracted)
+      [18] TEB Bireysel Banka Kartları ile Giy... (Img: ✅)
+      ✅ Successfully saved/updated.
+   🔍 Processing [19/56]: https://www.teb.com.tr/sizin-icin/elektronik-harcamalarina-indirim/
+   gemini-2.0-flash [PYTHON] Stage 1: Full parse...
+   📊 AI Usage: 19668 tokens (P: 9116, C: 1070) [PYTHON]
+   ✅ Stage 1: Complete (all fields extracted)
+      [19] TEB Bireysel Banka Kartları ile Ele... (Img: ✅)
+      ✅ Successfully saved/updated.
+   🔍 Processing [20/56]: https://www.teb.com.tr/sizin-icin/restoran-harcama-kampanyasi/
+   gemini-2.0-flash [PYTHON] Stage 1: Full parse...
+   📊 AI Usage: 9703 tokens (P: 9072, C: 631) [PYTHON]
+   ✅ Stage 1: Complete (all fields extracted)
+      [20] TEB Bireysel Banka Kartları ile Res... (Img: ✅)
+      ✅ Successfully saved/updated.
+   🔍 Processing [21/56]: https://www.teb.com.tr/sizin-icin/debit-ulasim-indirim/
+   gemini-2.0-flash [PYTHON] Stage 1: Full parse...
+   📊 AI Usage: 9944 tokens (P: 9278, C: 666) [PYTHON]
+   ✅ Stage 1: Complete (all fields extracted)
+      [21] TEB Banka Kartları ile Toplu Ulaşım... (Img: ✅)
+      ✅ Successfully saved/updated.
+   🔍 Processing [22/56]: https://www.teb.com.tr/sizin-icin/akaryakit-indirim/
+   gemini-2.0-flash [PYTHON] Stage 1: Full parse...
+   📊 AI Usage: 23376 tokens (P: 9055, C: 2968) [PYTHON]
+   ✅ Stage 1: Complete (all fields extracted)
+      [22] TEB Bireysel Banka Kartları ile Aka... (Img: ✅)
+      ✅ Successfully saved/updated.
+   🔍 Processing [23/56]: https://www.teb.com.tr/sizin-icin/pegasus/
+   gemini-2.0-flash [PYTHON] Stage 1: Full parse...
+   📊 AI Usage: 9821 tokens (P: 9242, C: 579) [PYTHON]
+   ✅ Stage 1: Complete (all fields extracted)
+      [23] Pegasus'ta 500 TL Bonus!... (Img: ✅)
+      ✅ Successfully saved/updated.
+   🔍 Processing [24/56]: https://www.teb.com.tr/sizin-icin/emekliye-ozel-promosyon/
+   gemini-2.0-flash [PYTHON] Stage 1: Full parse...
+   📊 AI Usage: 10996 tokens (P: 10364, C: 632) [PYTHON]
+   🔄 Stage 2: Filling missing fields: valid_until 
+   📊 AI Usage: 2687 tokens (P: 2671, C: 16) [PYTHON]
+   ✅ Stage 2: Complete
+   ⚠️  WARNING: Still missing critical fields: valid_until 
+      [24] 21.000 TL'ye Varan Promosyon... (Img: ✅)
+      ✅ Successfully saved/updated.
+   🔍 Processing [25/56]: https://www.teb.com.tr/sizin-icin/emekli-market/
+   gemini-2.0-flash [PYTHON] Stage 1: Full parse...
+   📊 AI Usage: 9568 tokens (P: 9132, C: 436) [PYTHON]
+   ✅ Stage 1: Complete (all fields extracted)
+      [25] TEB Bonus Emekli Kartınıza Özel Mar... (Img: ✅)
+      ✅ Successfully saved/updated.
+   🔍 Processing [26/56]: https://www.teb.com.tr/sizin-icin/saglik-taksit/
+   gemini-2.0-flash [PYTHON] Stage 1: Full parse...
+   📊 AI Usage: 9590 tokens (P: 9127, C: 463) [PYTHON]
+   ✅ Stage 1: Complete (all fields extracted)
+      [26] TEB Bonus Emekli Kart'a Özel Hastan... (Img: ✅)
+      ✅ Successfully saved/updated.
+   🔍 Processing [27/56]: https://www.teb.com.tr/sizin-icin/2025-cekilis-sonuclari/
+   gemini-2.0-flash [PYTHON] Stage 1: Full parse...
+   📊 AI Usage: 9466 tokens (P: 9047, C: 419) [PYTHON]
+   ✅ Stage 1: Complete (all fields extracted)
+      [27] 15 Adet iPhone 16 Sahiplerini Buldu... (Img: ✅)
+      ✅ Successfully saved/updated.
+   🔍 Processing [28/56]: https://www.teb.com.tr/sizin-icin/thy-500-indirim/
+   gemini-2.0-flash [PYTHON] Stage 1: Full parse...
+   📊 AI Usage: 9956 tokens (P: 9475, C: 481) [PYTHON]
+   ✅ Stage 1: Complete (all fields extracted)
+      🏷️  Generic campaign detected: "TROY Logolu TEB Kartları ile Türk Hava Yolları Biletlerinde 500 TL İndirim"
+      [28] TROY Logolu TEB Kartları ile Türk H... (Img: ✅)
+      ✅ Successfully saved/updated.
+   🔍 Processing [29/56]: https://www.teb.com.tr/sizin-icin/enuygun-indirim/
+   gemini-2.0-flash Stage 1: Full parse...
+   📊 AI Usage: 9260 tokens (P: 8717, C: 543)
+   ✅ Stage 1: Complete (all fields extracted)
+      [29] TEB Mastercard Logolu Kredi Kartlar... (Img: ✅)
+      ✅ Successfully saved/updated.
+   🔍 Processing [30/56]: https://www.teb.com.tr/sizin-icin/hosgeldin-kredisi/
+   gemini-2.0-flash [PYTHON] Stage 1: Full parse...
+   📊 AI Usage: 9703 tokens (P: 9249, C: 454) [PYTHON]
+   🔄 Stage 2: Filling missing fields: valid_until 
+   📊 AI Usage: 1572 tokens (P: 1556, C: 16) [PYTHON]
+   ✅ Stage 2: Complete
+   ⚠️  WARNING: Still missing critical fields: valid_until 
+      [30] TEB'den Hoş Geldin Kredisi!... (Img: ✅)
+      ✅ Successfully saved/updated.
+   🔍 Processing [31/56]: https://www.teb.com.tr/sizin-icin/autoking-y20/
+   gemini-2.0-flash [PYTHON] Stage 1: Full parse...
+   📊 AI Usage: 9232 tokens (P: 8716, C: 516) [PYTHON]
+   ✅ Stage 1: Complete (all fields extracted)
+   ⚠️  Validation errors detected:
+      🚨 Matematiksel tutarsızlık! discount_percentage=20 ama min_spend=NULL
+   🔄 Triggering Surgical Parse to fix issues...
+   📊 AI Usage: 1250 tokens (P: 1147, C: 103) [PYTHON]
+   🆕 New brands detected: Auto King
+   ✅ Added new brand: Auto King
+   ⚠️  WARNING: Still has validation errors after surgical fix:
+      🚨 Matematiksel tutarsızlık! discount_percentage=20 ama min_spend=NULL
+      [31] Auto King Servis Merkezleri'nde %20... (Img: ✅)
+      ✅ Successfully saved/updated.
+   🔍 Processing [32/56]: https://www.teb.com.tr/sizin-icin/avantajli-kredi/
+   gemini-2.0-flash [PYTHON] Stage 1: Full parse...
+   📊 AI Usage: 36612 tokens (P: 9296, C: 3793) [PYTHON]
+   🔄 Stage 2: Filling missing fields: valid_until 
+   📊 AI Usage: 1620 tokens (P: 1604, C: 16) [PYTHON]
+   🏦 Bank service detected for "TEB İhtiyaç Kredisi Kampanyası", mapping to "Genel"
+   ✅ Stage 2: Complete
+   ⚠️  WARNING: Still missing critical fields: valid_until 
+      🏷️  Generic campaign detected: "%2,99'dan Başlayan Faiz Oranıyla 125.000 TL 36 Ay Vadeli İhtiyaç Kredisi"
+      [32] %2,99'dan Başlayan Faiz Oranıyla 12... (Img: ✅)
+      ✅ Successfully saved/updated.
+   🔍 Processing [33/56]: https://www.teb.com.tr/sizin-icin/cepteteb-nakit-firsati/
+   gemini-2.0-flash [PYTHON] Stage 1: Full parse...
+   📊 AI Usage: 10335 tokens (P: 9734, C: 601) [PYTHON]
+   ✅ Stage 1: Complete (all fields extracted)
+      🏷️  Generic campaign detected: "150.000 TL'ye Varan Nakit Fırsatı!"
+      [33] 150.000 TL'ye Varan Nakit Fırsatı!... (Img: ✅)
+      ✅ Successfully saved/updated.
+   🔍 Processing [34/56]: https://www.teb.com.tr/sizin-icin/my-visa-taksi/
+   gemini-2.0-flash [PYTHON] Stage 1: Full parse...
+   📊 AI Usage: 47824 tokens (P: 10570, C: 6861) [PYTHON]
+   ✅ Stage 1: Complete (all fields extracted)
+      [34] Avrupa ve Amerika'daki Taksi ve Öze... (Img: ✅)
+      ✅ Successfully saved/updated.
+   🔍 Processing [35/56]: https://www.teb.com.tr/sizin-icin/my-visa-otel/
+   gemini-2.0-flash [PYTHON] Stage 1: Full parse...
+   📊 AI Usage: 11183 tokens (P: 10612, C: 571) [PYTHON]
+   ✅ Stage 1: Complete (all fields extracted)
+   ⚠️  Validation errors detected:
+      ⚠️  Min_spend hesaplama uyarısı: Beklenen ~30000 TL, bulunan 25000 TL
+   🔄 Triggering Surgical Parse to fix issues...
+      [35] Avrupa ve Amerika'daki Otel Harcama... (Img: ✅)
+      ✅ Successfully saved/updated.
+   🔍 Processing [36/56]: https://www.teb.com.tr/sizin-icin/my-visa-restoran/
+   gemini-2.0-flash [PYTHON] Stage 1: Full parse...
+   📊 AI Usage: 11248 tokens (P: 10646, C: 602) [PYTHON]
+   ✅ Stage 1: Complete (all fields extracted)
+      [36] Avrupa ve Amerika'daki Restoran Har... (Img: ✅)
+      ✅ Successfully saved/updated.
+   🔍 Processing [37/56]: https://www.teb.com.tr/sizin-icin/vitruta/
+   gemini-2.0-flash [PYTHON] Stage 1: Full parse...
+   📊 AI Usage: 9448 tokens (P: 8987, C: 461) [PYTHON]
+   ✅ Stage 1: Complete (all fields extracted)
+   ⚠️  Validation errors detected:
+      🚨 Matematiksel tutarsızlık! discount_percentage=15 ama min_spend=NULL
+   🔄 Triggering Surgical Parse to fix issues...
+   📊 AI Usage: 1551 tokens (P: 1425, C: 126) [PYTHON]
+   🆕 New brands detected: Dr. Martens
+   ✅ Added new brand: Dr. Martens
+   ⚠️  WARNING: Still has validation errors after surgical fix:
+      🚨 Matematiksel tutarsızlık! discount_percentage=15 ama min_spend=NULL
+      [37] My Visa'lılara Özel Vitruta'da %15 ... (Img: ✅)
+      ✅ Successfully saved/updated.
+   🔍 Processing [38/56]: https://www.teb.com.tr/sizin-icin/gardrops/
+   gemini-2.0-flash Stage 1: Full parse...
+   📊 AI Usage: 8997 tokens (P: 8425, C: 572)
+   🔄 Stage 2: Filling missing fields: valid_until 
+   📊 AI Usage: 1167 tokens (P: 1151, C: 16)
+   ✅ Stage 2: Complete
+   ⚠️  WARNING: Still missing critical fields: valid_until 
+      [38] Gardrops Kazancın, CEPTETEB ile 2 S... (Img: ✅)
+      ✅ Successfully saved/updated.
+   🔍 Processing [39/56]: https://www.teb.com.tr/sizin-icin/walkersapp/
+   gemini-2.0-flash [PYTHON] Stage 1: Full parse...
+   📊 AI Usage: 9519 tokens (P: 8962, C: 557) [PYTHON]
+   ✅ Stage 1: Complete (all fields extracted)
+   ⚠️  Brand Lookup Failed: "WalkersApp"
+      🏷️  Generic campaign detected: "CEPTETEB'lilere WalkersApp'ten 2500 Walkers Puan Hediye!"
+      [39] CEPTETEB'lilere WalkersApp'ten 2500... (Img: ✅)
+      ✅ Successfully saved/updated.
+   🔍 Processing [40/56]: https://www.teb.com.tr/sizin-icin/wastelog/
+   gemini-2.0-flash [PYTHON] Stage 1: Full parse...
+   📊 AI Usage: 9516 tokens (P: 8974, C: 542) [PYTHON]
+   ✅ Stage 1: Complete (all fields extracted)
+   ⚠️  Brand Lookup Failed: "Waste Log"
+      [40] Atıklarını Waste Log İle Geri Dönüş... (Img: ✅)
+      ✅ Successfully saved/updated.
+   🔍 Processing [41/56]: https://www.teb.com.tr/sizin-icin/0-faiz-tna/
+   gemini-2.0-flash [PYTHON] Stage 1: Full parse...
+   📊 AI Usage: 9780 tokens (P: 9109, C: 671) [PYTHON]
+   ✅ Stage 1: Complete (all fields extracted)
+      [41] %0 Faizli Taksitli Nakit Avans Fırs... (Img: ✅)
+      ✅ Successfully saved/updated.
+   🔍 Processing [42/56]: https://www.teb.com.tr/sizin-icin/otomate-1000/
+   gemini-2.0-flash Stage 1: Full parse...
+   📊 AI Usage: 9134 tokens (P: 8626, C: 508)
+   ✅ Stage 1: Complete (all fields extracted)
+      [42] CEPTETEB'lilere Otomate'de 1000 TL ... (Img: ✅)
+      ✅ Successfully saved/updated.
+   🔍 Processing [43/56]: https://www.teb.com.tr/sizin-icin/osevio/
+   gemini-2.0-flash [PYTHON] Stage 1: Full parse...
+   📊 AI Usage: 9325 tokens (P: 8845, C: 480) [PYTHON]
+   ✅ Stage 1: Complete (all fields extracted)
+   ⚠️  Validation errors detected:
+      🚨 Matematiksel tutarsızlık! discount_percentage=15 ama min_spend=NULL
+   🔄 Triggering Surgical Parse to fix issues...
+   📊 AI Usage: 1387 tokens (P: 1284, C: 103) [PYTHON]
+   🆕 New brands detected: Osevio
+   ✅ Added new brand: Osevio
+   ⚠️  WARNING: Still has validation errors after surgical fix:
+      🚨 Matematiksel tutarsızlık! discount_percentage=15 ama min_spend=NULL
+      [43] Osevio.com'da %15 İndirim!... (Img: ✅)
+      ✅ Successfully saved/updated.
+   🔍 Processing [44/56]: https://www.teb.com.tr/sizin-icin/e-sim/
+   gemini-2.0-flash [PYTHON] Stage 1: Full parse...
+   📊 AI Usage: 9346 tokens (P: 8784, C: 562) [PYTHON]
+   🔄 Stage 2: Filling missing fields: min_spend 
+   📊 AI Usage: 1111 tokens (P: 1095, C: 16) [PYTHON]
+   ✅ Stage 2: Complete
+   ⚠️  WARNING: Still missing critical fields: min_spend 
+      [44] CEPTETEB'lilere Yurt Dışı E-Sim Pak... (Img: ✅)
+      ✅ Successfully saved/updated.
+   🔍 Processing [45/56]: https://www.teb.com.tr/sizin-icin/n11-indirim/
+   gemini-2.0-flash [PYTHON] Stage 1: Full parse...
+   📊 AI Usage: 9618 tokens (P: 9067, C: 551) [PYTHON]
+   ✅ Stage 1: Complete (all fields extracted)
+      [45] Mastercard Logolu TEB Kredi Kartlar... (Img: ✅)
+      ✅ Successfully saved/updated.
+   🔍 Processing [46/56]: https://www.teb.com.tr/sizin-icin/google-play-indirim/
+   gemini-2.0-flash [PYTHON] Stage 1: Full parse...
+   📊 AI Usage: 9521 tokens (P: 9039, C: 482) [PYTHON]
+   ✅ Stage 1: Complete (all fields extracted)
+      [46] Mastercard Logolu TEB Kartlarınız i... (Img: ✅)
+      ✅ Successfully saved/updated.
+   🔍 Processing [47/56]: https://www.teb.com.tr/sizin-icin/starbucks/
+   gemini-2.0-flash [PYTHON] Stage 1: Full parse...
+   📊 AI Usage: 9782 tokens (P: 9132, C: 650) [PYTHON]
+   ✅ Stage 1: Complete (all fields extracted)
+      [47] TEB Kredi Kartlarınızla Starbucks't... (Img: ✅)
+      ✅ Successfully saved/updated.
+   🔍 Processing [48/56]: https://www.teb.com.tr/sizin-icin/tikla-gelsin/
+   gemini-2.0-flash Stage 1: Full parse...
+   📊 AI Usage: 9149 tokens (P: 8533, C: 616)
+   ✅ Stage 1: Complete (all fields extracted)
+      [48] Mastercard Logolu TEB Kredi Kartlar... (Img: ✅)
+      ✅ Successfully saved/updated.
+   🔍 Processing [49/56]: https://www.teb.com.tr/sizin-icin/yeni-mevduat-vadeli/
+   gemini-2.0-flash [PYTHON] Stage 1: Full parse...
+   📊 AI Usage: 10424 tokens (P: 9531, C: 893) [PYTHON]
+   🔄 Stage 2: Filling missing fields: valid_until 
+   📊 AI Usage: 1858 tokens (P: 1842, C: 16) [PYTHON]
+   ✅ Stage 2: Complete
+   ⚠️  WARNING: Still missing critical fields: valid_until 
+      [49] Yeni Mevduatınıza %38'e Varan Faiz ... (Img: ✅)
+      ✅ Successfully saved/updated.
+   🔍 Processing [50/56]: https://www.teb.com.tr/sizin-icin/ikea/
+   gemini-2.0-flash Stage 1: Full parse...
+   📊 AI Usage: 9139 tokens (P: 8599, C: 540)
+   ✅ Stage 1: Complete (all fields extracted)
+      🏷️  Generic campaign detected: "Mastercard Logolu TEB Kredi Kartlarınızla IKEA'da Geçerli 1.000 TL İndirim"
+      [50] Mastercard Logolu TEB Kredi Kartlar... (Img: ✅)
+      ✅ Successfully saved/updated.
+   🔍 Processing [51/56]: https://www.teb.com.tr/sizin-icin/ulasim-150-indirim/
+   gemini-2.0-flash [PYTHON] Stage 1: Full parse...
+   📊 AI Usage: 9697 tokens (P: 9125, C: 572) [PYTHON]
+   ✅ Stage 1: Complete (all fields extracted)
+      [51] Toplu Taşıma Harcamalarınıza 150 TL... (Img: ✅)
+      ✅ Successfully saved/updated.
+   🔍 Processing [52/56]: https://www.teb.com.tr/sizin-icin/ooautos/
+   gemini-2.0-flash [PYTHON] Stage 1: Full parse...
+   📊 AI Usage: 10927 tokens (P: 8913, C: 2014) [PYTHON]
+   ✅ Stage 1: Complete (all fields extracted)
+   ⚠️  Validation errors detected:
+      🚨 Matematiksel tutarsızlık! discount_percentage=20 ama min_spend=NULL
+   🔄 Triggering Surgical Parse to fix issues...
+   📊 AI Usage: 1458 tokens (P: 1356, C: 102) [PYTHON]
+   ⚠️  WARNING: Still has validation errors after surgical fix:
+      🚨 Matematiksel tutarsızlık! discount_percentage=20 ama min_spend=NULL
+      [52] CEPTETEB'liler ooAutos'da Çok Avant... (Img: ✅)
+      ✅ Successfully saved/updated.
+   🔍 Processing [53/56]: https://www.teb.com.tr/sizin-icin/servisplan/
+   gemini-2.0-flash [PYTHON] Stage 1: Full parse...
+   📊 AI Usage: 10013 tokens (P: 9180, C: 833) [PYTHON]
+   ✅ Stage 1: Complete (all fields extracted)
+   ⚠️  Validation errors detected:
+      🚨 Matematiksel tutarsızlık! discount_percentage=32 ama min_spend=NULL
+   🔄 Triggering Surgical Parse to fix issues...
+   📊 AI Usage: 1734 tokens (P: 1618, C: 116) [PYTHON]
+   🆕 New brands detected: Euromaster, Witty Car
+   ✅ Added new brand: Euromaster
+   ✅ Added new brand: Witty Car
+   ⚠️  WARNING: Still has validation errors after surgical fix:
+      🚨 Matematiksel tutarsızlık! discount_percentage=32 ama min_spend=NULL
+      [53] Servis Plan ile Lastik Değişimi Çok... (Img: ✅)
+      ✅ Successfully saved/updated.
+   🔍 Processing [54/56]: https://www.teb.com.tr/sizin-icin/enuygun-ucak/
+   gemini-2.0-flash [PYTHON] Stage 1: Full parse...
+   📊 AI Usage: 9673 tokens (P: 8920, C: 753) [PYTHON]
+   ✅ Stage 1: Complete (all fields extracted)
+      [54] ENUYGUN'dan CEPTETEB'lilere Özel Uç... (Img: ✅)
+      ✅ Successfully saved/updated.
+   🔍 Processing [55/56]: https://www.teb.com.tr/sizin-icin/enuygun-otel-indirim/
+   gemini-2.0-flash [PYTHON] Stage 1: Full parse...
+   📊 AI Usage: 19073 tokens (P: 9000, C: 841) [PYTHON]
+   ✅ Stage 1: Complete (all fields extracted)
+      [55] Otel Rezervasyonlarında %10 İndirim... (Img: ✅)
+      ✅ Successfully saved/updated.
+   🔍 Processing [56/56]: https://www.teb.com.tr/sizin-icin/enuygun-arac-y10-indirim/
+   gemini-2.0-flash [PYTHON] Stage 1: Full parse...
+   📊 AI Usage: 83470 tokens (P: 8841, C: 7772) [PYTHON]
+   🔄 Stage 2: Filling missing fields: valid_until, min_spend 
+   📊 AI Usage: 1190 tokens (P: 1155, C: 35) [PYTHON]
+   🏦 Bank service detected for "ENUYGUN'dan CEPTETEB'lilere Özel %10 Araç Kiralama İndirimi!", mapping to "Genel"
+   ✅ Stage 2: Complete
+   ⚠️  WARNING: Still missing critical fields: min_spend 
+      [56] ENUYGUN'dan CEPTETEB'lilere Özel Ar... (Img: ✅)
+      ✅ Successfully saved/updated.
+
+✅ TEB Scraper Finished. Processed 56 campaigns.

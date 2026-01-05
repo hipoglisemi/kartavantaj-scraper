@@ -38,7 +38,7 @@ export async function optimizeCampaigns(
     // STEP 2: Query database for existing campaigns (only clean URLs)
     const { data: existingCampaigns } = await supabase
         .from('campaigns')
-        .select('reference_url, title, image, brand, sector_slug, participation_method, eligible_customers')
+        .select('reference_url, title, image, image_url, brand, sector_slug, participation_method, eligible_customers')
         .eq('card_name', cardName)
         .in('reference_url', cleanUrls);
 
@@ -57,7 +57,10 @@ export async function optimizeCampaigns(
             newUrls.push(url);
         } else {
             // Case 2: Campaign exists, check if data is incomplete
-            const isImageMissing = !campaign.image || campaign.image.trim() === '' || campaign.image.includes('placeholder') || campaign.image.includes('favicon');
+            // Check both image and image_url fields (some scrapers use image_url for direct bank URLs)
+            const hasImage = campaign.image && campaign.image.trim() !== '' && !campaign.image.includes('placeholder') && !campaign.image.includes('favicon');
+            const hasImageUrl = campaign.image_url && campaign.image_url.trim() !== '';
+            const isImageMissing = !hasImage && !hasImageUrl;
             const isBrandMissing = !campaign.brand;
             const isSectorGeneric = campaign.sector_slug === 'genel';
 
