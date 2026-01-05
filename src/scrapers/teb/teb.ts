@@ -101,20 +101,36 @@ async function runTebScraper() {
 
             try {
                 await sleep(2000 + Math.random() * 2000);
-                await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
+                await page.goto(url, { waitUntil: 'networkidle2', timeout: 45000 });
+
+                // Wait for splash screen to disappear
+                await page.waitForFunction(() => {
+                    const splash = document.querySelector('.blockUI');
+                    if (!splash) return true;
+                    const style = window.getComputedStyle(splash);
+                    return style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0';
+                }, { timeout: 15000 }).catch(() => console.log('      ⚠️  Splash screen wait timeout...'));
 
                 const detailContent = await page.content();
                 const $d = cheerio.load(detailContent);
 
-                // Selective Extraction
-                let title = $d('.detailHeader h1').first().text().trim() || $d('h1').first().text().trim() || "Başlık Yok";
+                // Updated Selectors (TEB has changed structure)
+                let title = $d('.heading h1').first().text().trim() || $d('h1').first().text().trim() || "Başlık Yok";
 
-                // If splash screen text is captured, try alternative
+                // Handle Cufon or Splash text if still present
                 if (title.includes('İşleminiz Devam Ediyor')) {
-                    title = $d('.detailHeader').first().text().trim().split('\n')[0];
+                    // Try to wait one more time or use a narrower selector
+                    await sleep(2000);
+                    const retryContent = await page.content();
+                    const $dr = cheerio.load(retryContent);
+                    title = $dr('.heading h1').first().text().trim() || $dr('h1').first().text().trim();
                 }
 
-                if (title.length < 5 || title.includes('İşleminiz Devam Ediyor')) continue;
+                // If text is still splash screen, it's a fail
+                if (title.length < 5 || title.includes('İşleminiz Devam Ediyor')) {
+                    console.log(`      ⚠️  Skipping: Invalid title or splash screen stuck: "${title}"`);
+                    continue;
+                }
 
                 // Image
                 let image = "";

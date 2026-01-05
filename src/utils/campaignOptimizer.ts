@@ -1,9 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-    process.env.SUPABASE_URL!,
-    process.env.SUPABASE_ANON_KEY!
-);
+import { supabase } from './supabase';
 
 /**
  * AI Optimization Helper: Filters campaigns to classify as New, Incomplete, or Complete

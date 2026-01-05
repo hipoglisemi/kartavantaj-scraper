@@ -113,48 +113,77 @@ async function runMaximilesScraper() {
 
         if (!listLoaded) throw new Error(`Could not load campaign list after ${maxListRetries} attempts`);
 
+        console.log('      🍪 Checking for cookie banners...');
+        try {
+            await page.evaluate(() => {
+                const cookieBtns = Array.from(document.querySelectorAll('button, a'));
+                const acceptBtn = cookieBtns.find(b =>
+                    b.textContent?.includes('Anladım') ||
+                    b.textContent?.includes('Kapat') ||
+                    b.textContent?.includes('Kabul Et')
+                );
+                if (acceptBtn) (acceptBtn as HTMLElement).click();
+            });
+            await sleep(1000);
+        } catch (e) { /* ignore */ }
+
         await sleep(3000);
 
         // --- INFINITE SCROLL LOGIC ---
-        let hasMore = true;
-        while (hasMore) {
+        console.log('      🖱️  Starting infinite scroll...');
+        let previousHeight = await page.evaluate('document.body.scrollHeight');
+        let scrollRetries = 0;
+        const maxScrollRetries = 3;
+        let totalScrolled = 0;
+        let stopDueToExpiry = false;
+
+        while (scrollRetries < maxScrollRetries && !stopDueToExpiry) {
             try {
-                const btnFound = await page.evaluate(() => {
-                    const btns = Array.from(document.querySelectorAll('button'));
-                    const loadMore = btns.find(b => b.innerText.includes('Daha Fazla'));
-                    if (loadMore) {
-                        loadMore.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        return true;
-                    }
-                    return false;
+                await page.evaluate('window.scrollTo(0, document.body.scrollHeight)');
+                await sleep(3000); // Wait for content load
+
+                // Check for expired campaign indicators in the current view
+                stopDueToExpiry = await page.evaluate(() => {
+                    const searchStrings = ['sona ermiştir', 'kampanya sona ermiştir'];
+                    const cards = Array.from(document.querySelectorAll('.campaign-card, .card, [class*="campaign"]'));
+                    const lastFewCards = cards.slice(-10); // Check the latest loaded cards
+
+                    const expiredCount = lastFewCards.filter(c => {
+                        const text = c.textContent?.toLowerCase() || "";
+                        const html = c.innerHTML.toLowerCase();
+                        return searchStrings.some(s => text.includes(s) || html.includes(s));
+                    }).length;
+
+                    // If we see multiple expired cards in the new batch, we've likely reached the archive
+                    return expiredCount >= 2;
                 });
 
-                if (btnFound) {
-                    await sleep(1000);
-                    const clicked = await page.evaluate(() => {
-                        const btns = Array.from(document.querySelectorAll('button'));
-                        const loadMore = btns.find(b => b.innerText.includes('Daha Fazla'));
-                        if (loadMore) {
-                            (loadMore as HTMLElement).click();
-                            return true;
-                        }
-                        return false;
-                    });
-
-                    if (clicked) {
-                        process.stdout.write('.');
-                        await sleep(3000); // Wait for content load
-                    } else {
-                        hasMore = false;
-                    }
-                } else {
-                    console.log('\n      ✅ All list loaded.');
-                    hasMore = false;
+                if (stopDueToExpiry) {
+                    console.log('\n      🛑 Detected "Sona Ermiştir" indicators. Stopping early.');
+                    break;
                 }
-            } catch (e) {
-                hasMore = false;
+
+                let currentHeight = await page.evaluate('document.body.scrollHeight');
+                if (currentHeight > previousHeight) {
+                    previousHeight = currentHeight;
+                    scrollRetries = 0;
+                    totalScrolled++;
+                    process.stdout.write('.');
+                } else {
+                    scrollRetries++;
+                    // Extra scroll to be safe
+                    await page.evaluate('window.scrollBy(0, -300)');
+                    await sleep(500);
+                    await page.evaluate('window.scrollTo(0, document.body.scrollHeight)');
+                    await sleep(2000);
+                }
+            } catch (evalError) {
+                console.log('      ⚠️  Scroll evaluation hiccup, retrying...');
+                scrollRetries++;
+                await sleep(2000);
             }
         }
+        console.log(`\n      ✅ Finished scrolling after ${totalScrolled} iterations.`);
 
         // --- EXTRACT LINKS ---
         const content = await page.content();
