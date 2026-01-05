@@ -372,7 +372,8 @@ async function runMaximumScraperTS() {
                         campaignData.bank,
                         campaignData.card_name,
                         campaignData.brand,
-                        campaignData.sector_slug
+                        campaignData.sector_slug,
+                        campaignData.category
                     );
 
                     // Force specific IDs for İş Bankası Maximum to ensure they appear in the right filter

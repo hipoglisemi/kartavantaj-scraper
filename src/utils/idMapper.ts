@@ -70,18 +70,33 @@ export async function lookupIDs(
     }
 
     // 2. Lookup brand_id from master_brands
-    if (brand) {
-        // Handle comma-separated brands - take the first one
-        const primaryBrand = brand.split(',')[0].trim();
+    if (brand && brand !== 'null') {
+        // Cleaning: Remove common noise
+        let brandToSearch = brand.split(',')[0].split('(')[0].trim();
+
+        // Handle "Genel" specifically
+        if (brandToSearch.toLowerCase().includes('genel')) {
+            brandToSearch = 'Genel';
+        }
 
         const { data: brandData } = await supabase
             .from('master_brands')
             .select('id')
-            .ilike('name', primaryBrand)
-            .single();
+            .ilike('name', brandToSearch)
+            .maybeSingle();
 
         if (brandData) {
             ids.brand_id = brandData.id;
+        } else if (brand.includes(',')) {
+            // If comma-separated, try different parts
+            const parts = brand.split(',').map(p => p.trim());
+            for (const part of parts) {
+                const { data: partData } = await supabase.from('master_brands').select('id').ilike('name', part).maybeSingle();
+                if (partData) {
+                    ids.brand_id = partData.id;
+                    break;
+                }
+            }
         }
     }
 
@@ -89,8 +104,11 @@ export async function lookupIDs(
     if (sectorSlug || category) {
         let query = supabase.from('master_sectors').select('id');
 
-        if (sectorSlug) {
-            query = query.eq('slug', sectorSlug);
+        // Priority logic: If sectorSlug is 'genel' or empty, use category
+        const effectiveSlug = (sectorSlug && sectorSlug !== 'genel') ? sectorSlug : null;
+
+        if (effectiveSlug) {
+            query = query.eq('slug', effectiveSlug);
         } else if (category) {
             query = query.ilike('name', category);
         }
@@ -99,6 +117,10 @@ export async function lookupIDs(
 
         if (sectorData) {
             ids.sector_id = sectorData.id;
+        } else if (category && sectorSlug) {
+            // Last ditch effort: if slug failed, try name
+            const { data: categoryData } = await supabase.from('master_sectors').select('id').ilike('name', category).maybeSingle();
+            if (categoryData) ids.sector_id = categoryData.id;
         }
     }
 

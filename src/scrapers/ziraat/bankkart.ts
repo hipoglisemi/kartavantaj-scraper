@@ -257,7 +257,8 @@ async function runBankkartScraper() {
                         campaignData.bank,
                         campaignData.card_name,
                         campaignData.brand,
-                        campaignData.sector_slug
+                        campaignData.sector_slug,
+                        campaignData.category
                     );
                     Object.assign(campaignData, ids);
 

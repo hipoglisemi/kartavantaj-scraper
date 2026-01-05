@@ -191,7 +191,8 @@ async function runBusinessScraper() {
                     campaignData.bank,
                     campaignData.card_name,
                     campaignData.brand,
-                    campaignData.sector_slug
+                    campaignData.sector_slug,
+                    campaignData.category
                 );
                 console.log(`      🆔 Debug IDs:`, JSON.stringify(ids));
                 Object.assign(campaignData, ids);

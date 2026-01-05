@@ -159,15 +159,16 @@ async function runGarantiScraper() {
                         campaignData.bank,
                         campaignData.card_name,
                         campaignData.brand,
-                        campaignData.sector_slug
+                        campaignData.sector_slug,
+                        campaignData.category
                     );
                     Object.assign(campaignData, ids);
-                // Assign badge based on campaign content
-                const badge = assignBadge(campaignData);
-                campaignData.badge_text = badge.text;
-                campaignData.badge_color = badge.color;
-                // Mark as generic if it's a non-brand-specific campaign
-                markGenericBrand(campaignData);
+                    // Assign badge based on campaign content
+                    const badge = assignBadge(campaignData);
+                    campaignData.badge_text = badge.text;
+                    campaignData.badge_color = badge.color;
+                    // Mark as generic if it's a non-brand-specific campaign
+                    markGenericBrand(campaignData);
 
                     // Upsert
                     const { error } = await supabase

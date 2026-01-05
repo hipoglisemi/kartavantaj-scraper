@@ -6,6 +6,8 @@
 import { supabase } from './utils/supabase';
 import { parseWithGemini } from './services/geminiParser';
 import { assignBadge } from './services/badgeAssigner';
+import { lookupIDs } from './utils/idMapper';
+import { syncEarningAndDiscount } from './utils/dataFixer';
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -17,7 +19,7 @@ async function reprocessCampaigns(limit?: number) {
     const { data: campaigns, error } = await supabase
         .from('campaigns')
         .select('*')
-        .or('ai_enhanced.is.null,ai_enhanced.eq.false')
+        .or('ai_enhanced.is.null,ai_enhanced.eq.false,publish_status.eq.processing')
         .order('created_at', { ascending: false });
 
     if (error) {
@@ -62,16 +64,28 @@ async function reprocessCampaigns(limit?: number) {
             // Assign badge based on AI data
             const badge = assignBadge(aiData);
 
-            // Merge with existing data (preserve original image, card_name, etc.)
-            const updatedCampaign = {
+            // Perform ID Lookup
+            const ids = await lookupIDs(
+                aiData.bank || campaign.bank,
+                aiData.card_name || campaign.card_name,
+                aiData.brand,
+                aiData.sector_slug,
+                aiData.category
+            );
+
+            // Merge with existing data
+            const updatedCampaign: any = {
                 ...aiData,
-                image: campaign.image, // Keep original image
-                card_name: campaign.card_name, // Keep original card_name
-                provider: campaign.provider, // Keep provider
+                ...ids,
                 badge_text: badge.text,
                 badge_color: badge.color,
-                ai_enhanced: true
+                ai_enhanced: true,
+                publish_status: 'clean', // Set to clean after successful reprocess
+                publish_updated_at: new Date().toISOString()
             };
+
+            // Fix earnings before update
+            syncEarningAndDiscount(updatedCampaign);
 
             // Update in Supabase
             const { error: updateError } = await supabase
