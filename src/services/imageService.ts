@@ -1,14 +1,9 @@
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '../utils/supabase';
 import * as dotenv from 'dotenv';
 import { generateCampaignSlug } from '../utils/slugify';
 import { Page } from 'puppeteer';
 
 dotenv.config();
-
-// Standardized Supabase Client for Storage
-const supabaseUrl = process.env.SUPABASE_URL!;
-const supabaseKey = process.env.SUPABASE_ANON_KEY!;
-const supabase = createClient(supabaseUrl, supabaseKey);
 
 const BUCKET_NAME = 'campaign-images';
 

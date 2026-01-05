@@ -1,0 +1,337 @@
+import { supabase } from '../../utils/supabase'; // Shared client
+import puppeteer from 'puppeteer-extra';
+import StealthPlugin from 'puppeteer-extra-plugin-stealth';
+import * as cheerio from 'cheerio';
+import {
+    cleanText,
+    formatDateIso,
+    trLower
+} from '../../utils/MaximumHelpers';
+import { normalizeBankName } from '../../utils/bankMapper';
+import { lookupIDs } from '../../utils/idMapper';
+import { downloadImageDirectly } from '../../services/imageService';
+import { parseWithGemini } from '../../services/geminiParser';
+import { syncEarningAndDiscount } from '../../utils/dataFixer';
+import { assignBadge } from '../../services/badgeAssigner';
+import { markGenericBrand } from '../../utils/genericDetector';
+
+// Use Stealth Plugin
+puppeteer.use(StealthPlugin());
+
+const BASE_URL = 'https://www.maximiles.com.tr';
+const CAMPAIGNS_URL = 'https://www.maximiles.com.tr/kampanyalar';
+
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+async function runMaximilesScraper() {
+    console.log('🚀 Starting İş Bankası (Maximiles) Scraper...');
+
+    const limitArg = process.argv.find(arg => arg.startsWith('--limit='));
+    const limit = limitArg ? parseInt(limitArg.split('=')[1]) : 1000;
+
+    let browser;
+    const isCI = process.env.GITHUB_ACTIONS === 'true' || process.env.CI === 'true';
+
+    if (!isCI) {
+        try {
+            console.log('   🔌 Connecting to Chrome debug instance on port 9222...');
+            browser = await puppeteer.connect({
+                browserURL: 'http://localhost:9222',
+                defaultViewport: null
+            });
+            console.log('   ✅ Connected to existing Chrome instance');
+        } catch (error) {
+            console.log('   ⚠️  Could not connect to debug Chrome, launching new instance...');
+        }
+    }
+
+    if (!browser) {
+        console.log(`   🚀 Launching new browser instance (Headless: ${isCI})...`);
+        browser = await puppeteer.launch({
+            headless: isCI,
+            args: [
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage',
+                '--disable-gpu',
+                '--window-position=-10000,0',
+                '--disable-blink-features=AutomationControlled'
+            ]
+        });
+    }
+
+    const page = await browser.newPage();
+    await page.setViewport({ width: 1400, height: 900 });
+
+    const userAgents = [
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+    ];
+    const randomUA = userAgents[Math.floor(Math.random() * userAgents.length)];
+
+    await page.setUserAgent(randomUA);
+    await page.setExtraHTTPHeaders({
+        'Accept-Language': 'tr-TR,tr;q=0.9',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+        'Connection': 'keep-alive',
+        'Upgrade-Insecure-Requests': '1',
+        'Sec-Fetch-Dest': 'document',
+        'Sec-Fetch-Mode': 'navigate',
+        'Sec-Fetch-Site': 'none',
+        'Sec-Fetch-User': '?1'
+    });
+
+    await page.evaluateOnNewDocument(() => {
+        // @ts-ignore
+        Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+        // @ts-ignore
+        navigator.languages = ['tr-TR', 'tr', 'en-US', 'en'];
+    });
+
+    try {
+        console.log(`   🔍 Loading Campaign List: ${CAMPAIGNS_URL}...`);
+
+        let listLoaded = false;
+        let listRetries = 0;
+        const maxListRetries = 10;
+
+        while (!listLoaded && listRetries < maxListRetries) {
+            try {
+                await page.goto(CAMPAIGNS_URL, { waitUntil: 'networkidle2', timeout: 45000 });
+                listLoaded = true;
+            } catch (e: any) {
+                listRetries++;
+                const backoff = Math.min(listRetries * 5000, 30000);
+                console.log(`      ⚠️  List load attempt ${listRetries}/${maxListRetries} failed: ${e.message}. Retrying in ${backoff / 1000}s...`);
+                await sleep(backoff);
+                await page.setUserAgent(userAgents[listRetries % userAgents.length]);
+            }
+        }
+
+        if (!listLoaded) throw new Error(`Could not load campaign list after ${maxListRetries} attempts`);
+
+        await sleep(3000);
+
+        // --- INFINITE SCROLL LOGIC ---
+        let hasMore = true;
+        while (hasMore) {
+            try {
+                const btnFound = await page.evaluate(() => {
+                    const btns = Array.from(document.querySelectorAll('button'));
+                    const loadMore = btns.find(b => b.innerText.includes('Daha Fazla'));
+                    if (loadMore) {
+                        loadMore.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        return true;
+                    }
+                    return false;
+                });
+
+                if (btnFound) {
+                    await sleep(1000);
+                    const clicked = await page.evaluate(() => {
+                        const btns = Array.from(document.querySelectorAll('button'));
+                        const loadMore = btns.find(b => b.innerText.includes('Daha Fazla'));
+                        if (loadMore) {
+                            (loadMore as HTMLElement).click();
+                            return true;
+                        }
+                        return false;
+                    });
+
+                    if (clicked) {
+                        process.stdout.write('.');
+                        await sleep(3000); // Wait for content load
+                    } else {
+                        hasMore = false;
+                    }
+                } else {
+                    console.log('\n      ✅ All list loaded.');
+                    hasMore = false;
+                }
+            } catch (e) {
+                hasMore = false;
+            }
+        }
+
+        // --- EXTRACT LINKS ---
+        const content = await page.content();
+        const $ = cheerio.load(content);
+        let allLinks: string[] = [];
+
+        // Category keywords to exclude
+        const categorySuffixes = [
+            '-kampanyalari',
+            '-kampanyalar',
+            'premium-kampanyalar',
+            'tum-kampanyalar',
+        ];
+
+        $('a').each((_, el) => {
+            const href = $(el).attr('href');
+            if (href && (href.includes('/kampanyalar/') || href.includes('kampanyalar/')) && !href.includes('arsiv')) {
+                const lowerHref = href.toLowerCase();
+                const isCategorySuffix = categorySuffixes.some(suffix => lowerHref.endsWith(suffix));
+                const isCommonPage = lowerHref.includes('ozellikler') || lowerHref.includes('basvuru') || lowerHref.endsWith('/kampanyalar');
+
+                if (!isCategorySuffix && !isCommonPage && href.length > 25) {
+                    let fullUrl = href.startsWith('http') ? href : `${BASE_URL}${href.startsWith('/') ? '' : '/'}${href}`;
+                    if (!allLinks.includes(fullUrl)) {
+                        allLinks.push(fullUrl);
+                    }
+                }
+            }
+        });
+
+        const uniqueLinks = [...new Set(allLinks)];
+        console.log(`\n   🎉 Found ${uniqueLinks.length} unique campaigns. Processing first ${limit}...`);
+
+        console.log(`   🔍 Normalizing bank name...`);
+        const bankName = await normalizeBankName('İş Bankası');
+        console.log(`   ✅ Normalized bank: ${bankName}`);
+
+        let count = 0;
+        for (const url of uniqueLinks) {
+            console.log(`   🔍 Processing [${count + 1}/${Math.min(uniqueLinks.length, limit)}]: ${url}`);
+            if (count >= limit) break;
+
+            try {
+                await sleep(3000 + Math.random() * 2000);
+
+                let detailRetries = 0;
+                let success = false;
+                while (detailRetries < 5 && !success) {
+                    try {
+                        await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
+                        success = true;
+                    } catch (e: any) {
+                        detailRetries++;
+                        const backoff = 3000 * detailRetries;
+                        console.error(`      ⚠️ Detail load attempt ${detailRetries}/5 for ${url}: ${e.message}. Retrying in ${backoff / 1000}s...`);
+                        await sleep(backoff);
+                        await page.setUserAgent(userAgents[detailRetries % userAgents.length]);
+                    }
+                }
+
+                if (!success) {
+                    console.error(`      ❌ Failed to load ${url} after 5 retries.`);
+                    continue;
+                }
+
+                await page.evaluate(() => window.scrollTo(0, 600));
+                await sleep(500);
+
+                const detailContent = await page.content();
+                const $d = cheerio.load(detailContent);
+
+                const titleEl = $d('h1.page-title').first() || $d('h1').first();
+                const title = cleanText(titleEl.text() || "Başlık Yok");
+
+                if (trLower(title).includes('geçmiş') || title.length < 10) continue;
+
+                // Dates
+                // Maximiles seems to put dates in strong tags or specific divs, but let's try to find it textually if ID fails
+                // The dump showed <div class="d-flex flex-column"><strong>Başlangıç - Bitiş Tarihi</strong> <span> 01.01.2026 - 31.01.2026 </span></div>
+                let dateText = "";
+                const dateEl = $d("div.campaign-detail-box2 span").first();
+                if (dateEl.length) {
+                    dateText = cleanText(dateEl.text());
+                } else {
+                    const oldDateEl = $d("span[id$='KampanyaTarihleri']");
+                    if (oldDateEl.length) dateText = cleanText(oldDateEl.text());
+                }
+
+                const validUntil = formatDateIso(dateText, true);
+
+                if (validUntil && new Date(validUntil) < new Date()) continue;
+
+                // Image
+                let image = "";
+                const imgEl = $d(".campaign-first-image img").first();
+                if (imgEl.length > 0) {
+                    const src = imgEl.attr('src');
+                    if (src) {
+                        const imageUrl = src.startsWith('http') ? src : `${BASE_URL}${src}`;
+                        image = await downloadImageDirectly(imageUrl, title, 'maximiles');
+                    }
+                }
+
+                const normalizedCardNameVal = 'Maximiles';
+                const fullPageText = cleanText($d.text());
+
+                const campaignHtml = `
+                    <h1>${title}</h1>
+                    <div class="dates">${dateText}</div>
+                    <div class="full-text-context">${fullPageText}</div>
+                    <img src="${image}" />
+                `;
+
+                const campaignData = await parseWithGemini(campaignHtml, url, bankName, normalizedCardNameVal);
+
+                if (campaignData) {
+                    campaignData.title = title;
+                    campaignData.image = image;
+                    campaignData.image_url = image;
+                    campaignData.bank = bankName;
+                    campaignData.card_name = normalizedCardNameVal;
+                    campaignData.url = url;
+                    campaignData.reference_url = url;
+                    campaignData.is_active = true;
+
+                    syncEarningAndDiscount(campaignData);
+                    campaignData.publish_status = 'processing';
+                    campaignData.publish_updated_at = new Date().toISOString();
+
+                    const ids = await lookupIDs(
+                        campaignData.bank,
+                        campaignData.card_name,
+                        campaignData.brand,
+                        campaignData.sector_slug,
+                        campaignData.category
+                    );
+
+                    campaignData.bank_id = ids.bank_id || 'is-bankasi';
+                    campaignData.card_id = ids.card_id || 'maximiles';
+                    if (ids.brand_id) campaignData.brand_id = ids.brand_id;
+                    if (ids.sector_id) campaignData.sector_id = ids.sector_id;
+
+                    const badge = assignBadge(campaignData);
+                    campaignData.badge_text = badge.text;
+                    campaignData.badge_color = badge.color;
+
+                    markGenericBrand(campaignData);
+
+                    count++;
+                    console.log(`      [${count}] ${title.substring(0, 35)}... (Img: ${image ? '✅' : '❌'})`);
+
+                    console.log(`      💾 Upserting: ${title.substring(0, 30)}... [bank_id: ${campaignData.bank_id}, card_id: ${campaignData.card_id}]`);
+                    const { error } = await supabase
+                        .from('campaigns')
+                        .upsert(campaignData, { onConflict: 'reference_url' });
+
+                    if (error) {
+                        console.error(`      ❌ DB Error for "${title}": ${error.message}`);
+                    } else {
+                        console.log(`      ✅ Successfully saved/updated.`);
+                    }
+                } else {
+                    console.error(`      ❌ AI Parsing failed for ${url}`);
+                }
+
+            } catch (e: any) {
+                console.error(`      ⚠️ Error processing ${url}:`, e.message);
+            }
+        }
+
+        console.log(`\n✅ Maximiles Scraper Finished. Processed ${count} campaigns.`);
+
+    } catch (e: any) {
+        console.error('❌ Critical Error:', e);
+    } finally {
+        await browser.close();
+    }
+}
+
+if (require.main === module) {
+    runMaximilesScraper();
+}

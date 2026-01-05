@@ -19,7 +19,8 @@ export async function lookupIDs(
     bank?: string,
     cardName?: string,
     brand?: string,
-    sectorSlug?: string
+    sectorSlug?: string,
+    category?: string
 ): Promise<IDMapping> {
     const ids: IDMapping = {};
 
@@ -85,12 +86,16 @@ export async function lookupIDs(
     }
 
     // 3. Lookup sector_id from master_sectors
-    if (sectorSlug) {
-        const { data: sectorData } = await supabase
-            .from('master_sectors')
-            .select('id')
-            .eq('slug', sectorSlug)
-            .single();
+    if (sectorSlug || category) {
+        let query = supabase.from('master_sectors').select('id');
+
+        if (sectorSlug) {
+            query = query.eq('slug', sectorSlug);
+        } else if (category) {
+            query = query.ilike('name', category);
+        }
+
+        const { data: sectorData } = await query.maybeSingle();
 
         if (sectorData) {
             ids.sector_id = sectorData.id;

@@ -3,17 +3,9 @@
  * Re-parses campaigns that have no AI data or missing critical fields
  */
 
-import { createClient } from '@supabase/supabase-js';
-import * as dotenv from 'dotenv';
+import { supabase } from './utils/supabase';
 import { parseWithGemini } from './services/geminiParser';
 import { assignBadge } from './services/badgeAssigner';
-
-dotenv.config();
-
-const supabase = createClient(
-    process.env.SUPABASE_URL!,
-    process.env.SUPABASE_ANON_KEY!
-);
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -25,7 +17,6 @@ async function reprocessCampaigns(limit?: number) {
     const { data: campaigns, error } = await supabase
         .from('campaigns')
         .select('*')
-        .eq('provider', 'World Card (Yapı Kredi)')
         .or('ai_enhanced.is.null,ai_enhanced.eq.false')
         .order('created_at', { ascending: false });
 

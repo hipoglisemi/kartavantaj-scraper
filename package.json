@@ -16,6 +16,7 @@
     "scrape:maximum:v3": "tsx src/scrapers/isbankasi/maximum-v3.ts",
     "scrape:maximum:links": "python3 -u src/scrapers/isbankasi/maximum-links.py",
     "scrape:maximum:v4": "npm run scrape:maximum:links && tsx src/scrapers/isbankasi/maximum-v4.ts",
+    "scrape:maximiles": "tsx -r dotenv/config src/scrapers/isbankasi/maximiles.ts",
     "scrape:chippin": "tsx src/scrapers/chippin/chippin.ts"
   },
   "dependencies": {

@@ -692,8 +692,8 @@ ${getBankInstructions(bank, card)}
   "conditions": ["string (List of important campaign terms, limits, and exclusions. Extract key rules as separate items.)"],
   "category": "string (MUST be one of: ${sortedCategories})",
   "discount": "string (Use ONLY for installment info, e.g. '9 Taksit', '+3 Taksit'. FORMAT: '{Number} Taksit'. NEVER mention fees/interest.)",
-  "earning": "string (🚨 HİYERARŞİ KURALI - ÖNCE YÜZDE KONTROL ET:\n    1️⃣ Metinde '%' sembolü VARSA:\n       → MUTLAKA '%{X} (max {Y}TL)' formatını kullan\n       → Örnek: '%10 (max 500TL)', '%25 (max 300TL)'\n       → 🚨 ASLA '500 TL Puan' gibi sabit tutar YAZMA!\n    2️⃣ Metinde '%' sembolü YOKSA:\n       → '{Amount} TL Puan' veya '{Amount} TL İndirim' kullan\n       → 🚨 MİL PUAN: 'Mil' kelimesi varsa 'Mil Puan' yaz\n       → 🚨 SAYI FORMATI: 1.000+ sayılarda NOKTA kullan (örn: '30.000 TL Puan')\n    3️⃣ Sayısal ödül YOKSA:\n       → 2-3 kelime özet: 'Uçak Bileti', 'Taksit İmkanı', 'Özel Fırsat'\n    ⚠️  UYARI: Yüzde bazlı kampanyayı '500 TL Puan' şeklinde kısaltmak min_spend hesaplamasını BOZAR!)",
-  "min_spend": number (CRITICAL: Total required spend for MAXIMUM REWARD. If title says '500 TL harca 50 TL kazan, toplam 500 TL kazan', min_spend is 5.000 (10 steps). If there are tiers like 50k->4k, 100k->10k, and max_discount is 10k, then min_spend MUST be 100.000. ASLA sadece giriş harcamasını yazma.),
+  "earning": "string (🚨 HİYERARŞİ KURALI - ÖNCE YÜZDE KONTROL ET:\n    1️⃣ Metinde '%' sembolü VARSA:\n       → MUTLAKA '%{X} (max {Y}TL)' formatını kullan\n       → Örnek: '%10 (max 500TL)', '%25 (max 300TL)'\n       → 🚨 ASLA '500 TL Puan' gibi sabit tutar YAZMA!\n    2️⃣ Metinde '%' sembolü YOKSA:\n       → '{Amount} TL Puan' veya '{Amount} TL İndirim' kullan\n       → 🚨 MİL: 'Mil' veya 'MaxiMil' kelimesi varsa MUTLAKA '{Amount} Mil' yaz\n       → 🚨 SAYI FORMATI: 1.000+ sayılarda NOKTA kullan (örn: '30.000 TL Puan')\n    3️⃣ Sayısal ödül YOKSA:\n       → 2-3 kelime özet: 'Uçak Bileti', 'Taksit İmkanı', 'Özel Fırsat'\n    ⚠️  UYARI: Yüzde bazlı kampanyayı '500 TL Puan' şeklinde kısaltmak min_spend hesaplamasını BOZAR!)",
+  "min_spend": number (CRITICAL: Required spend to reach the benefit stated in 'earning'. If 'earning' is '%20 (max 10.000 TL)', min_spend = 50.000. HOWEVER, if there are tiers like '4.000 TL -> %10, 8.000 TL -> %20' and you choose %20 for earning, min_spend = 8000 (threshold for that tier) IF the full-cap math results in an unrealistic number for a single month/merchant.),
   "min_spend_currency": "string (Currency code: TRY, USD, EUR, GBP. Default: TRY. ONLY change if campaign explicitly mentions foreign currency like 'yurt dışı', 'dolar', 'USD', 'euro')",
   "max_discount": number (Max reward limit per customer/campaign),
   "max_discount_currency": "string (Currency code: TRY, USD, EUR, GBP. Default: TRY. ONLY change if reward is in foreign currency)",
@@ -750,12 +750,20 @@ ${getBankInstructions(bank, card)}
      - 🚨 YÜZDE + MAX LİMİT KURALI: Eğer kampanyada yüzde bazlı kazanç VAR ve max_discount değeri VARSA, earning formatı MUTLAKA "%{P} (max {Y}TL)" olmalı.
        - ÖRNEK: "%10 indirim, maksimum 200 TL" metni → earning: "%10 (max 200TL)", max_discount: 200
        - ÖRNEK: "%5 chip-para, toplam 500 TL'ye kadar" → earning: "%5 (max 500TL)", max_discount: 500
-     - 🚨 PUAN vs İNDİRİM AYIRIMI:
-       - "Puan", "Chip-Para", "Worldpuan", "Mil" içeriyorsa → "{AMOUNT} TL Puan"
-       - "İndirim", "İade", "Cashback" içeriyorsa → "{AMOUNT} TL İndirim"
-       - ÖRNEK: "300 TL chip-para" → earning: "300 TL Puan"
-       - ÖRNEK: "500 TL indirim" → earning: "500 TL İndirim"
-       - DİKKAT: Puan ≠ İndirim! Doğru terimi kullan.
+      - 🚨 PUAN vs İNDİRİM AYIRIMI:
+        - "Puan", "Chip-Para", "Worldpuan", "Maxipuan" içeriyorsa → "{AMOUNT} TL Puan"
+        - "Mil", "MaxiMil" içeriyorsa → "{AMOUNT} Mil"
+        - "İndirim", "İade", "Cashback" içeriyorsa → "{AMOUNT} TL İndirim"
+        - ÖRNEK: "300 TL chip-para" → earning: "300 TL Puan"
+        - ÖRNEK: "500 TL indirim" → earning: "500 TL İndirim"
+        - ÖRNEK: "400 MaxiMil" → earning: "400 Mil"
+        - DİKKAT: Puan ≠ İndirim ≠ Mil! Doğru terimi kullan.
+      - 🚨 ÇOKLU TIER (HARCAMA KADEMELERİ) KURALI:
+        - Eğer kampanya "X TL harcamaya %10, Y TL harcamaya %20" gibi kademeliyse:
+        - earning: "EN YÜKSEK" kademeyi yaz. Örn: "%20 (max Z TL)"
+        - min_spend: "EN YÜKSEK" kademe tutarını (Y) yaz.
+        - ÖRNEK: "4.000 TL'ye %10, 8.000 TL'ye %20" → earning: "%20 (max ...)", min_spend: 8000.
+        - ⚠️ DİKKAT: Eğer %20'lik dilim için min_spend: 8.000 iken, max_discount: 10.000 ise ve matematiksel olarak 10.000 için 50.000 TL gerekiyorsa, min_spend olarak 8.000 yazmayı TERCİH ET (yoksa kullanıcıya çok yüksek görünebilir).
      - 🚨 KATLANAN KAMPANYA - TOPLAM KAZANÇ KURALI:
        - "Her X TL'ye Y TL, toplam Z TL" formatında kampanyalarda:
        - earning: "Z TL Puan" veya "Z TL İndirim" (TOPLAM kazanç, işlem başı Y değil!)
