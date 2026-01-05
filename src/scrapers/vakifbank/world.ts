@@ -9,6 +9,7 @@ import { normalizeBankName, normalizeCardName } from '../../utils/bankMapper';
 import { lookupIDs } from '../../utils/idMapper';
 import { assignBadge } from '../../services/badgeAssigner';
 import { markGenericBrand } from '../../utils/genericDetector';
+import { optimizeCampaigns } from '../../utils/campaignOptimizer';
 
 dotenv.config();
 
@@ -84,8 +85,15 @@ async function runVakifbankWorldScraper() {
 
 
         // 2. Process Details
-        for (const fullUrl of campaignLinks) {
-            console.log(`\n   🔍 Processing: ${fullUrl}`);
+        console.log(`\n   🔍 Optimizing campaign list via database check...`);
+        const cardNameForOptimization = 'Vakıfbank World';
+        const { urlsToProcess } = await optimizeCampaigns(campaignLinks, cardNameForOptimization);
+
+        const finalLinks = campaignLinks.filter(url => urlsToProcess.includes(url));
+        console.log(`   🚀 Processing details for ${finalLinks.length} campaigns (skipping ${campaignLinks.length - finalLinks.length} complete/existing)...\n`);
+
+        for (const fullUrl of finalLinks) {
+            console.log(`   🔍 Processing: ${fullUrl}`);
 
             try {
                 await page.goto(fullUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
@@ -160,22 +168,22 @@ async function runVakifbankWorldScraper() {
 
                     // Set default min_spend
                     campaignData.min_spend = campaignData.min_spend || 0;
-                // Lookup and assign IDs from master tables
-                const ids = await lookupIDs(
-                    campaignData.bank,
-                    campaignData.card_name,
-                    campaignData.brand,
-                    campaignData.sector_slug
-                );
-                Object.assign(campaignData, ids);
-                // Assign badge based on campaign content
-                const badge = assignBadge(campaignData);
-                campaignData.badge_text = badge.text;
-                campaignData.badge_color = badge.color;
-                // Mark as generic if it's a non-brand-specific campaign
-                markGenericBrand(campaignData);
+                    // Lookup and assign IDs from master tables
+                    const ids = await lookupIDs(
+                        campaignData.bank,
+                        campaignData.card_name,
+                        campaignData.brand,
+                        campaignData.sector_slug
+                    );
+                    Object.assign(campaignData, ids);
+                    // Assign badge based on campaign content
+                    const badge = assignBadge(campaignData);
+                    campaignData.badge_text = badge.text;
+                    campaignData.badge_color = badge.color;
+                    // Mark as generic if it's a non-brand-specific campaign
+                    markGenericBrand(campaignData);
 
-                const { error } = await supabase
+                    const { error } = await supabase
                         .from('campaigns')
                         .upsert(campaignData, { onConflict: 'reference_url' });
 

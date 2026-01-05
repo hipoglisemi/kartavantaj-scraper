@@ -17,6 +17,7 @@ import {
 import { normalizeBankName, normalizeCardName } from '../../utils/bankMapper';
 import { lookupIDs } from '../../utils/idMapper';
 import { generateSectorSlug } from '../../utils/slugify';
+import { optimizeCampaigns } from '../../utils/campaignOptimizer';
 import { downloadImageDirectly } from '../../services/imageService';
 import { parseWithGemini } from '../../services/geminiParser';
 import { syncEarningAndDiscount } from '../../utils/dataFixer';
@@ -237,14 +238,22 @@ async function runMaximumScraperTS() {
         });
 
         const uniqueLinks = [...new Set(allLinks)];
-        console.log(`\n   🎉 Found ${uniqueLinks.length} unique campaigns. Processing first ${limit}...`);
+        console.log(`\n   🎉 Found ${uniqueLinks.length} unique campaigns.`);
 
         console.log(`   🔍 Normalizing bank name...`);
         const bankName = await normalizeBankName('İş Bankası');
         console.log(`   ✅ Normalized bank: ${bankName}`);
 
+        const cardNameForOptimization = 'Maximum';
+
+        console.log(`   🔍 Optimizing campaign list via database check...`);
+        const { urlsToProcess } = await optimizeCampaigns(uniqueLinks, cardNameForOptimization);
+
+        const finalLinks = uniqueLinks.filter(url => urlsToProcess.includes(url)).slice(0, limit);
+        console.log(`   🚀 Processing details for ${finalLinks.length} campaigns (skipping ${uniqueLinks.length - finalLinks.length} complete/existing)...\n`);
+
         let count = 0;
-        for (const url of uniqueLinks) {
+        for (const url of finalLinks) {
             console.log(`   🔍 Processing [${count + 1}/${Math.min(uniqueLinks.length, limit)}]: ${url}`);
             if (count >= limit) break;
 

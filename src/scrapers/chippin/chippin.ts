@@ -15,6 +15,7 @@ import { syncEarningAndDiscount } from '../../utils/dataFixer';
 import { lookupIDs } from '../../utils/idMapper';
 import { assignBadge } from '../../services/badgeAssigner';
 import { markGenericBrand } from '../../utils/genericDetector';
+import { optimizeCampaigns } from '../../utils/campaignOptimizer';
 import { downloadImageDirectly } from '../../services/imageService';
 
 dotenv.config();
@@ -104,9 +105,23 @@ async function runChippinScraper() {
 
         console.log(`   🎉 Found ${campaigns.length} campaigns in Next.js data.`);
 
-        let processedCount = 0;
+        // Extract reference URLs for optimization
+        const allReferenceUrls = campaigns.map(item => `${CAMPAIGNS_URL}/${item.id}`);
+        const uniqueLinks = [...new Set(allReferenceUrls)];
+        console.log(`\n   🎉 Found ${uniqueLinks.length} unique campaign links.`);
 
-        for (const item of campaigns) {
+        const cardNameForOptimization = 'Chippin';
+        const { urlsToProcess } = await optimizeCampaigns(uniqueLinks, cardNameForOptimization);
+
+        // Filter campaigns based on optimization results
+        const finalCampaigns = campaigns.filter(item => urlsToProcess.includes(`${CAMPAIGNS_URL}/${item.id}`));
+        const limit = finalCampaigns.length; // Process all remaining campaigns
+
+        console.log(`\n   🚀 Processing details for ${finalCampaigns.length} campaigns (skipping ${uniqueLinks.length - finalCampaigns.length} complete/existing)...\n`);
+
+        let processedCount = 0;
+        for (const item of finalCampaigns) {
+            if (processedCount >= limit) break; // Safety break, though finalCampaigns is already filtered
             const title = item.webName.trim();
 
             // FIX: Images are hosted on asset.chippin.com, not www.chippin.com

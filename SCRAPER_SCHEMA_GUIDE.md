@@ -114,4 +114,42 @@ const CARD_NAME = 'Axess';
 campaignData = await parseWithGemini(html, fullUrl, BANK_NAME, CARD_NAME);
 ```
 
+
 This ensures that data scraped from the "Axess" scraper is ALWAYS saved as "Akbank" / "Axess", regardless of the campaign content.
+
+---
+
+## 7. Efficiency & Database Optimization (STRICT)
+
+To save resources (Gemini AI API costs and processing time), all scrapers MUST include logic to skip campaigns that are already completely processed in the database.
+
+### The Optimization Rule
+Scrapers should not process a campaign detail page if:
+1. The campaign already exists in the database.
+2. It has all critical data (Image, Brand, Sector, Participation Method).
+
+**REASON:** Running AI enhancement on the same campaign multiple times is redundant.
+
+### Implementation Guide
+Use the provided `optimizeCampaigns` utility from `src/utils/campaignOptimizer.ts`.
+
+#### Integration Steps:
+1. **Collect links**: Gather all campaign URLs from the list page.
+2. **Optimize**: Pass the list of URLs to `optimizeCampaigns`.
+3. **Filter**: Only iterate over the URLs that need processing.
+
+#### Code Example ✅
+```typescript
+import { optimizeCampaigns } from '../../utils/campaignOptimizer';
+
+// 1. Gather all links
+const allLinks = [...]; 
+
+// 2. Check DB
+const { urlsToProcess } = await optimizeCampaigns(allLinks, 'Maximum');
+
+// 3. Process only what's needed
+for (const url of allLinks.filter(u => urlsToProcess.includes(u))) {
+    // Process campaign detail with AI...
+}
+```
