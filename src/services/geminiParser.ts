@@ -208,6 +208,16 @@ function getBankInstructions(bankName: string, cardName: string): string {
     - Format: "Chippin uygulamasından kampanyaya katılın" or similar clear instruction.
 - REWARD: Uses "ChipPuan" or "Worldpuan". 1 ChipPuan = 1 TL, 1 Worldpuan = 1 TL.
 - ELIGIBLE CARDS: Usually just "Chippin" (the card itself).
+`,
+        'teb': `
+🚨 TEB SPECIFIC RULES:
+- TERMINOLOGY: "Bonus" is the currency. 1 Bonus = 1 TL.
+- ELIGIBLE CARDS:
+    - Keywords: "TEB Bonus", "CEPTETEB", "TEB Worldcard", "TEB Bireysel Kredi Kartları".
+    - "Ticari" means "TEB Bonus Ticari".
+- PARTICIPATION:
+    - Primary: "CEPTETEB Mobil" or "BonusFlaş".
+    - SMS: Often 4663.
 `
     };
 
