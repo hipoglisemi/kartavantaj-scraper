@@ -87,14 +87,25 @@ export async function lookupIDs(
 
         if (brandData) {
             ids.brand_id = brandData.id;
-        } else if (brand.includes(',')) {
-            // If comma-separated, try different parts
-            const parts = brand.split(',').map(p => p.trim());
-            for (const part of parts) {
-                const { data: partData } = await supabase.from('master_brands').select('id').ilike('name', part).maybeSingle();
-                if (partData) {
-                    ids.brand_id = partData.id;
-                    break;
+        } else {
+            // Fuzzy fallback: Try searching if brand name is part of a master brand
+            const { data: fuzzyBrand } = await supabase
+                .from('master_brands')
+                .select('id')
+                .ilike('name', `%${brandToSearch}%`)
+                .maybeSingle();
+
+            if (fuzzyBrand) {
+                ids.brand_id = fuzzyBrand.id;
+            } else if (brand.includes(',')) {
+                // If comma-separated, try different parts
+                const parts = brand.split(',').map(p => p.trim());
+                for (const part of parts) {
+                    const { data: partData } = await supabase.from('master_brands').select('id').ilike('name', part).maybeSingle();
+                    if (partData) {
+                        ids.brand_id = partData.id;
+                        break;
+                    }
                 }
             }
         }
@@ -102,7 +113,7 @@ export async function lookupIDs(
 
     // 3. Lookup sector_id from master_sectors
     if (sectorSlug || category) {
-        let query = supabase.from('master_sectors').select('id');
+        let query = supabase.from('master_sectors').select('id, name');
 
         // Priority logic: If sectorSlug is 'genel' or empty, use category
         const effectiveSlug = (sectorSlug && sectorSlug !== 'genel') ? sectorSlug : null;
@@ -117,12 +128,24 @@ export async function lookupIDs(
 
         if (sectorData) {
             ids.sector_id = sectorData.id;
-        } else if (category && sectorSlug) {
-            // Last ditch effort: if slug failed, try name
-            const { data: categoryData } = await supabase.from('master_sectors').select('id').ilike('name', category).maybeSingle();
-            if (categoryData) ids.sector_id = categoryData.id;
+        } else {
+            // Fuzzy fallback: Try searching if category/slug is part of a sector name
+            // e.g., "Market" -> "Market & Gıda"
+            const searchTerm = category || sectorSlug;
+            if (searchTerm) {
+                const { data: fuzzySector } = await supabase
+                    .from('master_sectors')
+                    .select('id')
+                    .or(`name.ilike.%${searchTerm}%,slug.ilike.%${searchTerm}%`)
+                    .maybeSingle();
+
+                if (fuzzySector) ids.sector_id = fuzzySector.id;
+            }
         }
     }
+
+    if (!ids.brand_id && brand) console.log(`   ⚠️  Brand Lookup Failed: "${brand}"`);
+    if (!ids.sector_id && (sectorSlug || category)) console.log(`   ⚠️  Sector Lookup Failed: "${sectorSlug || category}"`);
 
     return ids;
 }

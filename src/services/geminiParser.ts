@@ -741,18 +741,21 @@ ${getBankInstructions(bank, card)}
 
 1.5. **KATEGORİ SEÇİMİ (CATEGORY SELECTION):**
    - 🚨 MERCHANT/BRAND'E GÖRE DOĞRU KATEGORİ SEÇ!
-   - Koçtaş, Bauhaus, Karaca, Özdilek, İdaş, Korkmaz → "Mobilya & Dekorasyon"
+   - 🚨 MUST be one of THESE 18: ${sortedCategories}
+   - Koçtaş, Bauhaus, Karaca, Özdilek, İdaş, Korkmaz, Evidea → "Mobilya & Dekorasyon"
    - Teknosa, MediaMarkt, Vatan, Apple, Samsung, Vestel, Arçelik, Nespresso, Dyson → "Elektronik"
-   - CarrefourSA, Migros, A101, BİM, ŞOK → "Market & Gıda"
-   - H&M, Zara, LC Waikiki, Mango, Koton, Nike, Adidas, FLO, Desa → "Giyim & Aksesuar"
-   - Enuygun, Tatilsepeti, Pegasus, THY, LoungeMe → "Seyahat"
-   - Shell, Opet, BP, Lassa, Pirelli, Vale, Otopark → "Otomotiv"
-   - Trendyol, Hepsiburada, Amazon, Pazarama → "E-Ticaret"
-   - Yemeksepeti, Getir, Starbucks → "Restoran & Kafe"
-   - Sağlık, Hastane, Klinik → "Sağlık"
-   - Sigorta → "Sigorta"
-   - Vergi → "Vergi & Kamu"
-   - DİKKAT: "Diğer" kategorisini SADECE yukarıdakilere uymayan kampanyalar için kullan!
+   - CarrefourSA, Migros, A101, BİM, ŞOK, GetirBüyük, Yemeksepeti Market, Tarım Kredi → "Market & Gıda"
+   - H&M, Zara, LC Waikiki, Mango, Koton, Nike, Adidas, FLO, Desa, Boyner, Beymen → "Giyim & Aksesuar"
+   - Pegasus, THY, Tatilsepeti, Enuygun, ETS Tur, Jolly Tur, Otelz, Trivago → "Turizm & Konaklama"
+   - Shell, Opet, BP, Petrol Ofisi, Lassa, Pirelli, AutoKing, TUVTURK → "Otomotiv"
+   - Trendyol, Hepsiburada, Amazon, Pazarama, Çiçeksepeti, n11 → "E-Ticaret"
+   - Yemeksepeti, Getir, Starbucks, Kahve Dünyası, Dominos, KFC, Burger King → "Restoran & Kafe"
+   - Netflix, Disney+, Spotify, YouTube, TOD, BluTV → "Dijital Platform"
+   - Martı, BinBin, Hop, Uber, BiTaksi → "Ulaşım"
+   - Sağlık, Hastane, Klinik, Eczane, Watson, Gratis (Güzellik tarafı) → "Kozmetik & Sağlık"
+   - Sigorta, Allianz, AkSigorta → "Sigorta"
+   - Vergi, MTV, SGK, Trafik Cezası → "Vergi & Kamu"
+   - DİKKAT: "Diğer" kategorisini SADECE yukarıdakilere uymayan ve spesifik bir sektörü olmayan kampanyalar için kullan!
    
 2. **HARCAMA-KAZANÇ KURALLARI (MATHEMATIC LOGIC):**
    - discount: SADECE "{N} Taksit" veya "+{N} Taksit"
