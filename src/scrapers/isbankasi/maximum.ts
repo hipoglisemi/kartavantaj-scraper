@@ -330,10 +330,13 @@ async function runMaximumScraperTS() {
                 const normalizedCardNameVal = 'Maximum';
 
                 // 🔥 AI PARSING (Gemini Engine)
+                // Sending FULL page text to ensure Brand/Sector context (often in breadcrumbs/header)
+                const fullPageText = cleanText($d.text());
+
                 const campaignHtml = `
                     <h1>${title}</h1>
                     <div class="dates">${dateText}</div>
-                    <div class="description">${$d("span[id$='CampaignDescription']").html() || fullText}</div>
+                    <div class="full-text-context">${fullPageText}</div>
                     <img src="${image}" />
                 `;
 
