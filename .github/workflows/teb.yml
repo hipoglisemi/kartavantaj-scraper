@@ -5,6 +5,13 @@ on:
     - cron: '0 0 * * *' # 00:00 UTC = 03:00 TSI
   workflow_dispatch:
     inputs:
+      card:
+        description: 'Kart seçimi'
+        required: true
+        type: choice
+        options:
+          - 'Tümü'
+          - 'TEB Genel'
       limit:
         description: 'Kampanya limiti (0 = tümü)'
         required: false
@@ -28,6 +35,7 @@ jobs:
         run: npm ci
       
       - name: Run TEB Scraper (TypeScript)
+        if: ${{ github.event.inputs.card == 'TEB Genel' || github.event.inputs.card == 'Tümü' || github.event_name == 'schedule' }}
         run: npx tsx src/scrapers/teb/teb.ts ${{ github.event.inputs.limit != '0' && format('--limit={0}', github.event.inputs.limit) || '' }}
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}

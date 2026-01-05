@@ -100,8 +100,14 @@ async function runTebScraper() {
                 const $d = cheerio.load(detailContent);
 
                 // Selective Extraction
-                const title = $d('h1').first().text().trim() || "Başlık Yok";
-                if (title.length < 5) continue;
+                let title = $d('.detailHeader h1').first().text().trim() || $d('h1').first().text().trim() || "Başlık Yok";
+
+                // If splash screen text is captured, try alternative
+                if (title.includes('İşleminiz Devam Ediyor')) {
+                    title = $d('.detailHeader').first().text().trim().split('\n')[0];
+                }
+
+                if (title.length < 5 || title.includes('İşleminiz Devam Ediyor')) continue;
 
                 // Image
                 let image = "";
@@ -110,12 +116,11 @@ async function runTebScraper() {
                     const src = imgEl.attr('src');
                     if (src) {
                         image = src.startsWith('http') ? src : `${BASE_URL}${src}`;
-                        // Not downloading directly as per user request
                     }
                 }
 
                 const cardName = 'TEB Genel';
-                const fullPageText = $d('.subPageContent').text().trim() || $d.text().trim();
+                const fullPageText = $d('.detayTabContent').text().trim() || $d('.subPageContent').text().trim() || $d.text().trim();
 
                 const campaignHtml = `
                     <h1>${title}</h1>
