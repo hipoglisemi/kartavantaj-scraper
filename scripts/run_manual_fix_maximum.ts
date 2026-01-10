@@ -2,13 +2,18 @@
 import { createClient } from '@supabase/supabase-js';
 import puppeteer from 'puppeteer';
 
-// Hardcoded creds
+import * as dotenv from 'dotenv';
+import path from 'path';
+
+dotenv.config();
+
+// Use environment variables for security
 const supabase = createClient(
-    'https://cppayemlaxblidgslfit.supabase.co',
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNwcGF5ZW1sYXhibGlkZ3NsZml0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE3NDI5NzcsImV4cCI6MjA3NzMxODk3N30.kGDbguiboL1FPkpRSntdiKPAXtxNJMJ3FIcNixmCyME'
+    process.env.SUPABASE_URL!,
+    process.env.SUPABASE_ANON_KEY!
 );
 
-const GEMINI_KEY = 'AIzaSyD1x1haB-hrrakCH_4tI5ibU2vnQTR7NRA';
+const GEMINI_KEY = process.env.GOOGLE_GEMINI_KEY;
 
 async function callGemini(prompt: string) {
     const response = await fetch(
