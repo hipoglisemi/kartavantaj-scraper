@@ -38,7 +38,7 @@ jobs:
         run: npm ci
       
       - name: Run World Scraper
-        if: ${{ github.event.inputs.card == 'World' || github.event.inputs.card == 'Tümü' }}
+        if: ${{ github.event.inputs.card == 'World' || github.event.inputs.card == 'Tümü' || github.event_name == 'schedule' }}
         run: npx tsx src/scrapers/yapikredi/world.ts --ai ${{ github.event.inputs.limit != '0' && format('--limit {0}', github.event.inputs.limit) || '' }}
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -46,7 +46,7 @@ jobs:
           GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
       
       - name: Run Adios Scraper
-        if: ${{ github.event.inputs.card == 'Adios' || github.event.inputs.card == 'Tümü' }}
+        if: ${{ github.event.inputs.card == 'Adios' || github.event.inputs.card == 'Tümü' || github.event_name == 'schedule' }}
         run: npx tsx src/scrapers/yapikredi/adios.ts --ai ${{ github.event.inputs.limit != '0' && format('--limit {0}', github.event.inputs.limit) || '' }}
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -54,7 +54,7 @@ jobs:
           GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
       
       - name: Run Crystal Scraper
-        if: ${{ github.event.inputs.card == 'Crystal' || github.event.inputs.card == 'Tümü' }}
+        if: ${{ github.event.inputs.card == 'Crystal' || github.event.inputs.card == 'Tümü' || github.event_name == 'schedule' }}
         run: npx tsx src/scrapers/yapikredi/crystal.ts --ai ${{ github.event.inputs.limit != '0' && format('--limit {0}', github.event.inputs.limit) || '' }}
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -62,7 +62,7 @@ jobs:
           GOOGLE_GEMINI_KEY: ${{ secrets.GOOGLE_GEMINI_KEY }}
       
       - name: Run Play Scraper
-        if: ${{ github.event.inputs.card == 'Play' || github.event.inputs.card == 'Tümü' }}
+        if: ${{ github.event.inputs.card == 'Play' || github.event.inputs.card == 'Tümü' || github.event_name == 'schedule' }}
         run: npx tsx src/scrapers/yapikredi/play.ts --ai ${{ github.event.inputs.limit != '0' && format('--limit {0}', github.event.inputs.limit) || '' }}
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
