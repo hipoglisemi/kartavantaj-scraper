@@ -187,9 +187,7 @@ async function runBankkartScraper() {
         console.log(`   🔍 Optimizing list via database check...`);
         const { urlsToProcess: optimizedParams } = await optimizeCampaigns(allUrls, normalizedCard);
 
-        console.log(`   ⚠️ FORCE MODE: Ignoring optimization to repair all content...`);
-        // FORCE ALL: Ignore the optimized list and process everything to fix content issues
-        const urlsToProcess = allUrls;
+        const urlsToProcess = optimizedParams;
 
         const finalItems = urlsToProcess.slice(0, limit);
         console.log(`   🚀 Processing details for ${finalItems.length} campaigns (Limit: ${limit})...\n`);
