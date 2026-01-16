@@ -82,19 +82,20 @@ async function fixGenericWithAI() {
 
         for (let attempt = 1; attempt <= maxRetries && !success; attempt++) {
             try {
-                // AI'ya soru sor
+                // AI'ya soru sor (Multi-Brand yapısı)
                 const prompt = `Başlık: "${campaign.title}"
 
-Bu kampanyadaki ana ticari markayı (Merchant/Brand) çıkar. 
+Bu kampanyadaki ticari markaları (Merchant/Brand) çıkar. 
 
 KURALLAR:
-- Eğer başlıkta belirgin bir marka/işletme adı varsa (Örn: Toyzz Shop, IKEA, Migros), o markayı döndür.
-- Eğer sadece genel bir sektör/kategori kampanyasıysa (Örn: "Tüm Marketlerde", "Akaryakıt İstasyonlarında"), 'Genel' döndür.
-- Banka veya kart adları (Axess, Bonus, Maximum vb.) marka DEĞİLDİR, 'Genel' döndür.
+- Eğer başlıkta belirgin marka/işletme adları varsa (Örn: Toyzz Shop, IKEA, Migros), onları döndür.
+- Birden fazla marka varsa hepsini array içinde döndür.
+- Eğer sadece genel bir sektör/kategori kampanyasıysa (Örn: "Tüm Marketlerde", "Akaryakıt İstasyonlarında"), boş array döndür.
+- Banka veya kart adları (Axess, Bonus, Maximum vb.) marka DEĞİLDİR, dahil etme.
 
 Çıktı JSON formatında olsun:
 {
-  "brand": "Marka Adı veya Genel",
+  "brands": ["Marka1", "Marka2"],
   "category": "En uygun kategori (Market & Gıda, Elektronik, Giyim & Aksesuar, Restoran & Kafe, Turizm & Konaklama, Akaryakıt, Mobilya & Dekorasyon, Kozmetik & Sağlık, E-Ticaret, veya Diğer)"
 }`;
 
@@ -111,41 +112,58 @@ KURALLAR:
                 }
 
                 const aiResponse = JSON.parse(jsonMatch[0]);
-                const detectedBrand = aiResponse.brand?.trim();
+                const detectedBrands = Array.isArray(aiResponse.brands) ? aiResponse.brands : [];
                 const detectedCategory = aiResponse.category?.trim();
 
-                // Eğer AI 'Genel' döndürdüyse, değişiklik yapma
-                if (!detectedBrand || detectedBrand === 'Genel') {
+                // Eğer AI marka bulamadıysa, değişiklik yapma
+                if (detectedBrands.length === 0) {
                     console.log('   ℹ️  AI marka bulamadı, "Genel" olarak kalacak.');
                     success = true;
                     break;
                 }
 
-                console.log(`   🔍 AI Bulgusu: Marka="${detectedBrand}", Kategori="${detectedCategory}"`);
+                console.log(`   🔍 AI Bulgusu: Markalar=[${detectedBrands.join(', ')}], Kategori="${detectedCategory}"`);
 
-                // 3. Master brands tablosunda kontrol et
-                const { data: existingBrand } = await supabase
-                    .from('master_brands')
-                    .select('name')
-                    .ilike('name', detectedBrand)
-                    .single();
+                // 3. Her markayı master_brands tablosunda kontrol et ve ekle
+                const validatedBrands: string[] = [];
 
-                if (!existingBrand) {
-                    // Yeni marka ekle
-                    const { error: insertError } = await supabase
+                for (const brandName of detectedBrands) {
+                    const trimmedBrand = brandName.trim();
+                    if (!trimmedBrand || trimmedBrand === 'Genel') continue;
+
+                    // Master brands tablosunda kontrol et
+                    const { data: existingBrand } = await supabase
                         .from('master_brands')
-                        .insert([{ name: detectedBrand }]);
+                        .select('name')
+                        .ilike('name', trimmedBrand)
+                        .single();
 
-                    if (insertError) {
-                        console.log(`   ⚠️  Marka eklenemedi: ${insertError.message}`);
+                    if (!existingBrand) {
+                        // Yeni marka ekle (TEKİL olarak)
+                        const { error: insertError } = await supabase
+                            .from('master_brands')
+                            .insert([{ name: trimmedBrand }]);
+
+                        if (insertError) {
+                            console.log(`   ⚠️  Marka eklenemedi (${trimmedBrand}): ${insertError.message}`);
+                        } else {
+                            console.log(`   ✨ Yeni marka eklendi: ${trimmedBrand}`);
+                            validatedBrands.push(trimmedBrand);
+                        }
                     } else {
-                        console.log(`   ✨ Yeni marka eklendi: ${detectedBrand}`);
+                        validatedBrands.push(existingBrand.name);
                     }
                 }
 
-                // 4. Kampanyayı güncelle
+                if (validatedBrands.length === 0) {
+                    console.log('   ⚠️  Geçerli marka bulunamadı, atlanıyor.');
+                    success = true;
+                    break;
+                }
+
+                // 4. Kampanyayı güncelle (Markaları virgülle birleştir)
                 const updates: any = {
-                    brand: detectedBrand,
+                    brand: validatedBrands.join(', '),
                     brand_suggestion: null
                 };
 
@@ -163,7 +181,7 @@ KURALLAR:
                     console.log(`   ❌ Güncelleme hatası: ${updateError.message}`);
                     errorCount++;
                 } else {
-                    console.log(`   ✅ DÜZELDİ: Marka="${detectedBrand}", Kategori="${detectedCategory || campaign.category}"`);
+                    console.log(`   ✅ DÜZELDİ: Markalar="${validatedBrands.join(', ')}", Kategori="${detectedCategory || campaign.category}"`);
                     updatedCount++;
                 }
 
