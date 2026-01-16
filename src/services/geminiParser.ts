@@ -1146,10 +1146,7 @@ Return ONLY valid JSON with the missing fields, no markdown.
         finalData.card_name = card;
     }
 
-    // GENERATE SEO SLUG
-    if (finalData.title) {
-        finalData.slug = generateCampaignSlug(finalData.title);
-    }
+    // Slug generation moved to end (after all data cleaning)
 
     // 🚨 FAILSAFE: Truncate marketing text if too long (Apply to Final Data too)
     if (finalData.ai_marketing_text && bank.toLowerCase().includes('chippin')) {
@@ -1223,6 +1220,12 @@ Return ONLY valid JSON with the missing fields, no markdown.
                 break;
             }
         }
+    }
+
+    // 🔗 GENERATE SEO SLUG (Final step - after all data is cleaned and finalized)
+    // Note: Scrapers may override title, so they should regenerate slug if they do
+    if (finalData.title) {
+        finalData.slug = generateCampaignSlug(finalData.title);
     }
 
     return finalData;

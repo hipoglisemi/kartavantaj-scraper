@@ -7,6 +7,7 @@ import { normalizeBankName } from '../../utils/bankMapper';
 import { lookupIDs } from '../../utils/idMapper';
 import { downloadImageDirectly } from '../../services/imageService';
 import { parseWithGemini } from '../../services/geminiParser';
+import { generateCampaignSlug } from '../../utils/slugify';
 import { syncEarningAndDiscount } from '../../utils/dataFixer';
 import { assignBadge } from '../../services/badgeAssigner';
 import { markGenericBrand } from '../../utils/genericDetector';
@@ -173,6 +174,7 @@ async function runTebScraper() {
 
                 if (campaignData) {
                     campaignData.title = title;
+                    campaignData.slug = generateCampaignSlug(title); // Regenerate slug after title override
                     campaignData.image = null; // Don't use our storage
                     campaignData.image_url = image; // Use bank direct URL
                     campaignData.bank = bankName;
@@ -210,14 +212,50 @@ async function runTebScraper() {
                     count++;
                     console.log(`      [${count}] ${title.substring(0, 35)}... (Img: ${image ? '✅' : '❌'})`);
 
-                    const { error } = await supabase
+                    // 🔗 ID-BASED SLUG SYSTEM: Insert/Update pattern to ensure unique slugs
+                    const { data: existing } = await supabase
                         .from('campaigns')
-                        .upsert(campaignData, { onConflict: 'reference_url' });
+                        .select('id')
+                        .eq('reference_url', url)
+                        .single();
 
-                    if (error) {
-                        console.error(`      ❌ DB Error for "${title}": ${error.message}`);
+                    if (existing) {
+                        // Update existing campaign
+                        const finalSlug = generateCampaignSlug(title, existing.id);
+                        const { error } = await supabase
+                            .from('campaigns')
+                            .update({ ...campaignData, slug: finalSlug })
+                            .eq('id', existing.id);
+
+                        if (error) {
+                            console.error(`      ❌ DB Error for "${title}": ${error.message}`);
+                        } else {
+                            console.log(`      ✅ Updated with ID-based slug: ${finalSlug}`);
+                        }
                     } else {
-                        console.log(`      ✅ Successfully saved/updated.`);
+                        // Insert new campaign (without slug first)
+                        const { data: inserted, error: insertError } = await supabase
+                            .from('campaigns')
+                            .insert(campaignData)
+                            .select('id')
+                            .single();
+
+                        if (insertError) {
+                            console.error(`      ❌ Insert Error for "${title}": ${insertError.message}`);
+                        } else if (inserted) {
+                            // Update with ID-based slug
+                            const finalSlug = generateCampaignSlug(title, inserted.id);
+                            const { error: updateError } = await supabase
+                                .from('campaigns')
+                                .update({ slug: finalSlug })
+                                .eq('id', inserted.id);
+
+                            if (updateError) {
+                                console.error(`      ⚠️  Slug update failed: ${updateError.message}`);
+                            } else {
+                                console.log(`      ✅ Inserted with ID-based slug: ${finalSlug}`);
+                            }
+                        }
                     }
                 }
             } catch (e: any) {
