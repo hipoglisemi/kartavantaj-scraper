@@ -4,7 +4,7 @@ import * as cheerio from 'cheerio';
 import { createClient } from '@supabase/supabase-js';
 import * as dotenv from 'dotenv';
 import { parseWithGemini } from '../../services/geminiParser';
-import { generateSectorSlug } from '../../utils/slugify';
+import { generateSectorSlug, generateCampaignSlug } from '../../utils/slugify';
 import { syncEarningAndDiscount } from '../../utils/dataFixer';
 import { normalizeBankName, normalizeCardName } from '../../utils/bankMapper';
 import { optimizeCampaigns } from '../../utils/campaignOptimizer';
@@ -122,7 +122,8 @@ async function runGarantiScraper() {
 
                 if (campaignData) {
                     // Force fields
-                    campaignData.title = title; // Strict Assignment
+                    campaignData.title = title;
+                campaignData.slug = generateCampaignSlug(title); // Regenerate slug after title override // Strict Assignment
                     campaignData.card_name = normalizedCard; // Default to Bonus
                     campaignData.bank = normalizedBank; // Enforce strict bank assignment
 

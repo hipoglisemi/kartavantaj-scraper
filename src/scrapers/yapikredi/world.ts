@@ -4,7 +4,7 @@ import * as cheerio from 'cheerio';
 import { createClient } from '@supabase/supabase-js';
 import * as dotenv from 'dotenv';
 import { parseWithGemini } from '../../services/geminiParser';
-import { generateSectorSlug } from '../../utils/slugify';
+import { generateSectorSlug, generateCampaignSlug } from '../../utils/slugify';
 import { syncEarningAndDiscount } from '../../utils/dataFixer';
 import { normalizeBankName, normalizeCardName } from '../../utils/bankMapper';
 import { optimizeCampaigns } from '../../utils/campaignOptimizer';
@@ -183,7 +183,8 @@ export async function runWorldScraper() {
                 }
 
                 // STRICT ASSIGNMENT - Prevent AI misclassification
-                campaignData.title = title; // Use API title as authority
+                campaignData.title = title;
+                campaignData.slug = generateCampaignSlug(title); // Regenerate slug after title override // Use API title as authority
                 campaignData.card_name = normalizedCard;
                 campaignData.bank = normalizedBank;
                 campaignData.url = fullUrl;

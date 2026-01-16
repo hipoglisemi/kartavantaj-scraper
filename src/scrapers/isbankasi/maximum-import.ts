@@ -2,7 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import * as dotenv from 'dotenv';
 import * as fs from 'fs';
 import { parseWithGemini } from '../../services/geminiParser';
-import { generateSectorSlug } from '../../utils/slugify';
+import { generateSectorSlug, generateCampaignSlug } from '../../utils/slugify';
 import { normalizeBankName, normalizeCardName } from '../../utils/bankMapper';
 import { optimizeCampaigns } from '../../utils/campaignOptimizer';
 import { lookupIDs } from '../../utils/idMapper';
@@ -78,6 +78,7 @@ async function importMaximumCampaigns() {
 
             // Merge Python + AI data
             campaignData.title = pythonData.title;
+            campaignData.slug = generateCampaignSlug(pythonData.title); // Regenerate slug
             campaignData.image = pythonData.image || campaignData.image;
             campaignData.card_name = normalizedCard;
             campaignData.bank = normalizedBank;
@@ -104,14 +105,42 @@ async function importMaximumCampaigns() {
             markGenericBrand(campaignData);
 
             // Save
-            const { error } = await supabase
+            
+            // ID-BASED SLUG SYSTEM
+            const { data: existing } = await supabase
                 .from('campaigns')
-                .upsert(campaignData, { onConflict: 'reference_url' });
+                .select('id')
+                .eq('reference_url', url)
+                .single();
 
-            if (error) {
-                console.error(`      ❌ DB Error: ${error.message}`);
+            if (existing) {
+                const finalSlug = generateCampaignSlug(title, existing.id);
+                const { error } = await supabase
+                    .from('campaigns')
+                    .update({ ...campaignData, slug: finalSlug })
+                    .eq('id', existing.id);
+                if (error) {
+                    console.error(`      ❌ Update Error: ${error.message}`);
+                } else {
+                    console.log(`      ✅ Updated: ${title} (${finalSlug})`);
+                }
             } else {
-                console.log(`      ✅ Saved`);
+                const { data: inserted, error: insertError } = await supabase
+                    .from('campaigns')
+                    .insert(campaignData)
+                    .select('id')
+                    .single();
+                if (insertError) {
+                    console.error(`      ❌ Insert Error: ${insertError.message}`);
+                } else if (inserted) {
+                    const finalSlug = generateCampaignSlug(title, inserted.id);
+                    await supabase
+                        .from('campaigns')
+                        .update({ slug: finalSlug })
+                        .eq('id', inserted.id);
+                    console.log(`      ✅ Inserted: ${title} (${finalSlug})`);
+                }
+            }
             }
 
         } catch (error: any) {

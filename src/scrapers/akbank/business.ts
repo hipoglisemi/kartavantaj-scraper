@@ -3,7 +3,7 @@ import * as cheerio from 'cheerio';
 import { createClient } from '@supabase/supabase-js';
 import * as dotenv from 'dotenv';
 import { parseWithGemini } from '../../services/geminiParser';
-import { generateSectorSlug } from '../../utils/slugify';
+import { generateSectorSlug, generateCampaignSlug } from '../../utils/slugify';
 import { syncEarningAndDiscount } from '../../utils/dataFixer';
 import { normalizeBankName, normalizeCardName } from '../../utils/bankMapper';
 import { optimizeCampaigns } from '../../utils/campaignOptimizer';
@@ -161,6 +161,7 @@ async function runBusinessScraper() {
                 }
 
                 campaignData.title = title;
+                campaignData.slug = generateCampaignSlug(title); // Regenerate slug after title override
                 if (!campaignData.image && imageUrl) {
                     campaignData.image = imageUrl;
                 }
@@ -208,11 +209,40 @@ async function runBusinessScraper() {
                 campaignData.tags = campaignData.tags || [];
 
 
-                const { error } = await supabase.from('campaigns').upsert(campaignData, { onConflict: 'reference_url' });
-                if (error) {
-                    console.error(`      ❌ Error: ${error.message}`);
+                // ID-BASED SLUG SYSTEM
+                const { data: existing } = await supabase
+                    .from('campaigns')
+                    .select('id')
+                    .eq('reference_url', fullUrl)
+                    .single();
+
+                if (existing) {
+                    const finalSlug = generateCampaignSlug(title, existing.id);
+                    const { error } = await supabase
+                        .from('campaigns')
+                        .update({ ...campaignData, slug: finalSlug })
+                        .eq('id', existing.id);
+                    if (error) {
+                        console.error(`      ❌ Update Error: ${error.message}`);
+                    } else {
+                        console.log(`      ✅ Updated: ${title} (${finalSlug})`);
+                    }
                 } else {
-                    console.log(`      ✅ Saved: ${title}`);
+                    const { data: inserted, error: insertError } = await supabase
+                        .from('campaigns')
+                        .insert(campaignData)
+                        .select('id')
+                        .single();
+                    if (insertError) {
+                        console.error(`      ❌ Insert Error: ${insertError.message}`);
+                    } else if (inserted) {
+                        const finalSlug = generateCampaignSlug(title, inserted.id);
+                        await supabase
+                            .from('campaigns')
+                            .update({ slug: finalSlug })
+                            .eq('id', inserted.id);
+                        console.log(`      ✅ Inserted: ${title} (${finalSlug})`);
+                    }
                 }
             }
         } catch (error: any) {

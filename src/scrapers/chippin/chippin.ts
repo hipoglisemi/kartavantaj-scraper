@@ -9,7 +9,7 @@ import puppeteer from 'puppeteer-extra';
 import { createClient } from '@supabase/supabase-js';
 import * as dotenv from 'dotenv';
 import { parseWithGemini } from '../../services/geminiParser';
-import { generateSectorSlug } from '../../utils/slugify';
+import { generateSectorSlug, generateCampaignSlug } from '../../utils/slugify';
 import { normalizeBankName, normalizeCardName } from '../../utils/bankMapper';
 import { syncEarningAndDiscount } from '../../utils/dataFixer';
 import { lookupIDs } from '../../utils/idMapper';
@@ -191,6 +191,7 @@ async function runChippinScraper() {
             if (campaignData) {
                 // Enforce critical fields from source
                 campaignData.title = title;
+                campaignData.slug = generateCampaignSlug(title); // Regenerate slug
 
                 // IMPORTANT: Use ai_marketing_text as description (like other scrapers)
                 // Keep original long description in a backup field if needed
@@ -256,14 +257,42 @@ async function runChippinScraper() {
 
 
                 // Save
+                
+            // ID-BASED SLUG SYSTEM
+            const { data: existing } = await supabase
+                .from('campaigns')
+                .select('id')
+                .eq('reference_url', url)
+                .single();
+
+            if (existing) {
+                const finalSlug = generateCampaignSlug(title, existing.id);
                 const { error } = await supabase
                     .from('campaigns')
-                    .upsert(campaignData, { onConflict: 'reference_url' });
-
+                    .update({ ...campaignData, slug: finalSlug })
+                    .eq('id', existing.id);
                 if (error) {
-                    console.error(`      ❌ Supabase Error: ${error.message}`);
+                    console.error(`      ❌ Update Error: ${error.message}`);
                 } else {
-                    console.log(`      ✅ Saved to DB: ${title}`);
+                    console.log(`      ✅ Updated: ${title} (${finalSlug})`);
+                }
+            } else {
+                const { data: inserted, error: insertError } = await supabase
+                    .from('campaigns')
+                    .insert(campaignData)
+                    .select('id')
+                    .single();
+                if (insertError) {
+                    console.error(`      ❌ Insert Error: ${insertError.message}`);
+                } else if (inserted) {
+                    const finalSlug = generateCampaignSlug(title, inserted.id);
+                    await supabase
+                        .from('campaigns')
+                        .update({ slug: finalSlug })
+                        .eq('id', inserted.id);
+                    console.log(`      ✅ Inserted: ${title} (${finalSlug})`);
+                }
+            }
                 }
             } else {
                 console.error(`      ⚠️ Failed to parse with AI`);

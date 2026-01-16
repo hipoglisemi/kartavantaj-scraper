@@ -9,7 +9,7 @@ import {
 } from '../../utils/MaximumHelpers';
 import { normalizeBankName } from '../../utils/bankMapper';
 import { lookupIDs } from '../../utils/idMapper';
-import { generateSectorSlug } from '../../utils/slugify';
+import { generateSectorSlug, generateCampaignSlug } from '../../utils/slugify';
 import { optimizeCampaigns } from '../../utils/campaignOptimizer';
 import { downloadImageDirectly } from '../../services/imageService';
 import { parseWithGemini } from '../../services/geminiParser';
@@ -307,6 +307,7 @@ async function runMaximilesScraper() {
 
                 if (campaignData) {
                     campaignData.title = title;
+                    campaignData.slug = generateCampaignSlug(title); // Regenerate slug
                     campaignData.image = image;
                     campaignData.image_url = image;
                     campaignData.bank = bankName;
