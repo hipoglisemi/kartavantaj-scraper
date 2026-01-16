@@ -731,6 +731,9 @@ ${getBankInstructions(bank, card)}
   "brand": [
     "array of strings (🚨 SADECE GERÇEK MARKA İSİMLERİ! Official brand names. YASAK: Kart isimleri (Axess, Wings, Bonus, Free, Juzdan, World, Play, Crystal), Banka isimleri (Akbank, Yapı Kredi, vb.), Genel terimler. 🚨 SEKTÖR KAMPANYASI KURALI: Eğer metinde belirli bir marka adı GEÇMİYOR, sadece 'Marketlerde geçerli', 'Giyim sektöründe' deniyorsa markayı ['Genel'] yap. ÖRNEK: ['CarrefourSA'], ['Teknosa'], ['Genel']. MAX 3 marka. Her marka max 40 karakter.)"
   ],
+  "tags": [
+    "array of strings (🏷️ AKILLI ETİKETLER: Markalar, Sektör, Kampanya Türü, Ödeme Yöntemi. Örn: ['Amazon', 'Elektronik', 'Taksit', 'Mastercard']. Metinde geçen TÜM önemli anahtar kelimeleri ekle. MAX 15 etiket.)"
+  ],
   "ai_enhanced": true
 }
 
@@ -1161,6 +1164,18 @@ Return ONLY valid JSON with the missing fields, no markdown.
             }
         }
     }
+
+    // 🏷️ TAGS INTEGRATION
+    if (!finalData.tags) finalData.tags = [];
+    // Markaları da tags içine al
+    if (finalData.brand && finalData.brand !== 'Genel') {
+        const brands = finalData.brand.split(',').map((b: string) => b.trim());
+        brands.forEach((b: string) => {
+            if (!finalData.tags.includes(b)) finalData.tags.unshift(b);
+        });
+    }
+    // Temizlik: Tekrarları kaldır
+    finalData.tags = [...new Set(finalData.tags)];
 
     return finalData;
 }
