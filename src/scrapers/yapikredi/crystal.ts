@@ -170,7 +170,8 @@ export async function runCrystalScraper() {
                     url: fullUrl,
                     reference_url: fullUrl,
                     image: imageUrl,
-                    is_active: true
+                    is_active: true,
+                    tags: []
                 };
             }
 
@@ -220,6 +221,9 @@ export async function runCrystalScraper() {
                 campaignData.badge_color = badge.color;
 
                 const isGeneric = markGenericBrand(campaignData);
+
+                campaignData.tags = campaignData.tags || [];
+
                 if (isGeneric) {
                     console.log(`      🏷️  Generic campaign detected: "${campaignData.title}"`);
                 }

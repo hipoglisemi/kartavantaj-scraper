@@ -180,7 +180,8 @@ async function runParafScraper() {
                         bank: normalizedBank,
                         url: fullUrl,
                         reference_url: fullUrl,
-                        is_active: true
+                        is_active: true,
+                    tags: []
                     };
                 }
 
@@ -218,6 +219,9 @@ async function runParafScraper() {
 
                     // Mark generic brand
                     markGenericBrand(campaignData);
+
+                campaignData.tags = campaignData.tags || [];
+
 
                     // Upsert to database
                     const { error } = await supabase.from('campaigns').upsert(campaignData, { onConflict: 'reference_url' });

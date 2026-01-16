@@ -252,6 +252,9 @@ async function runChippinScraper() {
 
                 markGenericBrand(campaignData);
 
+                campaignData.tags = campaignData.tags || [];
+
+
                 // Save
                 const { error } = await supabase
                     .from('campaigns')

@@ -232,6 +232,9 @@ async function runDenizBonusScraper() {
                     // Mark as generic if it's a non-brand-specific campaign
                     markGenericBrand(campaignData);
 
+                campaignData.tags = campaignData.tags || [];
+
+
                     // Upsert
                     const { error } = await supabase
                         .from('campaigns')

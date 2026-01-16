@@ -186,6 +186,9 @@ async function runTebScraper() {
 
                     markGenericBrand(campaignData);
 
+                campaignData.tags = campaignData.tags || [];
+
+
                     count++;
                     console.log(`      [${count}] ${title.substring(0, 35)}... (Img: ${image ? '✅' : '❌'})`);
 

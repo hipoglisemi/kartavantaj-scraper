@@ -190,7 +190,8 @@ async function runWingsScraper() {
                     bank: normalizedBank,
                     url: item.url,
                     reference_url: item.url,
-                    is_active: true
+                    is_active: true,
+                    tags: [] // ✅ Smart Tagging: Empty array for non-AI mode
                 };
             }
 
@@ -235,6 +236,9 @@ async function runWingsScraper() {
                 campaignData.badge_text = badge.text;
                 campaignData.badge_color = badge.color;
                 markGenericBrand(campaignData);
+
+                // ✅ Ensure tags is never null
+                campaignData.tags = campaignData.tags || [];
 
                 const { error } = await supabase.from('campaigns').upsert(campaignData, { onConflict: 'reference_url' });
                 if (error) console.error(`      ❌ Error: ${error.message}`);

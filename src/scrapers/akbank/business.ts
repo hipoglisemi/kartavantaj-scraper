@@ -146,7 +146,8 @@ async function runBusinessScraper() {
                     bank: normalizedBank,
                     url: fullUrl,
                     reference_url: fullUrl,
-                    is_active: true
+                    is_active: true,
+                    tags: []
                 };
             }
 
@@ -203,6 +204,9 @@ async function runBusinessScraper() {
                 campaignData.badge_color = badge.color;
                 // Mark as generic if it's a non-brand-specific campaign
                 markGenericBrand(campaignData);
+
+                campaignData.tags = campaignData.tags || [];
+
 
                 const { error } = await supabase.from('campaigns').upsert(campaignData, { onConflict: 'reference_url' });
                 if (error) {

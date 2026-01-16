@@ -115,7 +115,8 @@ async function runGarantiScraper() {
                         image: imageUrl || '',  // Mapped
                         category: 'Diğer',
                         sector_slug: 'diger',
-                        is_active: true
+                        is_active: true,
+                    tags: []
                     };
                 }
 
@@ -169,6 +170,9 @@ async function runGarantiScraper() {
                     campaignData.badge_color = badge.color;
                     // Mark as generic if it's a non-brand-specific campaign
                     markGenericBrand(campaignData);
+
+                campaignData.tags = campaignData.tags || [];
+
 
                     // Upsert
                     const { error } = await supabase

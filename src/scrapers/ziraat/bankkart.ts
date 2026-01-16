@@ -221,7 +221,8 @@ async function runBankkartScraper() {
                         image: content.image,
                         category: 'Diğer',
                         sector_slug: 'diger',
-                        is_active: true
+                        is_active: true,
+                    tags: []
                     } as any;
                 }
 
@@ -265,6 +266,9 @@ async function runBankkartScraper() {
                     campaignData.badge_text = badge.text;
                     campaignData.badge_color = badge.color;
                     markGenericBrand(campaignData);
+
+                campaignData.tags = campaignData.tags || [];
+
 
                     const { error } = await supabase
                         .from('campaigns')

@@ -160,7 +160,8 @@ async function runAxessScraper() {
                     bank: normalizedBank,
                     url: fullUrl,
                     reference_url: fullUrl,
-                    is_active: true
+                    is_active: true,
+                    tags: [] // ✅ Smart Tagging: Empty array for non-AI mode
                 };
             }
 
@@ -207,6 +208,9 @@ async function runAxessScraper() {
                 campaignData.badge_color = badge.color;
                 // Mark as generic if it's a non-brand-specific campaign
                 markGenericBrand(campaignData);
+
+                // ✅ Ensure tags is never null
+                campaignData.tags = campaignData.tags || [];
 
                 const { error } = await supabase
                     .from('campaigns')

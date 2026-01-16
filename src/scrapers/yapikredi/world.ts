@@ -168,7 +168,8 @@ export async function runWorldScraper() {
                     url: fullUrl,
                     reference_url: fullUrl,
                     image: imageUrl,
-                    is_active: true
+                    is_active: true,
+                    tags: []
                 };
             }
 
@@ -224,6 +225,9 @@ export async function runWorldScraper() {
 
                 // Mark as generic if it's a non-brand-specific campaign
                 const isGeneric = markGenericBrand(campaignData);
+
+                campaignData.tags = campaignData.tags || [];
+
                 if (isGeneric) {
                     console.log(`      🏷️  Generic campaign detected: "${campaignData.title}"`);
                 }
