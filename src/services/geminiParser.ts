@@ -1177,6 +1177,54 @@ Return ONLY valid JSON with the missing fields, no markdown.
     // Temizlik: Tekrarları kaldır
     finalData.tags = [...new Set(finalData.tags)];
 
+    // 🔍 AŞAMA 1: TERSİNE MARKA ARAMA (Dedektif Modu)
+    // AI markayı bulamadıysa ama başlıkta geçiyorsa yakala
+    if (!finalData.brand || finalData.brand === 'Genel' || finalData.brand.trim() === '') {
+        const titleLower = (finalData.title || '').toLocaleLowerCase('tr-TR');
+        const descLower = (finalData.description || '').toLocaleLowerCase('tr-TR');
+        const searchText = `${titleLower} ${descLower}`;
+
+        for (const masterBrand of masterData.brands) {
+            const brandLower = masterBrand.toLocaleLowerCase('tr-TR');
+            if (searchText.includes(brandLower)) {
+                finalData.brand = masterBrand;
+                finalData.brand_suggestion = '';
+                console.log(`   🔍 Dedektif: Başlıkta gizli marka bulundu -> ${masterBrand}`);
+                break; // İlk eşleşmeyi al
+            }
+        }
+    }
+
+    // 🛡️ AŞAMA 2: KELİME BAZLI SEKTÖR DÜZELTME (Sektör Kurtarıcı)
+    // Marka 'Genel' kalsa bile sektörü 'Diğer' olmaktan kurtar
+    if (finalData.brand === 'Genel' || finalData.category === 'Diğer') {
+        const titleLower = (finalData.title || '').toLocaleLowerCase('tr-TR');
+        const descLower = (finalData.description || '').toLocaleLowerCase('tr-TR');
+        const searchText = `${titleLower} ${descLower}`;
+
+        // Sektör eşleştirme kuralları
+        const sectorRules = [
+            { keywords: ['market', 'gıda', 'bakkal', 'süpermarket', 'manav'], category: 'Market & Gıda', slug: 'market-gida' },
+            { keywords: ['akaryakıt', 'benzin', 'mazot', 'otogaz', 'istasyon', 'petrol'], category: 'Akaryakıt', slug: 'akaryakit' },
+            { keywords: ['giyim', 'moda', 'kıyafet', 'ayakkabı', 'tekstil', 'çanta'], category: 'Giyim & Aksesuar', slug: 'giyim-aksesuar' },
+            { keywords: ['restoran', 'yemek', 'kafe', 'kahve', 'burger', 'pizza', 'fast food'], category: 'Restoran & Kafe', slug: 'restoran-kafe' },
+            { keywords: ['seyahat', 'tatil', 'otel', 'uçak', 'bilet', 'turizm', 'konaklama'], category: 'Turizm & Konaklama', slug: 'turizm-konaklama' },
+            { keywords: ['elektronik', 'teknoloji', 'telefon', 'bilgisayar', 'beyaz eşya'], category: 'Elektronik', slug: 'elektronik' },
+            { keywords: ['mobilya', 'dekorasyon', 'yatak', 'ev tekstili'], category: 'Mobilya & Dekorasyon', slug: 'mobilya-dekorasyon' },
+            { keywords: ['sağlık', 'hastane', 'eczane', 'kozmetik', 'bakım'], category: 'Kozmetik & Sağlık', slug: 'kozmetik-saglik' },
+            { keywords: ['e-ticaret', 'internet alışverişi', 'online alışveriş'], category: 'E-Ticaret', slug: 'e-ticaret' }
+        ];
+
+        for (const rule of sectorRules) {
+            if (rule.keywords.some(keyword => searchText.includes(keyword))) {
+                finalData.category = rule.category;
+                finalData.sector_slug = rule.slug;
+                console.log(`   🛡️ Sektör Kurtarıcı: '${rule.category}' olarak güncellendi (Kelime: ${rule.keywords.find(k => searchText.includes(k))})`);
+                break;
+            }
+        }
+    }
+
     return finalData;
 }
 
