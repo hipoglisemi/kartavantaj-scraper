@@ -62,10 +62,28 @@ async function runTebScraper() {
 
     try {
         console.log(`   🔍 Loading Campaign List: ${CAMPAIGNS_URL}...`);
-        await page.goto(CAMPAIGNS_URL, { waitUntil: 'networkidle2', timeout: 60000 });
+
+        // Retry logic for initial page load
+        let retries = 3;
+        let loaded = false;
+
+        while (retries > 0 && !loaded) {
+            try {
+                await page.goto(CAMPAIGNS_URL, { waitUntil: 'networkidle2', timeout: 120000 });
+                loaded = true;
+            } catch (error: any) {
+                retries--;
+                if (retries > 0) {
+                    console.log(`   ⚠️  Page load timeout, retrying... (${retries} attempts left)`);
+                    await sleep(5000);
+                } else {
+                    throw error;
+                }
+            }
+        }
 
         // Wait for cards to be visible
-        await page.waitForSelector('.kContBox', { timeout: 10000 }).catch(() => console.log('   ⚠️  Cartlar bulunamadı, devam ediliyor...'));
+        await page.waitForSelector('.kContBox', { timeout: 15000 }).catch(() => console.log('   ⚠️  Cartlar bulunamadı, devam ediliyor...'));
 
         const content = await page.content();
         const $ = cheerio.load(content);
@@ -186,7 +204,7 @@ async function runTebScraper() {
 
                     markGenericBrand(campaignData);
 
-                campaignData.tags = campaignData.tags || [];
+                    campaignData.tags = campaignData.tags || [];
 
 
                     count++;
