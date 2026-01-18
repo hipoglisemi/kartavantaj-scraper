@@ -390,22 +390,49 @@ async function runMaximumScraperTS() {
 
                     markGenericBrand(campaignData);
 
-                campaignData.tags = campaignData.tags || [];
+                    campaignData.tags = campaignData.tags || [];
 
 
                     count++;
                     console.log(`      [${count}] ${title.substring(0, 35)}... (Img: ${image ? '✅' : '❌'})`);
 
-                    // DB Upsert
-                    console.log(`      💾 Upserting: ${title.substring(0, 30)}... [bank_id: ${campaignData.bank_id}, card_id: ${campaignData.card_id}]`);
-                    const { error } = await supabase
+                    // ID-BASED SLUG SYSTEM
+                    const { data: existing } = await supabase
                         .from('campaigns')
-                        .upsert(campaignData, { onConflict: 'reference_url' });
+                        .select('id')
+                        .eq('reference_url', url)
+                        .single();
 
-                    if (error) {
-                        console.error(`      ❌ DB Error for "${title}": ${error.message}`);
+                    if (existing) {
+                        // Update existing campaign with ID-based slug
+                        const finalSlug = generateCampaignSlug(title, existing.id);
+                        const { error } = await supabase
+                            .from('campaigns')
+                            .update({ ...campaignData, slug: finalSlug })
+                            .eq('id', existing.id);
+                        if (error) {
+                            console.error(`      ❌ Update Error: ${error.message}`);
+                        } else {
+                            console.log(`      ✅ Updated: ${title.substring(0, 30)}... (${finalSlug})`);
+                        }
                     } else {
-                        console.log(`      ✅ Successfully saved/updated.`);
+                        // Insert new campaign with temporary slug
+                        const { data: inserted, error: insertError } = await supabase
+                            .from('campaigns')
+                            .insert(campaignData)
+                            .select('id')
+                            .single();
+                        if (insertError) {
+                            console.error(`      ❌ Insert Error: ${insertError.message}`);
+                        } else if (inserted) {
+                            // Update with final ID-based slug
+                            const finalSlug = generateCampaignSlug(title, inserted.id);
+                            await supabase
+                                .from('campaigns')
+                                .update({ slug: finalSlug })
+                                .eq('id', inserted.id);
+                            console.log(`      ✅ Inserted: ${title.substring(0, 30)}... (${finalSlug})`);
+                        }
                     }
                 } else {
                     console.error(`      ❌ AI Parsing failed for ${url}`);

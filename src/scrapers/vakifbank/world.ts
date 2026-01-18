@@ -141,7 +141,7 @@ async function runVakifbankWorldScraper() {
                         category: 'Diğer',
                         sector_slug: 'diger',
                         is_active: true,
-                    tags: []
+                        tags: []
                     };
                 }
 
@@ -184,17 +184,43 @@ async function runVakifbankWorldScraper() {
                     // Mark as generic if it's a non-brand-specific campaign
                     markGenericBrand(campaignData);
 
-                campaignData.tags = campaignData.tags || [];
+                    campaignData.tags = campaignData.tags || [];
 
 
-                    const { error } = await supabase
+                    // ID-BASED SLUG SYSTEM
+                    const { data: existing } = await supabase
                         .from('campaigns')
-                        .upsert(campaignData, { onConflict: 'reference_url' });
+                        .select('id')
+                        .eq('reference_url', fullUrl)
+                        .single();
 
-                    if (error) {
-                        console.error(`      ❌ Supabase Error: ${error.message}`);
+                    if (existing) {
+                        const finalSlug = generateCampaignSlug(fallbackData.title, existing.id);
+                        const { error } = await supabase
+                            .from('campaigns')
+                            .update({ ...campaignData, slug: finalSlug })
+                            .eq('id', existing.id);
+                        if (error) {
+                            console.error(`      ❌ Update Error: ${error.message}`);
+                        } else {
+                            console.log(`      ✅ Updated: ${fallbackData.title.substring(0, 30)}... (${finalSlug})`);
+                        }
                     } else {
-                        console.log(`      ✅ Saved to DB: ${fallbackData.title}`);
+                        const { data: inserted, error: insertError } = await supabase
+                            .from('campaigns')
+                            .insert(campaignData)
+                            .select('id')
+                            .single();
+                        if (insertError) {
+                            console.error(`      ❌ Insert Error: ${insertError.message}`);
+                        } else if (inserted) {
+                            const finalSlug = generateCampaignSlug(fallbackData.title, inserted.id);
+                            await supabase
+                                .from('campaigns')
+                                .update({ slug: finalSlug })
+                                .eq('id', inserted.id);
+                            console.log(`      ✅ Inserted: ${fallbackData.title.substring(0, 30)}... (${finalSlug})`);
+                        }
                     }
                 }
 

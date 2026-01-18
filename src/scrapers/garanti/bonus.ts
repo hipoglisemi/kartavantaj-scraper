@@ -116,14 +116,14 @@ async function runGarantiScraper() {
                         category: 'Diğer',
                         sector_slug: 'diger',
                         is_active: true,
-                    tags: []
+                        tags: []
                     };
                 }
 
                 if (campaignData) {
                     // Force fields
                     campaignData.title = title;
-                campaignData.slug = generateCampaignSlug(title); // Regenerate slug after title override // Strict Assignment
+                    campaignData.slug = generateCampaignSlug(title); // Regenerate slug after title override // Strict Assignment
                     campaignData.card_name = normalizedCard; // Default to Bonus
                     campaignData.bank = normalizedBank; // Enforce strict bank assignment
 
@@ -172,18 +172,43 @@ async function runGarantiScraper() {
                     // Mark as generic if it's a non-brand-specific campaign
                     markGenericBrand(campaignData);
 
-                campaignData.tags = campaignData.tags || [];
+                    campaignData.tags = campaignData.tags || [];
 
 
-                    // Upsert
-                    const { error } = await supabase
+                    // ID-BASED SLUG SYSTEM
+                    const { data: existing } = await supabase
                         .from('campaigns')
-                        .upsert(campaignData, { onConflict: 'reference_url' });
+                        .select('id')
+                        .eq('reference_url', fullUrl)
+                        .single();
 
-                    if (error) {
-                        console.error(`      ❌ Supabase Error: ${error.message}`);
+                    if (existing) {
+                        const finalSlug = generateCampaignSlug(title, existing.id);
+                        const { error } = await supabase
+                            .from('campaigns')
+                            .update({ ...campaignData, slug: finalSlug })
+                            .eq('id', existing.id);
+                        if (error) {
+                            console.error(`      ❌ Update Error: ${error.message}`);
+                        } else {
+                            console.log(`      ✅ Updated: ${title.substring(0, 30)}... (${finalSlug})`);
+                        }
                     } else {
-                        console.log(`      ✅ Saved to DB: ${title}`);
+                        const { data: inserted, error: insertError } = await supabase
+                            .from('campaigns')
+                            .insert(campaignData)
+                            .select('id')
+                            .single();
+                        if (insertError) {
+                            console.error(`      ❌ Insert Error: ${insertError.message}`);
+                        } else if (inserted) {
+                            const finalSlug = generateCampaignSlug(title, inserted.id);
+                            await supabase
+                                .from('campaigns')
+                                .update({ slug: finalSlug })
+                                .eq('id', inserted.id);
+                            console.log(`      ✅ Inserted: ${title.substring(0, 30)}... (${finalSlug})`);
+                        }
                     }
                 }
 
