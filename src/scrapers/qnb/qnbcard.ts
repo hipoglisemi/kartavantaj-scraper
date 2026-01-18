@@ -238,7 +238,23 @@ async function runQNBCardScraper() {
 
                 // AI Overrides & Corrections
                 campaignData.title = title; // Trust scraped title
-                campaignData.description = description || campaignData.description;
+
+                // 🚨 CRITICAL: Save AI's marketing summary to ai_marketing_text before overwriting description
+                // The AI returns a nice "description" (marketing summary). We want to keep that as 'ai_marketing_text'
+                // and use the raw scraped text for the main 'description' column (for details).
+                if (campaignData.description && !campaignData.ai_marketing_text) {
+                    campaignData.ai_marketing_text = campaignData.description;
+                } else if (campaignData.description && campaignData.ai_marketing_text) {
+                    // If AI returned both, prefer description if marketing text is too short/generic? 
+                    // Or keep marketing text. Let's trust AI's specific field first.
+                    // But if user specific request implies AI description is the one they want:
+                    // "description kolonuna baglanmıs... o kısmı ai_marketing_text kolonuna baglasın"
+                    // So we map description -> ai_marketing_text.
+                    // Let's backup description to ai_marketing_text if it's longer/richer? 
+                    // Actually, let's just ensure we have SOMETHING in ai_marketing_text.
+                }
+
+                campaignData.description = description || campaignData.description; // Use scraped description (long) for detailed view
                 campaignData.url = url;
                 campaignData.reference_url = url;
                 campaignData.bank = normalizedBank;
