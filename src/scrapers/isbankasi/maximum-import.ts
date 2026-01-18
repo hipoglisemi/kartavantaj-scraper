@@ -105,7 +105,7 @@ async function importMaximumCampaigns() {
             markGenericBrand(campaignData);
 
             // Save
-            
+
             // ID-BASED SLUG SYSTEM
             const { data: existing } = await supabase
                 .from('campaigns')
@@ -114,7 +114,7 @@ async function importMaximumCampaigns() {
                 .single();
 
             if (existing) {
-                const finalSlug = generateCampaignSlug(title, existing.id);
+                const finalSlug = generateCampaignSlug(campaignData.title, existing.id);
                 const { error } = await supabase
                     .from('campaigns')
                     .update({ ...campaignData, slug: finalSlug })
@@ -122,7 +122,7 @@ async function importMaximumCampaigns() {
                 if (error) {
                     console.error(`      ❌ Update Error: ${error.message}`);
                 } else {
-                    console.log(`      ✅ Updated: ${title} (${finalSlug})`);
+                    console.log(`      ✅ Updated: ${campaignData.title} (${finalSlug})`);
                 }
             } else {
                 const { data: inserted, error: insertError } = await supabase
@@ -133,15 +133,15 @@ async function importMaximumCampaigns() {
                 if (insertError) {
                     console.error(`      ❌ Insert Error: ${insertError.message}`);
                 } else if (inserted) {
-                    const finalSlug = generateCampaignSlug(title, inserted.id);
+                    const finalSlug = generateCampaignSlug(campaignData.title, inserted.id);
                     await supabase
                         .from('campaigns')
                         .update({ slug: finalSlug })
                         .eq('id', inserted.id);
-                    console.log(`      ✅ Inserted: ${title} (${finalSlug})`);
+                    console.log(`      ✅ Inserted: ${campaignData.title} (${finalSlug})`);
                 }
             }
-            }
+
 
         } catch (error: any) {
             console.error(`      ❌ Error: ${error.message}`);

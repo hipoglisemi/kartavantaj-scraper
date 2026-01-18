@@ -23,7 +23,6 @@ import { parseWithGemini } from '../../services/geminiParser';
 import { syncEarningAndDiscount } from '../../utils/dataFixer';
 import { assignBadge } from '../../services/badgeAssigner';
 import { markGenericBrand } from '../../utils/genericDetector';
-import { getTargetTable, logTestModeStatus, logTestModeSummary } from '../../utils/testMode';
 
 dotenv.config();
 
@@ -41,8 +40,6 @@ const CAMPAIGNS_URL = 'https://www.maximum.com.tr/kampanyalar';
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 async function runMaximumScraperTS() {
-    logTestModeStatus();
-    const tableName = getTargetTable();
     console.log('🚀 Starting İş Bankası (Maximum) Scraper (TS Stealth + V8 Engine)...');
 
     // Parse limit argument
@@ -400,38 +397,39 @@ async function runMaximumScraperTS() {
                     console.log(`      [${count}] ${title.substring(0, 35)}... (Img: ${image ? '✅' : '❌'})`);
 
                     // ID-BASED SLUG SYSTEM
+                    console.log(`      💾 Processing: ${title.substring(0, 30)}... [bank_id: ${campaignData.bank_id}, card_id: ${campaignData.card_id}]`);
+
                     const { data: existing } = await supabase
-                        .from(tableName)
+                        .from('campaigns')
                         .select('id')
-                        .eq('reference_url', url)
+                        .eq('reference_url', campaignData.reference_url)
                         .single();
 
                     if (existing) {
-                        // Update existing campaign with ID-based slug
+                        // Mevcut kampanya - güncelle
                         const finalSlug = generateCampaignSlug(title, existing.id);
                         const { error } = await supabase
-                            .from(tableName)
+                            .from('campaigns')
                             .update({ ...campaignData, slug: finalSlug })
                             .eq('id', existing.id);
                         if (error) {
-                            console.error(`      ❌ Update Error: ${error.message}`);
+                            console.error(`      ❌ Update Error for "${title}": ${error.message}`);
                         } else {
                             console.log(`      ✅ Updated: ${title.substring(0, 30)}... (${finalSlug})`);
                         }
                     } else {
-                        // Insert new campaign with temporary slug
+                        // Yeni kampanya - ekle
                         const { data: inserted, error: insertError } = await supabase
-                            .from(tableName)
+                            .from('campaigns')
                             .insert(campaignData)
                             .select('id')
                             .single();
                         if (insertError) {
-                            console.error(`      ❌ Insert Error: ${insertError.message}`);
+                            console.error(`      ❌ Insert Error for "${title}": ${insertError.message}`);
                         } else if (inserted) {
-                            // Update with final ID-based slug
                             const finalSlug = generateCampaignSlug(title, inserted.id);
                             await supabase
-                                .from(tableName)
+                                .from('campaigns')
                                 .update({ slug: finalSlug })
                                 .eq('id', inserted.id);
                             console.log(`      ✅ Inserted: ${title.substring(0, 30)}... (${finalSlug})`);
@@ -447,7 +445,6 @@ async function runMaximumScraperTS() {
         }
 
         console.log(`\n✅ TS Scraper Finished. Processed ${count} campaigns.`);
-        logTestModeSummary(count, tableName);
 
     } catch (e: any) {
         console.error('❌ Critical Error:', e);

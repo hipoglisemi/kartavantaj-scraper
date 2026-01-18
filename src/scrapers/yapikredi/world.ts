@@ -233,6 +233,7 @@ export async function runWorldScraper() {
                     console.log(`      🏷️  Generic campaign detected: "${campaignData.title}"`);
                 }
 
+                // Upsert to Supabase
                 // ID-BASED SLUG SYSTEM
                 const { data: existing } = await supabase
                     .from('campaigns')

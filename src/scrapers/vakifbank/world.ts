@@ -148,6 +148,7 @@ async function runVakifbankWorldScraper() {
                 if (campaignData) {
                     // Force fields
                     campaignData.title = fallbackData.title; // Strict Assignment
+                    campaignData.slug = generateCampaignSlug(campaignData.title); // Generate initial slug
                     campaignData.card_name = normalizedCard; // Match admin panel exactly
                     campaignData.bank = normalizedBank; // Dynamic mapping from bank_configs
 
@@ -195,7 +196,7 @@ async function runVakifbankWorldScraper() {
                         .single();
 
                     if (existing) {
-                        const finalSlug = generateCampaignSlug(fallbackData.title, existing.id);
+                        const finalSlug = generateCampaignSlug(campaignData.title, existing.id);
                         const { error } = await supabase
                             .from('campaigns')
                             .update({ ...campaignData, slug: finalSlug })
@@ -214,7 +215,7 @@ async function runVakifbankWorldScraper() {
                         if (insertError) {
                             console.error(`      ❌ Insert Error: ${insertError.message}`);
                         } else if (inserted) {
-                            const finalSlug = generateCampaignSlug(fallbackData.title, inserted.id);
+                            const finalSlug = generateCampaignSlug(campaignData.title, inserted.id);
                             await supabase
                                 .from('campaigns')
                                 .update({ slug: finalSlug })
@@ -222,6 +223,8 @@ async function runVakifbankWorldScraper() {
                             console.log(`      ✅ Inserted: ${fallbackData.title.substring(0, 30)}... (${finalSlug})`);
                         }
                     }
+
+
                 }
 
             } catch (err: any) {

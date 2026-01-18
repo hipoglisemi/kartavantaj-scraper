@@ -345,32 +345,35 @@ async function runMaximilesScraper() {
                     count++;
                     console.log(`      [${count}] ${title.substring(0, 35)}... (Img: ${image ? '✅' : '❌'})`);
 
-                    // ID-BASED SLUG SYSTEM
+                    console.log(`      💾 Processing: ${title.substring(0, 30)}... [bank_id: ${campaignData.bank_id}, card_id: ${campaignData.card_id}]`);
+
                     const { data: existing } = await supabase
                         .from('campaigns')
                         .select('id')
-                        .eq('reference_url', url)
+                        .eq('reference_url', campaignData.reference_url)
                         .single();
 
                     if (existing) {
+                        // Mevcut kampanya - güncelle
                         const finalSlug = generateCampaignSlug(title, existing.id);
                         const { error } = await supabase
                             .from('campaigns')
                             .update({ ...campaignData, slug: finalSlug })
                             .eq('id', existing.id);
                         if (error) {
-                            console.error(`      ❌ Update Error: ${error.message}`);
+                            console.error(`      ❌ Update Error for "${title}": ${error.message}`);
                         } else {
                             console.log(`      ✅ Updated: ${title.substring(0, 30)}... (${finalSlug})`);
                         }
                     } else {
+                        // Yeni kampanya - ekle
                         const { data: inserted, error: insertError } = await supabase
                             .from('campaigns')
                             .insert(campaignData)
                             .select('id')
                             .single();
                         if (insertError) {
-                            console.error(`      ❌ Insert Error: ${insertError.message}`);
+                            console.error(`      ❌ Insert Error for "${title}": ${insertError.message}`);
                         } else if (inserted) {
                             const finalSlug = generateCampaignSlug(title, inserted.id);
                             await supabase

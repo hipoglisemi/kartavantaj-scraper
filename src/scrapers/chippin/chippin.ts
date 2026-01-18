@@ -257,42 +257,43 @@ async function runChippinScraper() {
 
 
                 // Save
-                
-            // ID-BASED SLUG SYSTEM
-            const { data: existing } = await supabase
-                .from('campaigns')
-                .select('id')
-                .eq('reference_url', url)
-                .single();
+                console.log(`      💾 Processing: ${title.substring(0, 30)}...`);
 
-            if (existing) {
-                const finalSlug = generateCampaignSlug(title, existing.id);
-                const { error } = await supabase
+                const { data: existing } = await supabase
                     .from('campaigns')
-                    .update({ ...campaignData, slug: finalSlug })
-                    .eq('id', existing.id);
-                if (error) {
-                    console.error(`      ❌ Update Error: ${error.message}`);
-                } else {
-                    console.log(`      ✅ Updated: ${title} (${finalSlug})`);
-                }
-            } else {
-                const { data: inserted, error: insertError } = await supabase
-                    .from('campaigns')
-                    .insert(campaignData)
                     .select('id')
+                    .eq('reference_url', referenceUrl)
                     .single();
-                if (insertError) {
-                    console.error(`      ❌ Insert Error: ${insertError.message}`);
-                } else if (inserted) {
-                    const finalSlug = generateCampaignSlug(title, inserted.id);
-                    await supabase
+
+                if (existing) {
+                    // Mevcut kampanya - güncelle
+                    const finalSlug = generateCampaignSlug(title, existing.id);
+                    const { error } = await supabase
                         .from('campaigns')
-                        .update({ slug: finalSlug })
-                        .eq('id', inserted.id);
-                    console.log(`      ✅ Inserted: ${title} (${finalSlug})`);
-                }
-            }
+                        .update({ ...campaignData, slug: finalSlug })
+                        .eq('id', existing.id);
+                    if (error) {
+                        console.error(`      ❌ Update Error for "${title}": ${error.message}`);
+                    } else {
+                        console.log(`      ✅ Updated: ${title.substring(0, 30)}... (${finalSlug})`);
+                    }
+                } else {
+                    // Yeni kampanya - ekle
+                    const { data: inserted, error: insertError } = await supabase
+                        .from('campaigns')
+                        .insert(campaignData)
+                        .select('id')
+                        .single();
+                    if (insertError) {
+                        console.error(`      ❌ Insert Error for "${title}": ${insertError.message}`);
+                    } else if (inserted) {
+                        const finalSlug = generateCampaignSlug(title, inserted.id);
+                        await supabase
+                            .from('campaigns')
+                            .update({ slug: finalSlug })
+                            .eq('id', inserted.id);
+                        console.log(`      ✅ Inserted: ${title.substring(0, 30)}... (${finalSlug})`);
+                    }
                 }
             } else {
                 console.error(`      ⚠️ Failed to parse with AI`);

@@ -229,6 +229,7 @@ async function runBankkartScraper() {
                 if (campaignData) {
                     // Force fields for consistency
                     campaignData.title = content.title; // Always use site title as authority
+                    campaignData.slug = generateCampaignSlug(campaignData.title); // Generate initial slug
                     campaignData.card_name = normalizedCard;
                     campaignData.bank = normalizedBank;
                     campaignData.url = fullUrl;
@@ -278,7 +279,7 @@ async function runBankkartScraper() {
                         .single();
 
                     if (existing) {
-                        const finalSlug = generateCampaignSlug(content.title, existing.id);
+                        const finalSlug = generateCampaignSlug(campaignData.title, existing.id);
                         const { error } = await supabase
                             .from('campaigns')
                             .update({ ...campaignData, slug: finalSlug })
@@ -297,7 +298,7 @@ async function runBankkartScraper() {
                         if (insertError) {
                             console.error(`      ❌ Insert Error: ${insertError.message}`);
                         } else if (inserted) {
-                            const finalSlug = generateCampaignSlug(content.title, inserted.id);
+                            const finalSlug = generateCampaignSlug(campaignData.title, inserted.id);
                             await supabase
                                 .from('campaigns')
                                 .update({ slug: finalSlug })
@@ -305,6 +306,8 @@ async function runBankkartScraper() {
                             console.log(`      ✅ Inserted: ${content.title.substring(0, 30)}... (${finalSlug})`);
                         }
                     }
+
+
                 }
             } catch (err: any) {
                 console.error(`      ❌ Detail Error: ${err.message}`);
