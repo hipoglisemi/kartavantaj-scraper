@@ -8,6 +8,7 @@ import { optimizeCampaigns } from '../../utils/campaignOptimizer';
 import { lookupIDs } from '../../utils/idMapper';
 import { assignBadge } from '../../services/badgeAssigner';
 import { markGenericBrand } from '../../utils/genericDetector';
+import { downloadImageDirectly } from '../../services/imageService';
 
 dotenv.config();
 
@@ -79,7 +80,14 @@ async function importMaximumCampaigns() {
             // Merge Python + AI data
             campaignData.title = pythonData.title;
             campaignData.slug = generateCampaignSlug(pythonData.title); // Regenerate slug
-            campaignData.image = pythonData.image || campaignData.image;
+
+            // DOWNLOAD IMAGE IF EXISTS
+            let finalImage = pythonData.image || campaignData.image;
+            if (finalImage && finalImage.startsWith('http')) {
+                finalImage = await downloadImageDirectly(finalImage, campaignData.title, 'maximum');
+            }
+            campaignData.image = finalImage;
+
             campaignData.card_name = normalizedCard;
             campaignData.bank = normalizedBank;
             campaignData.url = url;
