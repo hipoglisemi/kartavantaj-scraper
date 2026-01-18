@@ -23,6 +23,7 @@ import { parseWithGemini } from '../../services/geminiParser';
 import { syncEarningAndDiscount } from '../../utils/dataFixer';
 import { assignBadge } from '../../services/badgeAssigner';
 import { markGenericBrand } from '../../utils/genericDetector';
+import { getTargetTable, logTestModeStatus, logTestModeSummary } from '../../utils/testMode';
 
 dotenv.config();
 
@@ -40,6 +41,8 @@ const CAMPAIGNS_URL = 'https://www.maximum.com.tr/kampanyalar';
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 async function runMaximumScraperTS() {
+    logTestModeStatus();
+    const tableName = getTargetTable();
     console.log('🚀 Starting İş Bankası (Maximum) Scraper (TS Stealth + V8 Engine)...');
 
     // Parse limit argument
@@ -398,7 +401,7 @@ async function runMaximumScraperTS() {
 
                     // ID-BASED SLUG SYSTEM
                     const { data: existing } = await supabase
-                        .from('campaigns')
+                        .from(tableName)
                         .select('id')
                         .eq('reference_url', url)
                         .single();
@@ -407,7 +410,7 @@ async function runMaximumScraperTS() {
                         // Update existing campaign with ID-based slug
                         const finalSlug = generateCampaignSlug(title, existing.id);
                         const { error } = await supabase
-                            .from('campaigns')
+                            .from(tableName)
                             .update({ ...campaignData, slug: finalSlug })
                             .eq('id', existing.id);
                         if (error) {
@@ -418,7 +421,7 @@ async function runMaximumScraperTS() {
                     } else {
                         // Insert new campaign with temporary slug
                         const { data: inserted, error: insertError } = await supabase
-                            .from('campaigns')
+                            .from(tableName)
                             .insert(campaignData)
                             .select('id')
                             .single();
@@ -428,7 +431,7 @@ async function runMaximumScraperTS() {
                             // Update with final ID-based slug
                             const finalSlug = generateCampaignSlug(title, inserted.id);
                             await supabase
-                                .from('campaigns')
+                                .from(tableName)
                                 .update({ slug: finalSlug })
                                 .eq('id', inserted.id);
                             console.log(`      ✅ Inserted: ${title.substring(0, 30)}... (${finalSlug})`);
@@ -444,6 +447,7 @@ async function runMaximumScraperTS() {
         }
 
         console.log(`\n✅ TS Scraper Finished. Processed ${count} campaigns.`);
+        logTestModeSummary(count, tableName);
 
     } catch (e: any) {
         console.error('❌ Critical Error:', e);
