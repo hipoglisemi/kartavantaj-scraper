@@ -22,7 +22,7 @@ on:
 jobs:
   scrape-isbank:
     runs-on: ubuntu-latest
-    timeout-minutes: 90  # Increased from 45 to handle both Maximum and Maximiles scrapers
+    timeout-minutes: 360  # 6 hours - ensures completion even with maximum delays and retries
     
     steps:
       - name: Checkout

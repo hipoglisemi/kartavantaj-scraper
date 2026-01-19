@@ -151,6 +151,11 @@ async function runParafScraper() {
                 if (isAIEnabled) {
                     campaignData = await parseWithGemini(html, fullUrl, normalizedBank, normalizedCard);
 
+                    // Fallback title if AI missed it
+                    if (!campaignData.title && fallbackData.title) {
+                        campaignData.title = fallbackData.title;
+                    }
+
                     // Fallback image if AI missed it
                     if (!campaignData.image && fallbackData.image) {
                         campaignData.image = fallbackData.image;
@@ -181,7 +186,7 @@ async function runParafScraper() {
                         url: fullUrl,
                         reference_url: fullUrl,
                         is_active: true,
-                    tags: []
+                        tags: []
                     };
                 }
 
@@ -220,47 +225,46 @@ async function runParafScraper() {
                     // Mark generic brand
                     markGenericBrand(campaignData);
 
-                campaignData.tags = campaignData.tags || [];
+                    campaignData.tags = campaignData.tags || [];
 
 
                     // Upsert to database
-                    
-                // ID-BASED SLUG SYSTEM
-                const { data: existing } = await supabase
-                    .from('campaigns')
-                    .select('id')
-                    .eq('reference_url', fullUrl)
-                    .single();
 
-                if (existing) {
-                    const finalSlug = generateCampaignSlug(title, existing.id);
-                    const { error } = await supabase
+                    // ID-BASED SLUG SYSTEM
+                    const { data: existing } = await supabase
                         .from('campaigns')
-                        .update({ ...campaignData, slug: finalSlug })
-                        .eq('id', existing.id);
-                    if (error) {
-                        console.error(`      ❌ Update Error: ${error.message}`);
-                    } else {
-                        console.log(`      ✅ Updated: ${title} (${finalSlug})`);
-                    }
-                } else {
-                    const { data: inserted, error: insertError } = await supabase
-                        .from('campaigns')
-                        .insert(campaignData)
                         .select('id')
+                        .eq('reference_url', fullUrl)
                         .single();
-                    if (insertError) {
-                        console.error(`      ❌ Insert Error: ${insertError.message}`);
-                    } else if (inserted) {
-                        const finalSlug = generateCampaignSlug(title, inserted.id);
-                        await supabase
+
+                    if (existing) {
+                        const finalSlug = generateCampaignSlug(campaignData.title, existing.id);
+                        const { error } = await supabase
                             .from('campaigns')
-                            .update({ slug: finalSlug })
-                            .eq('id', inserted.id);
-                        console.log(`      ✅ Inserted: ${title} (${finalSlug})`);
+                            .update({ ...campaignData, slug: finalSlug })
+                            .eq('id', existing.id);
+                        if (error) {
+                            console.error(`      ❌ Update Error: ${error.message}`);
+                        } else {
+                            console.log(`      ✅ Updated: ${campaignData.title} (${finalSlug})`);
+                        }
+                    } else {
+                        const { data: inserted, error: insertError } = await supabase
+                            .from('campaigns')
+                            .insert(campaignData)
+                            .select('id')
+                            .single();
+                        if (insertError) {
+                            console.error(`      ❌ Insert Error: ${insertError.message}`);
+                        } else if (inserted) {
+                            const finalSlug = generateCampaignSlug(campaignData.title, inserted.id);
+                            await supabase
+                                .from('campaigns')
+                                .update({ slug: finalSlug })
+                                .eq('id', inserted.id);
+                            console.log(`      ✅ Inserted: ${campaignData.title} (${finalSlug})`);
+                        }
                     }
-                }
-            }
                 }
 
             } catch (error: any) {

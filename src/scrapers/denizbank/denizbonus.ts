@@ -133,6 +133,53 @@ async function runDenizBonusScraper() {
                     conditionsList.push($detail(li).text().trim());
                 });
 
+                // Manual brand extraction for fallback
+                let manualBrand: string | null = null;
+                const pageText = $detail.text().toLowerCase();
+                const titleLower = title.toLowerCase();
+
+                // Common brand patterns in Denizbank campaigns
+                const brandPatterns = [
+                    { pattern: /migros/i, brand: 'Migros' },
+                    { pattern: /carrefour/i, brand: 'Carrefoursa' },
+                    { pattern: /a101/i, brand: 'A101' },
+                    { pattern: /bim/i, brand: 'BİM' },
+                    { pattern: /şok/i, brand: 'ŞOK' },
+                    { pattern: /teknosa/i, brand: 'Teknosa' },
+                    { pattern: /mediamarkt|media markt/i, brand: 'MediaMarkt' },
+                    { pattern: /vatan/i, brand: 'Vatan Bilgisayar' },
+                    { pattern: /etstur|ets tur/i, brand: 'ETS Tur' },
+                    { pattern: /jolly/i, brand: 'Jolly Tur' },
+                    { pattern: /tatilbudur/i, brand: 'Tatilbudur' },
+                    { pattern: /hepsiburada/i, brand: 'Hepsiburada' },
+                    { pattern: /trendyol/i, brand: 'Trendyol' },
+                    { pattern: /n11/i, brand: 'N11' },
+                    { pattern: /gittigidiyor/i, brand: 'GittiGidiyor' },
+                    { pattern: /zara/i, brand: 'Zara' },
+                    { pattern: /h&m|h\u0026m/i, brand: 'H&M' },
+                    { pattern: /lcwaikiki|lc waikiki/i, brand: 'LC Waikiki' },
+                    { pattern: /defacto/i, brand: 'DeFacto' },
+                    { pattern: /koton/i, brand: 'Koton' },
+                    { pattern: /mavi/i, brand: 'Mavi' },
+                    { pattern: /starbucks/i, brand: 'Starbucks' },
+                    { pattern: /mcdonald/i, brand: 'McDonald\'s' },
+                    { pattern: /burger king/i, brand: 'Burger King' },
+                    { pattern: /domino/i, brand: 'Domino\'s Pizza' },
+                    { pattern: /pizza hut/i, brand: 'Pizza Hut' },
+                    { pattern: /shell/i, brand: 'Shell' },
+                    { pattern: /opet/i, brand: 'Opet' },
+                    { pattern: /bp/i, brand: 'BP' },
+                    { pattern: /total/i, brand: 'Total' },
+                    { pattern: /petrol ofisi/i, brand: 'Petrol Ofisi' }
+                ];
+
+                for (const { pattern, brand } of brandPatterns) {
+                    if (pattern.test(titleLower) || pattern.test(pageText)) {
+                        manualBrand = brand;
+                        break;
+                    }
+                }
+
                 let imageUrl = $detail('.campaign-banner img').first().attr('src') ||
                     $detail('.campaign-image img').first().attr('src') ||
                     $detail('.content img').first().attr('src');
@@ -196,6 +243,12 @@ async function runDenizBonusScraper() {
                     campaignData.conditions = (campaignData.conditions && campaignData.conditions.length > 0) ? campaignData.conditions : (conditionsList.length > 0 ? conditionsList : null);
                     campaignData.participation_method = campaignData.participation_method || participationTxt || null;
                     campaignData.category = campaignData.category || 'Diğer';
+
+                    // Brand fallback - use manual extraction if AI missed it
+                    if (!campaignData.brand && manualBrand) {
+                        campaignData.brand = manualBrand;
+                        console.log(`      🔧 Used fallback brand: ${manualBrand}`);
+                    }
                     campaignData.sector_slug = generateSectorSlug(campaignData.category);
                     syncEarningAndDiscount(campaignData);
                     campaignData.publish_status = 'processing';
