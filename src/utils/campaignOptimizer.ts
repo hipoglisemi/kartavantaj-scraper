@@ -58,7 +58,14 @@ export async function optimizeCampaigns(
         } else {
             // Case 2: Campaign exists, check if data is incomplete
             // Check both image and image_url fields (some scrapers use image_url for direct bank URLs)
-            const hasImage = campaign.image && campaign.image.trim() !== '' && !campaign.image.includes('placeholder') && !campaign.image.includes('favicon');
+            // 🔥 ENHANCED: Only count as "hasImage" if it's NOT a raw bank URL (meaning already migrated to Cloudflare)
+            let hasImage = campaign.image && campaign.image.trim() !== '' && !campaign.image.includes('placeholder') && !campaign.image.includes('favicon');
+
+            // If it's a raw Maximum or IsBank URL, consider it incomplete so we can migrate to Cloudflare
+            if (hasImage && (campaign.image.includes('maximum.com.tr') || campaign.image.includes('isbank.com.tr'))) {
+                hasImage = false;
+            }
+
             const hasImageUrl = campaign.image_url && campaign.image_url.trim() !== '';
             const isImageMissing = !hasImage && !hasImageUrl;
             const isBrandMissing = !campaign.brand;
