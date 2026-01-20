@@ -350,8 +350,8 @@ async function runMaximumScraperTS() {
                     const src = imgEl.attr('src');
                     if (src) {
                         const imageUrl = src.startsWith('http') ? src : `${BASE_URL}${src}`;
-                        // 🔥 AXIOS İLE CLOUDFLARE UPLOAD (Kaliteli görsel)
-                        image = await downloadImageDirectly(imageUrl, title, 'maximum');
+                        // 🔥 AXIOS + CLEAN CAPTURE FALLBACK
+                        image = await downloadImageDirectly(imageUrl, title, 'maximum', page);
                     }
                 }
 
