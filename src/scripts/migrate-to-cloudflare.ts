@@ -23,10 +23,10 @@ async function migrateImages() {
     // These are campaigns where image_migrated is false AND the image is stored in our Supabase bucket
     const { data: campaigns, error } = await supabase
         .from('campaigns')
-        .select('id, title, image, bank')
+        .select('id, title, image, image_url, bank')
         .eq('image_migrated', false)
-        .like('image', '%supabase.co/storage/v1/object/public/campaign-images/%')
-        .limit(50); // Process in batches
+        .or(`image.like.%supabase.co/storage/v1/object/public/campaign-images/%,image_url.like.%supabase.co/storage/v1/object/public/campaign-images/%`)
+        .limit(500); // Increased batch size to clear backlog
 
     if (error) {
         console.error('❌ Error fetching campaigns:', error.message);
@@ -46,12 +46,14 @@ async function migrateImages() {
 
             // Extract path from Supabase URL
             // e.g. https://...supabase.co/storage/v1/object/public/campaign-images/maximum/slug.jpg
-            const supabaseUrl = campaign.image;
-            const pathParts = supabaseUrl.split('/campaign-images/');
-            if (pathParts.length < 2) {
-                console.warn(`   ⚠️ Invalid Supabase URL: ${supabaseUrl}`);
+            const supabaseUrl = campaign.image?.includes('supabase.co/storage') ? campaign.image : campaign.image_url;
+
+            if (!supabaseUrl || !supabaseUrl.includes('/campaign-images/')) {
+                console.warn(`   ⚠️ Invalid or missing Supabase URL for ID ${campaign.id}`);
                 continue;
             }
+
+            const pathParts = supabaseUrl.split('/campaign-images/');
             const storagePath = pathParts[1];
 
             // 2. Download from Supabase
