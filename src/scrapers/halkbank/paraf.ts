@@ -1,5 +1,6 @@
 
-import puppeteer from 'puppeteer';
+import puppeteer from 'puppeteer-extra';
+import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import { createClient } from '@supabase/supabase-js';
 import * as dotenv from 'dotenv';
 import { parseWithGemini } from '../../services/geminiParser';
@@ -10,6 +11,8 @@ import { optimizeCampaigns } from '../../utils/campaignOptimizer';
 import { lookupIDs } from '../../utils/idMapper';
 import { assignBadge } from '../../services/badgeAssigner';
 import { markGenericBrand } from '../../utils/genericDetector';
+
+puppeteer.use(StealthPlugin());
 
 dotenv.config();
 
@@ -36,19 +39,29 @@ async function runParafScraper() {
 
     const browser = await puppeteer.launch({
         headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
+        args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-blink-features=AutomationControlled'
+        ]
     });
 
     try {
         const page = await browser.newPage();
         await page.setViewport({ width: 1920, height: 1080 });
+        await page.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
 
         // 1. Load campaign list and click "Load More"
         console.log(`   📄 Loading ${CAMPAIGNS_URL}...`);
-        await page.goto(CAMPAIGNS_URL, { waitUntil: 'networkidle2', timeout: 30000 });
+        await page.goto(CAMPAIGNS_URL, { waitUntil: 'networkidle2', timeout: 60000 });
 
         // Wait for campaign list
-        await page.waitForSelector('.cmp-list--campaigns', { timeout: 10000 });
+        try {
+            await page.waitForSelector('.cmp-list--campaigns', { timeout: 20000 });
+        } catch (e) {
+            console.log('   ⚠️ Warning: .cmp-list--campaigns not found within timeout. Page might have loaded differently.');
+        }
 
         // Click "Load More" button multiple times
         let clickCount = 0;
@@ -56,17 +69,26 @@ async function runParafScraper() {
 
         while (clickCount < maxClicks) {
             try {
-                const loadMoreBtn = await page.$('.button--more-campaign a');
+                // Selector update: some buttons might be nested or have slightly different classes
+                // Verified current: .button--more-campaign a
+                const loadMoreBtn = await page.$('.button--more-campaign a, .button--more-campaign .cmp-button');
                 if (!loadMoreBtn) break;
 
+                const isVisible = await loadMoreBtn.evaluate(el => {
+                    const style = window.getComputedStyle(el);
+                    return style && style.display !== 'none' && style.visibility !== 'hidden' && el.offsetHeight > 0;
+                });
+
+                if (!isVisible) break;
+
                 await loadMoreBtn.scrollIntoView();
-                await sleep(500);
+                await sleep(1000);
                 await loadMoreBtn.click();
-                await sleep(2000);
+                await sleep(3000); // Increased wait for dynamic content
                 clickCount++;
-                console.log(`   -\u003e Clicked 'Load More' (${clickCount})`);
-            } catch {
-                console.log(`   -\u003e All campaigns loaded after ${clickCount} clicks`);
+                console.log(`   -> Clicked 'Load More' (${clickCount})`);
+            } catch (e) {
+                console.log(`   -> Stopping 'Load More' after ${clickCount} clicks due to error or missing button.`);
                 break;
             }
         }
@@ -74,11 +96,13 @@ async function runParafScraper() {
         // Extract campaign links
         const campaignLinks = await page.evaluate((baseUrl) => {
             const links: string[] = [];
-            const anchors = document.querySelectorAll('.cmp-list--campaigns .cmp-teaser__title a');
+            // Primary selector from reference
+            const anchors = document.querySelectorAll('.cmp-list--campaigns .cmp-teaser__title a, .cmp-teaser__title a');
             anchors.forEach(a => {
                 const href = (a as HTMLAnchorElement).getAttribute('href');
-                if (href && href.includes('/kampanyalar/')) {
-                    const fullUrl = href.startsWith('http') ? href : baseUrl + href;
+                if (href && (href.includes('/kampanyalar/') || href.includes('/content/parafcard/'))) {
+                    if (href.endsWith('kampanyalar.html')) return;
+                    const fullUrl = href.startsWith('http') ? href : baseUrl + (href.startsWith('/') ? '' : '/') + href;
                     if (!links.includes(fullUrl)) {
                         links.push(fullUrl);
                     }
@@ -88,6 +112,11 @@ async function runParafScraper() {
         }, BASE_URL);
 
         console.log(`\n   🎉 Found ${campaignLinks.length} campaigns.`);
+
+        if (campaignLinks.length === 0) {
+            console.log('   ❌ No campaign links found. Check selectors!');
+            return;
+        }
 
         // Apply limit
         const limitedLinks = limit ? campaignLinks.slice(0, limit) : campaignLinks;
@@ -101,12 +130,12 @@ async function runParafScraper() {
             console.log(`\n   🔍 Processing: ${fullUrl}`);
 
             try {
-                await page.goto(fullUrl, { waitUntil: 'networkidle2', timeout: 20000 });
-                await sleep(500);
+                await page.goto(fullUrl, { waitUntil: 'networkidle2', timeout: 30000 });
+                await sleep(1000);
 
                 // Wait for title
                 try {
-                    await page.waitForSelector('h1', { timeout: 5000 });
+                    await page.waitForSelector('h1', { timeout: 10000 });
                 } catch { }
 
                 const html = await page.content();
@@ -122,7 +151,8 @@ async function runParafScraper() {
                     if (bannerDiv && bannerDiv.style.backgroundImage) {
                         const match = bannerDiv.style.backgroundImage.match(/url\(['"]?(.*?)['"]?\)/);
                         if (match && !match[1].includes('logo.svg')) {
-                            image = match[1].startsWith('http') ? match[1] : baseUrl + match[1];
+                            const imgPath = match[1];
+                            image = imgPath.startsWith('http') ? imgPath : baseUrl + (imgPath.startsWith('/') ? '' : '/') + imgPath;
                         }
                     }
 
@@ -131,8 +161,8 @@ async function runParafScraper() {
                         for (const img of imgs) {
                             const src = img.getAttribute('src') || img.getAttribute('data-src');
                             if (src && !src.includes('logo') && !src.includes('icon') && !src.includes('.svg')) {
-                                if (src.includes('/content/')) {
-                                    image = src.startsWith('http') ? src : baseUrl + src;
+                                if (src.includes('/content/') || src.includes('kampanyalar')) {
+                                    image = src.startsWith('http') ? src : baseUrl + (src.startsWith('/') ? '' : '/') + src;
                                     break;
                                 }
                             }
