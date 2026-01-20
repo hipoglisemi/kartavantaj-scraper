@@ -203,6 +203,54 @@ def extract_financials_v8(text, title):
 
 def extract_participation(text):
     methods = []
+
+# --- MENÜ FİLTRESİ ---
+MENU_KEYWORDS = [
+    'bireysel kart kampanyaları',
+    'tüm kampanyalar',
+    'kampanyalar',
+    'başlık yok',
+    'maximum mobil',
+    'ödeme kolaylıkları',
+    'vergi ödemeleri',
+    'online alışveriş',
+    'dijital alışveriş',
+    'otomotiv',
+    'market',
+    'turizm',
+    'seyahat',
+    'spor',
+    'eğlence',
+    'teknoloji',
+    'elektronik',
+    'giyim',
+    'ayakkabı',
+    'aksesuar',
+    'kozmetik',
+    'sağlık',
+    'ev',
+    'bahçe',
+    'mobilya',
+    'dekorasyon'
+]
+
+def is_menu_item(title):
+    """Menü öğelerini filtrele"""
+    title_lower = title.lower().strip()
+    
+    # Çok kısa başlıklar (menü olabilir)
+    if len(title_lower) < 20:
+        return True
+    
+    # Menü keyword'leri
+    if title_lower in MENU_KEYWORDS:
+        return True
+    
+    # Genel kategori isimleri (tek kelime)
+    if title_lower in ['market', 'turizm', 'teknoloji', 'giyim', 'spor', 'elektronik']:
+        return True
+    
+    return False
     t_low = tr_lower(text)
     if "işcep" in t_low or "maximum mobil" in t_low: methods.append("Maximum Mobil / İşCep")
     sms_match = re.search(r'([a-z0-9]+)\s*yazıp\s*(\d{4})', t_low)
@@ -230,6 +278,17 @@ def main():
         print("   -> Liste yükleniyor...")
         time.sleep(5)
         
+        # 🔥 GEÇMİŞ KAMPANYALAR BÖLÜMÜNÜ GİZLE
+        try:
+            # Geçmiş kampanyalar bölümünü gizle (eğer varsa)
+            driver.execute_script("""
+                const pastSections = document.querySelectorAll('[class*="past"], [class*="gecmis"], [class*="arsiv"], [id*="past"], [id*="gecmis"]');
+                pastSections.forEach(section => section.style.display = 'none');
+            """)  
+            print("   -> Geçmiş kampanyalar bölümü gizlendi")
+        except Exception as e:
+            print(f"   -> Geçmiş kampanyalar bölümü bulunamadı (normal): {e}")
+        
         # Sonsuz Scroll
         while True:
             try:
@@ -245,8 +304,14 @@ def main():
         soup = BeautifulSoup(driver.page_source, 'html.parser')
         all_links = []
         for a in soup.find_all('a', href=True):
-            if "/kampanyalar/" in a['href'] and "arsiv" not in a['href'] and len(a['href']) > 25:
-                all_links.append(urljoin(BASE_URL, a['href']))
+            href = a['href']
+            # 🔥 GELİŞTİRİLMİŞ LİNK FİLTRESİ
+            if ("/kampanyalar/" in href and 
+                "arsiv" not in href.lower() and 
+                "gecmis" not in href.lower() and 
+                "past" not in href.lower() and 
+                len(href) > 25):
+                all_links.append(urljoin(BASE_URL, href))
         
         unique_links = list(set(all_links))
         print(f"   -> Toplam {len(unique_links)} kampanya bulundu. İşleniyor...")
@@ -272,12 +337,23 @@ def main():
                 title_el = d_soup.select_one('h1.gradient-title-text') or d_soup.find('h1')
                 title = temizle_metin(title_el.text) if title_el else "Başlık Yok"
                 
-                if "geçmiş" in title.lower() or len(title) < 10: continue
+                # 🔥 GELİŞTİRİLMİŞ BAŞLIK FİLTRESİ
+                if "geçmiş" in title.lower() or len(title) < 10:
+                    print(f"      ⚠️ Geçmiş veya çok kısa başlık atlandı: {title}")
+                    continue
+                
+                # 🔥 MENÜ FİLTRESİ
+                if is_menu_item(title):
+                    print(f"      ⚠️ Menü öğesi atlandı: {title}")
+                    continue
 
                 date_el = d_soup.select_one("span[id$='KampanyaTarihleri']")
                 date_text = temizle_metin(date_el.text) if date_el else ""
                 vu = format_tarih_iso(date_text, True)
-                if vu and datetime.strptime(vu, "%Y-%m-%dT%H:%M:%SZ") < datetime.now(): continue
+                # 🔥 TARİHİ GEÇMİŞ KONTROLÜ
+                if vu and datetime.strptime(vu, "%Y-%m-%dT%H:%M:%SZ") < datetime.now():
+                    print(f"      ⚠️ Tarihi geçmiş kampanya atlandı: {title}")
+                    continue
 
                 desc_el = d_soup.select_one("span[id$='CampaignDescription']")
                 conditions = []
