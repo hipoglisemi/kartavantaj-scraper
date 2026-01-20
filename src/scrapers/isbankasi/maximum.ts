@@ -142,6 +142,17 @@ async function runMaximumScraperTS() {
 
         await sleep(3000); // Small wait after networkidle2 
 
+        // 🔥 GEÇMİŞ KAMPANYALAR BÖLÜMÜNÜ GİZLE
+        try {
+            await page.evaluate(() => {
+                const pastSections = document.querySelectorAll('[class*="past"], [class*="gecmis"], [class*="arsiv"], [id*="past"], [id*="gecmis"]');
+                pastSections.forEach(section => (section as HTMLElement).style.display = 'none');
+            });
+            console.log('   -> Geçmiş kampanyalar bölümü gizlendi');
+        } catch (e) {
+            console.log('   -> Geçmiş kampanyalar bölümü bulunamadı (normal)');
+        }
+
         // --- INFINITE SCROLL LOGIC ---
         let hasMore = true;
         while (hasMore) {
@@ -222,7 +233,11 @@ async function runMaximumScraperTS() {
 
         $('a').each((_, el) => {
             const href = $(el).attr('href');
-            if (href && (href.includes('/kampanyalar/') || href.includes('kampanyalar/')) && !href.includes('arsiv')) {
+            // 🔥 GELİŞTİRİLMİŞ LİNK FİLTRESİ
+            if (href && (href.includes('/kampanyalar/') || href.includes('kampanyalar/')) &&
+                !href.toLowerCase().includes('arsiv') &&
+                !href.toLowerCase().includes('gecmis') &&
+                !href.toLowerCase().includes('past')) {
                 const lowerHref = href.toLowerCase();
 
                 // Skip if it's a known category path
