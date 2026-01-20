@@ -13,7 +13,7 @@ const CLOUDFLARE_API_TOKEN = process.env.CLOUDFLARE_API_TOKEN;
 const CLOUDFLARE_ACCOUNT_HASH = process.env.NEXT_PUBLIC_CLOUDFLARE_ACCOUNT_HASH;
 
 // 🛡️ Banks that MUST use Supabase Bridge to bypass WAF/Hotlinking
-const BRIDGE_BANKS = ['maximum', 'maximiles', 'chippin', 'turkcell', 'isbankasi', 'is-bankasi', 'halkbank', 'paraf'];
+const BRIDGE_BANKS = ['maximum', 'maximiles', 'chippin', 'turkcell', 'isbankasi', 'is-bankasi'];
 
 /**
  * Downloads an image and uploads to either Supabase Storage (Bridge) or Cloudflare Directly.
