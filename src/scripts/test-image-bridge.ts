@@ -8,7 +8,7 @@ async function testBridge() {
     // Using a reliable public image for testing
     const testImageUrl = 'https://www.google.com/images/branding/googlelogo/1x/googlelogo_color_272x92dp.png';
     const title = 'Bridge Test Campaign';
-    const bankName = 'test-bank';
+    const bankName = 'test-cloudflare';
 
     try {
         const resultUrl = await downloadImageDirectly(testImageUrl, title, bankName);

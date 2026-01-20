@@ -2,14 +2,25 @@ import * as dotenv from 'dotenv';
 import { generateCampaignSlug } from '../utils/slugify';
 import { Page } from 'puppeteer';
 import { supabase } from '../utils/supabase';
+import axios from 'axios';
+import FormData from 'form-data';
 
 dotenv.config();
 
 const BUCKET_NAME = 'campaign-images';
+const CLOUDFLARE_ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID;
+const CLOUDFLARE_API_TOKEN = process.env.CLOUDFLARE_API_TOKEN;
+const CLOUDFLARE_ACCOUNT_HASH = process.env.NEXT_PUBLIC_CLOUDFLARE_ACCOUNT_HASH;
+
+// 🛡️ Banks that MUST use Supabase Bridge to bypass WAF/Hotlinking
+const BRIDGE_BANKS = ['maximum', 'maximiles', 'chippin', 'turkcell', 'isbankasi', 'is-bankasi', 'halkbank', 'paraf'];
 
 /**
- * Downloads an image and uploads to Supabase Storage (Buffer for Cloudflare migration).
- * This is the "Image Bridge" approach: Bank -> Supabase -> Cloudflare (via cron).
+ * Downloads an image and uploads to either Supabase Storage (Bridge) or Cloudflare Directly.
+ * 
+ * Logic:
+ * - Bridge Banks (Maximum etc.): Bank -> Supabase -> Cloudflare (via cron)
+ * - Safe Banks (Axess etc.): Bank -> Cloudflare Directly
  */
 export async function downloadImageDirectly(
     imageUrl: string,
@@ -19,15 +30,18 @@ export async function downloadImageDirectly(
 ): Promise<string> {
     if (!imageUrl) return '';
 
-    // Consistent filename for "Upsert" logic (avoids duplicates)
+    const bankLower = bankName.toLowerCase();
+    const isBridgeBank = BRIDGE_BANKS.includes(bankLower);
+
+    // Consistent filename for "Upsert" logic
     const slug = generateCampaignSlug(title).substring(0, 50);
-    const filename = `${bankName}/${slug}.jpg`;
+    const filename = `${bankLower}/${slug}.jpg`;
 
     try {
         let buffer: Buffer;
         let contentType: string = 'image/jpeg';
 
-        // 1. CAPTURE IMAGE DATA
+        // 1. CAPTURE IMAGE DATA (Always prioritize Browser Context if page exists)
         if (page) {
             console.log(`   🌐 Fetching via Browser Context: ${imageUrl}`);
             const base64Data = await page.evaluate(async (url) => {
@@ -46,12 +60,11 @@ export async function downloadImageDirectly(
             contentType = base64Data.split(';')[0].split(':')[1] || 'image/jpeg';
         } else {
             console.log(`   🖼️  Attempting server-side download: ${imageUrl}`);
-            const axios = (await import('axios')).default;
             const response = await axios.get(imageUrl, {
                 responseType: 'arraybuffer',
                 headers: {
                     'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                    'Referer': bankName === 'chippin' ? 'https://www.chippin.com/' : 'https://www.maximum.com.tr/',
+                    'Referer': imageUrl.includes('chippin') ? 'https://www.chippin.com/' : 'https://www.maximum.com.tr/',
                 },
                 timeout: 10000
             });
@@ -59,31 +72,52 @@ export async function downloadImageDirectly(
             contentType = response.headers['content-type'] || 'image/jpeg';
         }
 
-        // 2. UPLOAD TO SUPABASE STORAGE (UPSERT)
-        console.log(`   📤 Uploading to Supabase Storage: ${filename}`);
-        const { data, error } = await supabase.storage
-            .from(BUCKET_NAME)
-            .upload(filename, buffer, {
-                contentType: contentType,
-                upsert: true
-            });
+        // 2. CHOOSE DESTINATION (Supabase Bridge vs Cloudflare Direct)
+        if (isBridgeBank) {
+            console.log(`   🏗️  [BRIDGE] Uploading to Supabase Storage: ${filename}`);
+            const { error: uploadError } = await supabase.storage
+                .from(BUCKET_NAME)
+                .upload(filename, buffer, {
+                    contentType: contentType,
+                    upsert: true
+                });
 
-        if (error) {
-            throw new Error(`Supabase Upload Error: ${error.message}`);
+            if (uploadError) throw new Error(`Supabase Error: ${uploadError.message}`);
+
+            const { data: { publicUrl } } = supabase.storage.from(BUCKET_NAME).getPublicUrl(filename);
+            console.log(`   ✅ Supabase Bridge Ready: ${publicUrl}`);
+            return publicUrl;
+        } else {
+            // Direct Cloudflare Upload for Safe Banks
+            console.log(`   ⚡ [DIRECT] Uploading to Cloudflare: ${filename}`);
+            const imageId = `campaign-${bankLower}-${slug}-${Date.now()}`;
+            const formData = new FormData();
+            formData.append('file', buffer, { filename: 'image.jpg', contentType });
+            formData.append('id', imageId);
+
+            const cfResponse = await axios.post(
+                `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/images/v1`,
+                formData,
+                {
+                    headers: {
+                        ...formData.getHeaders(),
+                        'Authorization': `Bearer ${CLOUDFLARE_API_TOKEN}`
+                    }
+                }
+            );
+
+            if (cfResponse.data.success) {
+                const cloudflareUrl = `https://imagedelivery.net/${CLOUDFLARE_ACCOUNT_HASH}/${cfResponse.data.result.id}/public`;
+                console.log(`   ✅ Cloudflare Direct Success: ${cloudflareUrl}`);
+                return cloudflareUrl;
+            } else {
+                throw new Error(`Cloudflare Error: ${JSON.stringify(cfResponse.data.errors)}`);
+            }
         }
 
-        // 3. GET PUBLIC URL
-        const { data: { publicUrl } } = supabase.storage
-            .from(BUCKET_NAME)
-            .getPublicUrl(filename);
-
-        console.log(`   ✅ Supabase Bridge Success: ${publicUrl}`);
-        return publicUrl;
-
     } catch (error: any) {
-        console.error(`   ❌ Failed to bridge image: ${error.message}`);
-        // Fallback to original bank URL if everything fails
-        return imageUrl;
+        console.error(`   ❌ Failed to process image for ${bankName}: ${error.message}`);
+        return imageUrl; // Fallback to original
     }
 }
 
