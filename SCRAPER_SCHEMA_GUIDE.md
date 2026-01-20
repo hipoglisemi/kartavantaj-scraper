@@ -153,3 +153,18 @@ for (const url of allLinks.filter(u => urlsToProcess.includes(u))) {
     // Process campaign detail with AI...
 }
 ```
+---
+
+## 8. Pilot Scraper Template
+To ensure all new scrapers follow these rules, a **PILOT TEMPLATE** has been created. 
+
+**Location:** `src/scrapers/template/PILOT_TEMPLATE.ts`
+
+### Why use the Pilot Template?
+1. **Cloudflare Ready:** Pre-configured to use `imageService` so images NEVER hit Supabase egress.
+2. **Bot-Evasion Ready:** Uses Stealth Puppeteer and optimal headers.
+3. **AI-Enhanced:** Standardized Gemini parsing logic.
+4. **Database Optimized:** Includes `optimizeCampaigns` to skip processing of duplicated data.
+5. **ID Mapping:** Standard IDs (banks, cards, sectors) are automatically handled.
+
+**Usage:** Copy `PILOT_TEMPLATE.ts` to your new bank folder and update the `CONFIG` object.
