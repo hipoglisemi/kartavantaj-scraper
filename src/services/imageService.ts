@@ -24,18 +24,19 @@ export async function downloadImageDirectly(imageUrl: string, title: string, ban
         console.log(`   🖼️  Downloading image for Cloudflare: ${imageUrl}`);
         const referer = bankName === 'chippin' ? 'https://www.chippin.com/' : 'https://www.maximum.com.tr/';
 
-        const response = await fetch(imageUrl, {
+        // 🔥 AXIOS İLE DOWNLOAD (fetch yerine - daha stabil)
+        const axios = (await import('axios')).default;
+        const response = await axios.get(imageUrl, {
+            responseType: 'arraybuffer',
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                 'Referer': referer,
-            }
+            },
+            timeout: 30000
         });
 
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
-        const arrayBuffer = await response.arrayBuffer();
         const formData = new FormData();
-        const blob = new Blob([arrayBuffer], { type: response.headers.get('content-type') || 'image/jpeg' });
+        const blob = new Blob([response.data], { type: response.headers['content-type'] || 'image/jpeg' });
         formData.append('file', blob, 'image.jpg');
         formData.append('id', imageId);
 
