@@ -62,7 +62,7 @@ export async function optimizeCampaigns(
             let hasImage = campaign.image && campaign.image.trim() !== '' && !campaign.image.includes('placeholder') && !campaign.image.includes('favicon');
 
             // If it's a raw Maximum or IsBank URL, consider it incomplete so we can migrate to Cloudflare
-            if (hasImage && (campaign.image.includes('maximum.com.tr') || campaign.image.includes('isbank.com.tr'))) {
+            if (hasImage && (campaign.image.includes('www.maximum.com.tr') || campaign.image.includes('www.isbank.com.tr'))) {
                 hasImage = false;
             }
 

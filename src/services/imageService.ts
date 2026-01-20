@@ -1,17 +1,15 @@
 import * as dotenv from 'dotenv';
 import { generateCampaignSlug } from '../utils/slugify';
 import { Page } from 'puppeteer';
+import { supabase } from '../utils/supabase';
 
 dotenv.config();
 
-const CLOUDFLARE_ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID;
-const CLOUDFLARE_API_TOKEN = process.env.CLOUDFLARE_API_TOKEN;
-const CLOUDFLARE_ACCOUNT_HASH = process.env.NEXT_PUBLIC_CLOUDFLARE_ACCOUNT_HASH;
+const BUCKET_NAME = 'campaign-images';
 
 /**
- * Downloads an image and uploads to Cloudflare.
- * PREFERRED: If 'page' is provided, it fetches the image INSIDE the browser context
- * to bypass all WAF/Hotlink protections with 100% original quality.
+ * Downloads an image and uploads to Supabase Storage (Buffer for Cloudflare migration).
+ * This is the "Image Bridge" approach: Bank -> Supabase -> Cloudflare (via cron).
  */
 export async function downloadImageDirectly(
     imageUrl: string,
@@ -21,20 +19,17 @@ export async function downloadImageDirectly(
 ): Promise<string> {
     if (!imageUrl) return '';
 
-    if (!CLOUDFLARE_ACCOUNT_ID || !CLOUDFLARE_API_TOKEN || !CLOUDFLARE_ACCOUNT_HASH) {
-        console.warn('   ⚠️  Cloudflare credentials missing. Falling back to original URL.');
-        return imageUrl;
-    }
-
-    const imageId = `campaign-${bankName}-${generateCampaignSlug(title).substring(0, 40)}-${Date.now()}`;
+    // Consistent filename for "Upsert" logic (avoids duplicates)
+    const slug = generateCampaignSlug(title).substring(0, 50);
+    const filename = `${bankName}/${slug}.jpg`;
 
     try {
         let buffer: Buffer;
         let contentType: string = 'image/jpeg';
 
+        // 1. CAPTURE IMAGE DATA
         if (page) {
-            console.log(`   🌐 Fetching image via Browser Context: ${imageUrl}`);
-            // 🔥 BU YÖNTEM BANKA ENGELİNİ %100 AŞAR (Tarayıcı içinden fetch)
+            console.log(`   🌐 Fetching via Browser Context: ${imageUrl}`);
             const base64Data = await page.evaluate(async (url) => {
                 const response = await fetch(url);
                 const blob = await response.blob();
@@ -49,7 +44,6 @@ export async function downloadImageDirectly(
             const base64Content = base64Data.split(',')[1];
             buffer = Buffer.from(base64Content, 'base64');
             contentType = base64Data.split(';')[0].split(':')[1] || 'image/jpeg';
-            console.log(`   ✅ Image captured from browser context (${buffer.length} bytes)`);
         } else {
             console.log(`   🖼️  Attempting server-side download: ${imageUrl}`);
             const axios = (await import('axios')).default;
@@ -65,82 +59,42 @@ export async function downloadImageDirectly(
             contentType = response.headers['content-type'] || 'image/jpeg';
         }
 
-        return await uploadBufferToCloudflare(buffer, imageId, contentType);
+        // 2. UPLOAD TO SUPABASE STORAGE (UPSERT)
+        console.log(`   📤 Uploading to Supabase Storage: ${filename}`);
+        const { data, error } = await supabase.storage
+            .from(BUCKET_NAME)
+            .upload(filename, buffer, {
+                contentType: contentType,
+                upsert: true
+            });
 
-    } catch (error: any) {
-        console.error(`   ❌ Failed to capture image: ${error.message}`);
-        return imageUrl;
-    }
-}
-
-/**
- * Upload buffer to Cloudflare Images
- */
-async function uploadBufferToCloudflare(buffer: Buffer, imageId: string, contentType: string): Promise<string> {
-    const FormData = (await import('form-data')).default;
-    const axios = (await import('axios')).default;
-
-    const formData = new FormData();
-    formData.append('file', buffer, {
-        filename: 'image.jpg',
-        contentType: contentType,
-    });
-    formData.append('id', imageId);
-
-    const cfResponse = await axios.post(
-        `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/images/v1`,
-        formData,
-        {
-            headers: {
-                ...formData.getHeaders(),
-                'Authorization': `Bearer ${CLOUDFLARE_API_TOKEN}`,
-            },
-            maxContentLength: Infinity,
-            maxBodyLength: Infinity
+        if (error) {
+            throw new Error(`Supabase Upload Error: ${error.message}`);
         }
-    );
 
-    if (cfResponse.data.success) {
-        const url = `https://imagedelivery.net/${CLOUDFLARE_ACCOUNT_HASH}/${cfResponse.data.result.id}/public`;
-        console.log(`   ✅ Cloudflare Upload Success: ${url}`);
-        return url;
-    } else {
-        throw new Error('Cloudflare upload failed');
+        // 3. GET PUBLIC URL
+        const { data: { publicUrl } } = supabase.storage
+            .from(BUCKET_NAME)
+            .getPublicUrl(filename);
+
+        console.log(`   ✅ Supabase Bridge Success: ${publicUrl}`);
+        return publicUrl;
+
+    } catch (error: any) {
+        console.error(`   ❌ Failed to bridge image: ${error.message}`);
+        // Fallback to original bank URL if everything fails
+        return imageUrl;
     }
 }
 
 /**
- * Screenshots an image element and uploads to Cloudflare Images (bypasses WAF).
- * FALLBACK method.
+ * Cleanup: Deletes processed image from Supabase after successful Cloudflare migration.
  */
-export async function processCampaignImage(imageUrl: string, title: string, page: Page, bankName: string = 'chippin'): Promise<string> {
-    const imageId = `campaign-${bankName}-${generateCampaignSlug(title).substring(0, 40)}-${Date.now()}`;
-
-    try {
-        const filenamePart = imageUrl.split('/').pop()?.split('?')[0];
-        if (!filenamePart) throw new Error('Invalid image URL');
-
-        const element = await page.evaluateHandle((part) => {
-            const img = Array.from(document.querySelectorAll('img')).find(i => i.src.includes(part));
-            if (img) {
-                img.scrollIntoView({ behavior: 'instant', block: 'center' });
-                return img;
-            }
-            return null;
-        }, filenamePart);
-
-        const imgElement = element.asElement();
-        if (!imgElement) throw new Error('Image element not found on page');
-
-        const buffer = await imgElement.screenshot({
-            type: 'jpeg',
-            quality: 95
-        });
-
-        return await uploadBufferToCloudflare(Buffer.from(buffer), imageId, 'image/jpeg');
-
-    } catch (error: any) {
-        console.error(`   ⚠️  Screenshot capture failed: ${error.message}`);
-        return imageUrl;
+export async function deleteFromSupabase(path: string): Promise<void> {
+    const { error } = await supabase.storage.from(BUCKET_NAME).remove([path]);
+    if (error) {
+        console.error(`   ⚠️ Failed to delete from Supabase: ${error.message}`);
+    } else {
+        console.log(`   🗑️ Cleaned up from Supabase: ${path}`);
     }
 }

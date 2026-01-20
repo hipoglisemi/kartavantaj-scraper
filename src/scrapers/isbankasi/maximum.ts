@@ -388,6 +388,7 @@ async function runMaximumScraperTS() {
                     syncEarningAndDiscount(campaignData);
                     campaignData.publish_status = 'processing';
                     campaignData.publish_updated_at = new Date().toISOString();
+                    campaignData.image_migrated = false; // Bridge flag for Cloudflare migration
 
                     // Lookup IDs for normalized bank/card
                     const ids = await lookupIDs(
