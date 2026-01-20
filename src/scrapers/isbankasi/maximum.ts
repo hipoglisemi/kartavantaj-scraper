@@ -18,7 +18,7 @@ import { normalizeBankName, normalizeCardName } from '../../utils/bankMapper';
 import { lookupIDs } from '../../utils/idMapper';
 import { generateSectorSlug, generateCampaignSlug } from '../../utils/slugify';
 import { optimizeCampaigns } from '../../utils/campaignOptimizer';
-import { downloadImageDirectly } from '../../services/imageService';
+import { processCampaignImage } from '../../services/imageService';
 import { parseWithGemini } from '../../services/geminiParser';
 import { syncEarningAndDiscount } from '../../utils/dataFixer';
 import { assignBadge } from '../../services/badgeAssigner';
@@ -350,8 +350,8 @@ async function runMaximumScraperTS() {
                     const src = imgEl.attr('src');
                     if (src) {
                         const imageUrl = src.startsWith('http') ? src : `${BASE_URL}${src}`;
-                        // Download and proxy image through Supabase
-                        image = await downloadImageDirectly(imageUrl, title, 'maximum');
+                        // 🔥 SCREENSHOT YÖNTEMİ İLE CLOUDFLARE UPLOAD (Hotlink bypass)
+                        image = await processCampaignImage(imageUrl, title, page, 'maximum');
                     }
                 }
 
