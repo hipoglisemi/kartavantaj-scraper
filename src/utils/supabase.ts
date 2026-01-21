@@ -6,14 +6,22 @@ import * as path from 'path';
 dotenv.config();
 
 // Fallback: Try to find .env relative to this file
+// Fallback: Try to find .env relative to this file
 if (!process.env.SUPABASE_URL) {
     const envPath = path.resolve(process.cwd(), '.env');
     dotenv.config({ path: envPath });
 }
 
+console.log(`[Supabase Init] Raw Service Role Key present? ${!!process.env.SUPABASE_SERVICE_ROLE_KEY}`);
+console.log(`[Supabase Init] Raw Anon Key present? ${!!process.env.SUPABASE_ANON_KEY}`);
+
 const supabaseUrl = process.env.SUPABASE_URL ? process.env.SUPABASE_URL.trim().replace(/^"|"$/g, '') : '';
 const supabaseAnonKey = process.env.SUPABASE_ANON_KEY ? process.env.SUPABASE_ANON_KEY.trim().replace(/^"|"$/g, '') : '';
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY ? process.env.SUPABASE_SERVICE_ROLE_KEY.trim().replace(/^"|"$/g, '') : '';
+
+console.debug(`[Supabase Debug] URL Length: ${supabaseUrl.length}`);
+console.debug(`[Supabase Debug] Service Role Key Length: ${supabaseServiceKey.length}`);
+console.debug(`[Supabase Debug] Anon Key Length: ${supabaseAnonKey.length}`);
 
 if (!supabaseUrl || (!supabaseAnonKey && !supabaseServiceKey)) {
     console.error('❌ CRITICAL: Supabase environment variables are missing!');
