@@ -6,7 +6,7 @@
 
 import puppeteer from 'puppeteer-extra';
 // import StealthPlugin from 'puppeteer-extra-plugin-stealth'; // DISABLED - Detected as bot with stealth in this env
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '../../utils/supabase';
 import * as dotenv from 'dotenv';
 import { parseWithGemini } from '../../services/geminiParser';
 import { generateSectorSlug, generateCampaignSlug } from '../../utils/slugify';
@@ -22,10 +22,7 @@ dotenv.config();
 
 // puppeteer.use(StealthPlugin());
 
-const supabase = createClient(
-    process.env.SUPABASE_URL!,
-    process.env.SUPABASE_ANON_KEY!
-);
+// Supabase client is now imported from ../../utils/supabase
 
 const BASE_URL = 'https://www.chippin.com';
 const CAMPAIGNS_URL = 'https://www.chippin.com/kampanyalar';
@@ -235,6 +232,7 @@ async function runChippinScraper() {
                 syncEarningAndDiscount(campaignData);
                 campaignData.publish_status = 'processing';
                 campaignData.publish_updated_at = new Date().toISOString();
+                campaignData.image_migrated = false; // Bridge flag for Cloudflare migration
 
                 // IDs - We do lookup only for brand/sector, preserving our bank/card IDs
                 const ids = await lookupIDs(

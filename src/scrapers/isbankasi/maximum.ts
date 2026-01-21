@@ -1,7 +1,7 @@
 
 import puppeteer from 'puppeteer-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '../../utils/supabase';
 import * as dotenv from 'dotenv';
 import * as cheerio from 'cheerio'; // Cheerio for fast parsing like BeautifulSoup
 import {
@@ -29,10 +29,7 @@ dotenv.config();
 // Use Stealth Plugin
 puppeteer.use(StealthPlugin());
 
-const supabase = createClient(
-    process.env.SUPABASE_URL!,
-    process.env.SUPABASE_ANON_KEY!
-);
+// Supabase client is now imported from ../../utils/supabase
 
 const BASE_URL = 'https://www.maximum.com.tr';
 const CAMPAIGNS_URL = 'https://www.maximum.com.tr/kampanyalar';

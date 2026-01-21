@@ -163,8 +163,8 @@ async function runMaximilesScraper() {
                     break;
                 }
 
-                let currentHeight = await page.evaluate('document.body.scrollHeight');
-                if (currentHeight > previousHeight) {
+                let currentHeight = await page.evaluate('document.body.scrollHeight') as number;
+                if (currentHeight > (previousHeight as number)) {
                     previousHeight = currentHeight;
                     scrollRetries = 0;
                     totalScrolled++;
@@ -319,6 +319,7 @@ async function runMaximilesScraper() {
                     syncEarningAndDiscount(campaignData);
                     campaignData.publish_status = 'processing';
                     campaignData.publish_updated_at = new Date().toISOString();
+                    campaignData.image_migrated = false; // Bridge flag for Cloudflare migration
 
                     const ids = await lookupIDs(
                         campaignData.bank,

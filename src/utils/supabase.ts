@@ -5,31 +5,17 @@ import * as path from 'path';
 // Load directly from current execution context
 dotenv.config();
 
-console.log(`[Supabase Init] CWD: ${process.cwd()}`);
-console.log(`[Supabase Init] __dirname: ${__dirname}`);
-console.log(`[Supabase Init] SUPABASE_URL present? ${!!process.env.SUPABASE_URL}`);
-
 // Fallback: Try to find .env relative to this file
 if (!process.env.SUPABASE_URL) {
     const envPath = path.resolve(process.cwd(), '.env');
-    console.log(`⚠️  Standard dotenv failed. Trying specific path: ${envPath}`);
-    const result = dotenv.config({ path: envPath });
-
-    if (result.error) {
-        console.error("❌ Dotenv load failed:", result.error.message);
-    } else {
-        console.log("✅ Dotenv loaded manually.");
-    }
+    dotenv.config({ path: envPath });
 }
 
 const supabaseUrl = process.env.SUPABASE_URL ? process.env.SUPABASE_URL.trim().replace(/^"|"$/g, '') : '';
 const supabaseAnonKey = process.env.SUPABASE_ANON_KEY ? process.env.SUPABASE_ANON_KEY.trim().replace(/^"|"$/g, '') : '';
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY ? process.env.SUPABASE_SERVICE_ROLE_KEY.trim().replace(/^"|"$/g, '') : '';
 
-console.log(`[Supabase Init] URL Length: ${supabaseUrl.length}`);
-console.log(`[Supabase Init] URL Start: ${supabaseUrl.substring(0, 10)}...`);
-console.log(`[Supabase Init] URL Valid Protocol? ${supabaseUrl.startsWith('http')}`);
-
-if (!supabaseUrl || !supabaseAnonKey) {
+if (!supabaseUrl || (!supabaseAnonKey && !supabaseServiceKey)) {
     console.error('❌ CRITICAL: Supabase environment variables are missing!');
     console.error('Check SUPABASE_URL and SUPABASE_ANON_KEY in your .env file.');
     process.exit(1);
@@ -74,7 +60,7 @@ export interface Campaign {
 /**
  * Centralized Supabase Client
  */
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+export const supabase = createClient(supabaseUrl, supabaseServiceKey || supabaseAnonKey, {
     auth: { persistSession: false },
     db: { schema: 'public' }
 });
