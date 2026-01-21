@@ -7,9 +7,9 @@ import { deleteFromSupabase } from '../services/imageService';
 
 dotenv.config();
 
-const CLOUDFLARE_ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID;
-const CLOUDFLARE_API_TOKEN = process.env.CLOUDFLARE_API_TOKEN;
-const CLOUDFLARE_ACCOUNT_HASH = process.env.NEXT_PUBLIC_CLOUDFLARE_ACCOUNT_HASH;
+const CLOUDFLARE_ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID ? process.env.CLOUDFLARE_ACCOUNT_ID.trim() : '';
+const CLOUDFLARE_API_TOKEN = process.env.CLOUDFLARE_API_TOKEN ? process.env.CLOUDFLARE_API_TOKEN.trim() : '';
+const CLOUDFLARE_ACCOUNT_HASH = process.env.NEXT_PUBLIC_CLOUDFLARE_ACCOUNT_HASH ? process.env.NEXT_PUBLIC_CLOUDFLARE_ACCOUNT_HASH.trim() : '';
 
 async function migrateImages() {
     console.log('🚀 Starting Image Migration: Supabase -> Cloudflare');
