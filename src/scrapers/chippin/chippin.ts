@@ -41,6 +41,11 @@ async function runChippinScraper() {
     // Normalize names first
     const normalizedBank = await normalizeBankName('Chippin');
     const normalizedCard = await normalizeCardName(normalizedBank, 'Chippin');
+
+    // Parse limit argument
+    const limitArg = process.argv.find(arg => arg.startsWith('--limit='));
+    const limit = limitArg ? parseInt(limitArg.split('=')[1]) : 1000;
+
     console.log(`   Bank: ${normalizedBank}, Card: ${normalizedCard}`);
 
     // Verify Bank/Card existence and get SLUGS (not IDs)
@@ -111,10 +116,9 @@ async function runChippinScraper() {
         const { urlsToProcess } = await optimizeCampaigns(uniqueLinks, cardNameForOptimization);
 
         // Filter campaigns based on optimization results
-        const finalCampaigns = campaigns.filter(item => urlsToProcess.includes(`${CAMPAIGNS_URL}/${item.id}`));
-        const limit = finalCampaigns.length; // Process all remaining campaigns
+        const finalCampaigns = campaigns.filter(item => urlsToProcess.includes(`${CAMPAIGNS_URL}/${item.id}`)).slice(0, limit);
 
-        console.log(`\n   🚀 Processing details for ${finalCampaigns.length} campaigns (skipping ${uniqueLinks.length - finalCampaigns.length} complete/existing)...\n`);
+        console.log(`\n   🚀 Processing details for ${finalCampaigns.length} campaigns (skipping ${uniqueLinks.length - finalCampaigns.length} complete/existing) (Limit: ${limit})...\n`);
 
         let processedCount = 0;
         for (const item of finalCampaigns) {
